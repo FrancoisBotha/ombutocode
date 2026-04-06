@@ -34,7 +34,7 @@ export default {
           const info = await window.electron.ipcRenderer.invoke('app:getBuildInfo');
           if (info) {
             buildLabel.value = `v${info.version} (${info.hash})`;
-            buildTooltip.value = `Jeff Code v${info.version} build ${info.hash}`;
+            buildTooltip.value = `Ombuto Code v${info.version} build ${info.hash}`;
           }
         } catch (err) {
           console.error('Failed to get build info:', err);

@@ -391,22 +391,23 @@ body {
   background-color: #373d45;
 }
 
-/* Dark theme: Status Bar */
+/* Dark theme: Status Bar — matches titlebar style */
 [data-theme="dark"] .status-bar {
-  background-color: #1a1e24;
-  border-top-color: var(--border-color);
+  background-color: #1a2a3a;
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="dark"] .status-bar-path {
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 [data-theme="dark"] .status-bar-project-name {
-  color: var(--text-color);
+  color: #fff;
+  font-weight: 500;
 }
 
 [data-theme="dark"] .status-bar-build {
-  color: #5a6270;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* Dark theme: Kanban columns */

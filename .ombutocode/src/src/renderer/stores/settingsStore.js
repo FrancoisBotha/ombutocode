@@ -11,7 +11,7 @@ function createDefaultSettings() {
     app_refresh_interval: 30,
     enable_review_notification_sound: true,
     max_eval_retries: 2,
-    theme: 'light'
+    theme: 'dark'
   };
 }
 

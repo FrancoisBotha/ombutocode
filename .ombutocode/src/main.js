@@ -1605,6 +1605,11 @@ app.whenReady().then(async () => {
 
 app.on('before-quit', () => {
   scheduler.stop();
+  // Kill all active PTY shells to avoid node-pty assertion errors on exit
+  for (const [id, proc] of activeShells) {
+    try { proc.kill(); } catch (_) { /* already dead */ }
+    activeShells.delete(id);
+  }
   // Don't persist false here - preserve the user's last preference
 });
 

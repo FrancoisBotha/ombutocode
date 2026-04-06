@@ -1,20 +1,51 @@
 <template>
   <div class="board-list" :class="{ 'is-collapsed': isCollapsed }">
     <div class="board-list-header">
-      <h3>Menu</h3>
+      <template v-if="!isCollapsed">
+        <div class="sidebar-tabs">
+          <button
+            class="sidebar-tab"
+            :class="{ 'is-active': sidebarMode === 'plan' }"
+            @click="switchMode('plan')"
+          >
+            <span class="mdi mdi-map-outline"></span>
+            Plan
+          </button>
+          <button
+            class="sidebar-tab"
+            :class="{ 'is-active': sidebarMode === 'build' }"
+            @click="switchMode('build')"
+          >
+            <span class="mdi mdi-hammer-wrench"></span>
+            Build
+          </button>
+        </div>
+      </template>
+      <template v-else>
+        <span></span>
+      </template>
       <button @click="toggleCollapse" class="collapse-btn" :title="isCollapsed ? 'Expand' : 'Collapse'">
         <span class="mdi" :class="isCollapsed ? 'mdi-chevron-left' : 'mdi-chevron-right'"></span>
       </button>
     </div>
-    
-    <div class="board-list-content" v-if="!isCollapsed">
+
+    <!-- ===== PLAN MODE (expanded) — placeholder for future ===== -->
+    <div class="board-list-content" v-if="!isCollapsed && sidebarMode === 'plan'">
+      <div class="plan-placeholder">
+        <span class="mdi mdi-map-outline plan-placeholder-icon"></span>
+        <p>Planning tools coming soon</p>
+      </div>
+    </div>
+
+    <!-- ===== BUILD MODE (expanded) ===== -->
+    <div class="board-list-content" v-if="!isCollapsed && sidebarMode === 'build'">
       <div
         class="board-item"
         :class="{ 'is-active': activeView === 'workspace' }"
         @click="$emit('change-view', 'workspace')"
       >
         <span class="board-icon">
-          <span class="mdi mdi-source-branch"></span>
+          <span class="mdi mdi-view-dashboard-outline"></span>
         </span>
         <span class="board-name">Workspace</span>
       </div>
@@ -74,16 +105,7 @@
         <span class="board-name">Backlog</span>
       </div>
 
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'archive' }"
-        @click="$emit('change-view', 'archive')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-archive"></span>
-        </span>
-        <span class="board-name">Archive</span>
-      </div>
+      <div class="divider"></div>
 
       <div
         class="board-item"
@@ -122,6 +144,22 @@
 
       <div
         class="board-item"
+        :class="{ 'is-active': activeView === 'archive' }"
+        @click="$emit('change-view', 'archive')"
+      >
+        <span class="board-icon">
+          <span class="mdi mdi-archive"></span>
+        </span>
+        <span class="board-name">Archive</span>
+      </div>
+
+    </div>
+
+    <!-- ===== Bottom section (always visible, both tabs) ===== -->
+    <div v-if="!isCollapsed" class="board-list-bottom">
+      <div class="divider"></div>
+      <div
+        class="board-item"
         :class="{ 'is-active': activeView === 'settings' }"
         @click="$emit('change-view', 'settings')"
       >
@@ -131,7 +169,6 @@
         <span class="board-name">Settings</span>
       </div>
 
-      <div v-if="showAutoToggle" class="auto-toggle-spacer"></div>
       <div v-if="showAutoToggle" class="auto-toggle-wrap">
         <div class="divider"></div>
         <div class="auto-toggle-item" @click="toggleAutoMode">
@@ -144,79 +181,110 @@
       </div>
     </div>
 
-    <div v-else class="collapsed-view">
+    <!-- ===== COLLAPSED VIEW ===== -->
+    <div v-if="isCollapsed" class="collapsed-view">
       <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'kanban' }"
-        @click="$emit('change-view', 'kanban')"
-        title="Board"
+        class="collapsed-board collapsed-tab"
+        :class="{ 'is-active': sidebarMode === 'plan' }"
+        @click="switchMode('plan')"
+        title="Plan"
       >
-        <span class="mdi mdi-view-column"></span>
+        <span class="mdi mdi-map-outline"></span>
       </div>
       <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'requests' }"
-        @click="$emit('change-view', 'requests')"
-        title="Requests"
+        class="collapsed-board collapsed-tab"
+        :class="{ 'is-active': sidebarMode === 'build' }"
+        @click="switchMode('build')"
+        title="Build"
       >
-        <span class="mdi mdi-message-text-outline"></span>
+        <span class="mdi mdi-hammer-wrench"></span>
       </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'features' }"
-        @click="$emit('change-view', 'features')"
-        title="Features"
-      >
-        <span class="mdi mdi-shape-outline"></span>
-      </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'prd' }"
-        @click="$emit('change-view', 'prd')"
-        title="PRD"
-      >
-        <span class="mdi mdi-file-document-outline"></span>
-      </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'backlog' }"
-        @click="$emit('change-view', 'backlog')"
-        title="Backlog"
-      >
-        <span class="mdi mdi-format-list-bulleted"></span>
-      </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'archive' }"
-        @click="$emit('change-view', 'archive')"
-        title="Archive"
-      >
-        <span class="mdi mdi-archive"></span>
-      </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'agents' }"
-        @click="$emit('change-view', 'agents')"
-        title="Coding Agents"
-      >
-        <span class="mdi mdi-robot-outline"></span>
-      </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'automation' }"
-        @click="$emit('change-view', 'automation')"
-        title="Automation"
-      >
-        <span class="mdi mdi-lightning-bolt-outline"></span>
-      </div>
-      <div
-        class="collapsed-board"
-        :class="{ 'is-active': activeView === 'logs' }"
-        @click="$emit('change-view', 'logs')"
-        title="Logs"
-      >
-        <span class="mdi mdi-text-box-outline"></span>
-      </div>
+      <div class="divider collapsed-divider"></div>
+
+      <template v-if="sidebarMode === 'build'">
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'workspace' }"
+          @click="$emit('change-view', 'workspace')"
+          title="Workspace"
+        >
+          <span class="mdi mdi-view-dashboard-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'kanban' }"
+          @click="$emit('change-view', 'kanban')"
+          title="Board"
+        >
+          <span class="mdi mdi-view-column"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'requests' }"
+          @click="$emit('change-view', 'requests')"
+          title="Requests"
+        >
+          <span class="mdi mdi-message-text-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'features' }"
+          @click="$emit('change-view', 'features')"
+          title="Features"
+        >
+          <span class="mdi mdi-shape-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'prd' }"
+          @click="$emit('change-view', 'prd')"
+          title="PRD"
+        >
+          <span class="mdi mdi-file-document-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'backlog' }"
+          @click="$emit('change-view', 'backlog')"
+          title="Backlog"
+        >
+          <span class="mdi mdi-format-list-bulleted"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'agents' }"
+          @click="$emit('change-view', 'agents')"
+          title="Coding Agents"
+        >
+          <span class="mdi mdi-robot-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'automation' }"
+          @click="$emit('change-view', 'automation')"
+          title="Automation"
+        >
+          <span class="mdi mdi-lightning-bolt-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'logs' }"
+          @click="$emit('change-view', 'logs')"
+          title="Logs"
+        >
+          <span class="mdi mdi-text-box-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'archive' }"
+          @click="$emit('change-view', 'archive')"
+          title="Archive"
+        >
+          <span class="mdi mdi-archive"></span>
+        </div>
+      </template>
+
+      <div class="auto-toggle-spacer"></div>
       <div
         class="collapsed-board"
         :class="{ 'is-active': activeView === 'settings' }"
@@ -225,7 +293,6 @@
       >
         <span class="mdi mdi-cog-outline"></span>
       </div>
-      <div v-if="showAutoToggle" class="auto-toggle-spacer"></div>
       <div v-if="showAutoToggle" class="collapsed-auto-wrap">
         <div
           class="collapsed-board"
@@ -277,6 +344,7 @@ export default {
   },
   setup(props, { emit }) {
     const isCollapsed = ref(false);
+    const sidebarMode = ref('build');
     const boardToDelete = ref(null);
     const dropbox = useDropbox();
     const boardStore = useBoardStore();
@@ -286,6 +354,10 @@ export default {
     const editedBoardName = ref('');
     const autoRunning = ref(false);
     const showAutoToggle = computed(() => props.activeView !== 'agents');
+
+    const switchMode = (mode) => {
+      sidebarMode.value = mode;
+    };
     
     // Track authentication state
   const authState = ref(0);
@@ -618,7 +690,9 @@ export default {
       vFocus,
       autoRunning,
       showAutoToggle,
-      toggleAutoMode
+      toggleAutoMode,
+      sidebarMode,
+      switchMode
     };
   }
 };
@@ -627,33 +701,75 @@ export default {
 <style scoped>
 .board-list {
   width: 250px;
-  background-color: #f7f9fc;
-  border-right: 1px solid #e1e4e8;
+  background-color: #1a2030;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   transition: width 0.3s ease;
   overflow: hidden;
   height: 100%;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .board-list.is-collapsed {
   width: 50px;
 }
 
+/* ── Sidebar tabs ── */
+.sidebar-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.sidebar-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sidebar-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-tab.is-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #6dd4a0;
+}
+
+.sidebar-tab .mdi {
+  font-size: 1rem;
+}
+
 .board-list-header {
-  padding: 1rem;
+  padding: 0.75rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e1e4e8;
-  min-height: 60px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: 48px;
 }
 
 .board-list-header h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: rgba(255, 255, 255, 0.85);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -662,18 +778,19 @@ export default {
 .collapse-btn {
   background: none;
   border: none;
-  color: #6b778c;
+  color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
 }
 
 .collapse-btn:hover {
-  background-color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .board-list-content {
@@ -687,22 +804,26 @@ export default {
 .board-item {
   display: flex;
   align-items: center;
-  padding: 0.5rem 1rem;
-  margin: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.55rem 1rem;
+  margin: 1px 0;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.15s;
   position: relative;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  font-size: 0.9rem;
+  font-weight: 300;
 }
 
 .board-item:hover {
-  background-color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .board-item.is-active {
-  background-color: #e1e7ff;
-  color: #4a6bdf;
-  font-weight: 500;
+  background-color: rgba(109, 212, 160, 0.08);
+  color: #6dd4a0;
+  font-weight: 400;
+  border-left-color: #6dd4a0;
 }
 
 .board-icon {
@@ -710,11 +831,21 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b778c;
+  width: 20px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 1.05rem;
 }
 
 .board-item.is-active .board-icon {
-  color: #4a6bdf;
+  color: #6dd4a0;
+}
+
+.board-item:hover .board-icon {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.board-item.is-active:hover .board-icon {
+  color: #6dd4a0;
 }
 
 .board-name {
@@ -728,9 +859,11 @@ export default {
   flex: 1;
   min-width: 0;
   padding: 4px 6px;
-  border: 1px solid #c1c7d0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 /* Collapsed delete button hover behavior */
@@ -747,7 +880,7 @@ export default {
 .delete-board {
   background: none;
   border: none;
-  color: #6b778c;
+  color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
   opacity: 0;
   padding: 0.25rem;
@@ -765,17 +898,17 @@ export default {
 
 .delete-board:hover {
   color: #e74c3c;
-  background-color: rgba(231, 76, 60, 0.1);
+  background-color: rgba(231, 76, 60, 0.15);
 }
 
 .add-board-btn {
   width: calc(100% - 1rem);
   margin: 0.5rem;
   padding: 0.5rem;
-  border: 1px dashed #c1c7d0;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   background: none;
-  color: #6b778c;
+  color: rgba(255, 255, 255, 0.4);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -784,8 +917,8 @@ export default {
 }
 
 .add-board-btn:hover {
-  background-color: #f1f2f4;
-  border-color: #a5adba;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .add-board-btn .mdi {
@@ -799,18 +932,18 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #6b778c;
+  color: rgba(255, 255, 255, 0.3);
 }
 
 .divider {
   height: 1px;
-  background-color: #e1e4e8;
-  margin: 0.75rem 1rem;
+  background-color: rgba(255, 255, 255, 0.06);
+  margin: 0.5rem 1rem;
 }
 
 .board-actions {
   padding: 0.5rem 1rem;
-  border-top: 1px solid #e1e4e8;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   margin-top: auto;
   display: flex;
   flex-direction: column;
@@ -824,17 +957,18 @@ export default {
   gap: 0.5rem;
   padding: 0.5rem 1rem;
   border: none;
-  background: #f0f2f5;
+  background: rgba(255, 255, 255, 0.06);
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.875rem;
   transition: all 0.2s;
   width: 100%;
   text-align: left;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .action-btn:hover:not(:disabled) {
-  background: #e1e4e8;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .action-btn:disabled {
@@ -843,13 +977,13 @@ export default {
 }
 
 .action-btn.connected {
-  background: #e8f5e9;
-  color: #2e7d32;
-  border: 1px solid #c8e6c9;
+  background: rgba(109, 212, 160, 0.12);
+  color: #6dd4a0;
+  border: 1px solid rgba(109, 212, 160, 0.2);
 }
 
 .action-btn.connected:hover {
-  background: #c8e6c9;
+  background: rgba(109, 212, 160, 0.18);
 }
 
 .connected-text {
@@ -859,18 +993,18 @@ export default {
 }
 
 .check-icon {
-  color: #2e7d32;
+  color: #6dd4a0;
   font-size: 1.1em;
   margin-left: 0.25rem;
 }
 
 .action-btn .mdi {
   font-size: 1.25rem;
-  color: #505f79;
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .action-btn.connected .mdi {
-  color: #1976d2;
+  color: #5b9bd5;
 }
 
 .dropbox-connected,
@@ -879,10 +1013,10 @@ export default {
 }
 
 .error-message {
-  color: #d32f2f;
+  color: #ef5350;
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
-  background: #ffebee;
+  background: rgba(239, 83, 80, 0.12);
   border-radius: 4px;
   margin-top: 0.25rem;
 }
@@ -896,9 +1030,9 @@ export default {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  border-top-color: #000;
+  border-top-color: rgba(255, 255, 255, 0.8);
   animation: spin 1s ease-in-out infinite;
   margin-left: 8px;
 }
@@ -908,7 +1042,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 1rem 0;
+  padding: 0.5rem 0;
   flex: 1;
 }
 
@@ -919,19 +1053,52 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0.25rem 0;
+  margin: 1px 0;
   cursor: pointer;
-  color: #6b778c;
-  transition: all 0.2s;
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.15s;
 }
 
 .collapsed-board:hover {
-  background-color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .collapsed-board.is-active {
-  background-color: #e1e7ff;
-  color: #4a6bdf;
+  background-color: rgba(109, 212, 160, 0.1);
+  color: #6dd4a0;
+}
+
+.collapsed-tab {
+  font-size: 1.1rem;
+}
+
+/* Plan placeholder */
+.plan-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 2rem 1rem;
+  color: rgba(255, 255, 255, 0.25);
+  text-align: center;
+}
+
+.plan-placeholder-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.plan-placeholder p {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.collapsed-divider {
+  width: 24px;
+  margin: 0.35rem auto;
 }
 
 .collapsed-add {
@@ -943,15 +1110,21 @@ export default {
   justify-content: center;
   margin: 0.5rem 0 0;
   background: none;
-  border: 1px dashed #c1c7d0;
-  color: #6b778c;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.35);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .collapsed-add:hover {
-  background-color: #f1f2f4;
-  border-color: #a5adba;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Bottom section (Settings + Auto, always visible) */
+.board-list-bottom {
+  flex-shrink: 0;
+  padding-bottom: 0.5rem;
 }
 
 /* Auto toggle */
@@ -966,15 +1139,16 @@ export default {
 .auto-toggle-item {
   display: flex;
   align-items: center;
-  padding: 0.5rem 1rem;
-  margin: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.55rem 1rem;
+  margin: 1px 0;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+  font-weight: 300;
 }
 
 .auto-toggle-item:hover {
-  background-color: #e9ecef;
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .auto-toggle-item .board-icon {
@@ -983,18 +1157,18 @@ export default {
 
 .auto-indicator {
   margin-left: auto;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 0.15rem 0.45rem;
   border-radius: 3px;
-  background-color: #e1e4e8;
-  color: #6b778c;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
 }
 
 .auto-indicator.is-on {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: rgba(109, 212, 160, 0.15);
+  color: #6dd4a0;
 }
 
 .collapsed-auto-wrap {
@@ -1002,8 +1176,8 @@ export default {
 }
 
 .collapsed-board.auto-active {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: rgba(109, 212, 160, 0.12);
+  color: #6dd4a0;
 }
 
 /* Modal styles */
@@ -1013,7 +1187,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1021,23 +1195,24 @@ export default {
 }
 
 .modal {
-  background-color: white;
+  background-color: #1e2535;
   border-radius: 8px;
   padding: 1.5rem;
   width: 90%;
   max-width: 400px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .modal h4 {
   margin-top: 0;
   margin-bottom: 1rem;
-  color: #2c3e50;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .modal p {
   margin: 0 0 1.5rem;
-  color: #5e6c84;
+  color: rgba(255, 255, 255, 0.6);
   line-height: 1.5;
 }
 
@@ -1057,12 +1232,12 @@ export default {
 }
 
 .btn-cancel {
-  background-color: #f1f2f4;
-  color: #2c3e50;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .btn-cancel:hover {
-  background-color: #e1e4e8;
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 .btn-danger {
@@ -1076,7 +1251,7 @@ export default {
 
 /* Scrollbar styling */
 .board-list-content::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .board-list-content::-webkit-scrollbar-track {
@@ -1084,11 +1259,11 @@ export default {
 }
 
 .board-list-content::-webkit-scrollbar-thumb {
-  background-color: #c1c7d0;
+  background-color: rgba(255, 255, 255, 0.1);
   border-radius: 3px;
 }
 
 .board-list-content::-webkit-scrollbar-thumb:hover {
-  background-color: #a5adba;
+  background-color: rgba(255, 255, 255, 0.2);
 }
 </style>

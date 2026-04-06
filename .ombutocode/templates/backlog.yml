@@ -1,0 +1,38 @@
+version: 1
+updated_at: "YYYY-MM-DD"
+tickets:
+  - id: <PROJ>-000
+    title: <Short, action-oriented title>
+    description: |-
+      This ticket is part of feature <FEATURE_NAME>, which aims to <feature purpose>.
+      This ticket focuses on <what this specific ticket delivers>.
+    feature_ref: .ombutocode/features/feature_<REF>.md
+    status: backlog # backlog | todo | in_progress | eval | review | done | blocked
+    last_updated: "YYYY-MM-DD" # auto-updated on status change
+    dependencies: [] # list of ticket ids, e.g. ["<PROJ>-001", "<PROJ>-002"]
+    acceptance_criteria:
+      - <Criterion 1 (objectively testable)>
+      - <Criterion 2>
+    eval_summary: null # populated after eval runs with verdict/checklist details
+    files_touched: [] # populated when status becomes done
+    notes: |-
+      DESIGN SPECIFICATION:
+      <Implementation details: what to change, how to change it, which patterns to follow>
+      Files to modify: <list of files>
+      Files to create: <list of files, if any>
+
+  # Example (copy and adapt)
+  - id: BOOTSTRAP-001
+    title: Establish AI engineering source-of-truth structure
+    feature_ref: .ombutocode/features/feature_BOOTSTRAP.md
+    status: done
+    dependencies: []
+    acceptance_criteria:
+      - planning/backlog.yaml exists
+      - docs/PRD.md exists
+      - architecture directory exists
+    files_touched:
+      - planning/backlog.yaml
+      - docs/PRD.md
+      - architecture/README.md
+    notes: Initial repository scaffold created from AI_ENGINEERING_GUIDE.md requirements.

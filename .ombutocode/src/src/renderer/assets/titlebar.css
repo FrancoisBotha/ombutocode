@@ -1,0 +1,111 @@
+/* Custom titlebar for frameless window */
+.window-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  background-color: #2c6aad;
+  color: #fff;
+  -webkit-app-region: drag;
+  user-select: none;
+  padding: 0 8px;
+}
+
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding-left: 4px;
+}
+
+.app-logo {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.window-actions {
+  display: flex;
+  -webkit-app-region: no-drag;
+}
+
+/* macOS-style traffic light buttons */
+.mac-controls {
+  display: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.mac-controls .window-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+}
+
+.mac-controls .window-btn.close {
+  background-color: #ff5f57;
+}
+
+.mac-controls .window-btn.minimize {
+  background-color: #febc2e;
+}
+
+.mac-controls .window-btn.maximize {
+  background-color: #28c840;
+}
+
+.mac-controls .window-btn:hover {
+  opacity: 0.8;
+}
+
+/* Windows-style controls */
+.windows-controls {
+  display: flex;
+  align-items: center;
+  height: 32px;
+}
+
+.windows-controls .window-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.15s ease;
+}
+
+.windows-controls .window-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.windows-controls .window-btn.close:hover {
+  background-color: #e81123;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] .window-controls {
+  background-color: #1a2a3a;
+}
+
+/* Platform-specific visibility */
+.platform-darwin .mac-controls {
+  display: flex;
+}
+
+.platform-darwin .windows-controls {
+  display: none;
+}
+
+.platform-darwin .window-controls {
+  flex-direction: row-reverse;
+}

@@ -1,0 +1,65 @@
+version: 1
+tools:
+  - id: claude
+    name: Claude
+    command: claude
+    rolling_window_hours: 5
+    max_concurrent: 2
+    cooldown_minutes: 5
+    enabled: true
+    budget_limit: 0
+    models:
+      - id: sonnet-4.6
+        name: Sonnet 4.6
+        model_id: claude-sonnet-4-6
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: sonnet-4.5
+        name: Sonnet 4.5
+        model_id: claude-sonnet-4-5-20250929
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: opus-4.6
+        name: Opus 4.6
+        model_id: claude-opus-4-6
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: haiku-4.5
+        name: Haiku 4.5
+        model_id: claude-haiku-4-5-20251001
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+  - id: codex
+    name: Codex
+    command: codex
+    rolling_window_hours: 5
+    max_concurrent: 2
+    cooldown_minutes: 5
+    enabled: true
+    budget_limit: 0
+    models:
+      - id: gpt-5
+        name: GPT-5
+        model_id: gpt-5
+        rate_per_hour: 0
+        cost_per_run: 2
+        enabled: true
+  - id: kimi
+    name: Kimi
+    command: kimi
+    rolling_window_hours: 5
+    max_concurrent: 2
+    cooldown_minutes: 5
+    enabled: true
+    budget_limit: 0
+    models:
+      - id: k2
+        name: K2
+        model_id: kimi-k2
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true

@@ -1,0 +1,45 @@
+{
+  "id": "<PROJ>-000",
+  "title": "<Short, action-oriented title>",
+  "feature_ref": ".ombutocode/features/feature_<REF>.md",
+  "status": "backlog",
+  "last_updated": "2026-01-01T00:00:00.000Z",
+  "dependencies": [],
+  "acceptance_criteria": [
+    "<Criterion 1 (objectively testable)>",
+    "<Criterion 2>"
+  ],
+  "files_touched": [],
+  "notes": "DESIGN SPECIFICATION:\n<Implementation details: what to change, how to change it, which patterns to follow>\nFiles to modify: <list of files>\nFiles to create: <list of files, if any>",
+  "assignee": null,
+  "agent": null,
+  "eval_summary": null,
+  "fail_count": 0,
+  "eval_fail_count": 0,
+
+  "_field_reference": {
+    "id":                   "Unique ticket identifier (e.g. JMAIL-009). Primary key.",
+    "title":                "Short action-oriented title describing the work.",
+    "feature_ref":          "Relative path to the feature specification markdown file.",
+    "status":               "One of: backlog, todo, building, in_progress, test, eval, merging, review, done.",
+    "last_updated":         "ISO 8601 timestamp, auto-set on every mutation.",
+    "dependencies":         "Array of ticket IDs that must reach review/done before this ticket can start.",
+    "acceptance_criteria":  "Array of objectively testable criteria. Agents are evaluated against these.",
+    "files_touched":        "Array of file paths created or modified by the implementation.",
+    "notes":                "Free-text design specification, implementation hints, and context for agents.",
+    "assignee":             "Agent assignment. String (tool name) or object { tool, model }. Null = unassigned.",
+    "agent":                "Runtime agent state. Set by scheduler when agent is running. Contains run_id, pid, state, stdout/stderr log paths.",
+    "eval_summary":         "Evaluation result object with verdict and per-criterion checks. Set by eval phase.",
+    "fail_count":           "Number of implementation failures (test phase failures). Integer.",
+    "eval_fail_count":      "Number of evaluation failures (eval phase failures). Integer."
+  },
+
+  "_lifecycle": {
+    "description": "Active ticket file lifecycle — this JSON file exists on disk only during active execution phases.",
+    "created":     "When updateTicket() transitions status to in_progress, test, eval, or merging.",
+    "location":    ".ombutocode/data/tickets/{id}.json",
+    "updated":     "All mutations during active phases write to this file (not DB).",
+    "flushed":     "When status transitions to review — file data is upserted to DB and file is deleted.",
+    "recovery":    "On startup, any orphaned ticket files are synced back to DB and deleted."
+  }
+}

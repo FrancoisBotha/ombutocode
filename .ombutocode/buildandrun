@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Build and run Ombuto Code.
+#
+# Usage: ./buildandrun
+
+set -euo pipefail
+
+# Clear ELECTRON_RUN_AS_NODE so Electron runs as a full app, not plain Node.js
+unset ELECTRON_RUN_AS_NODE
+
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/src" && pwd)"
+
+cd "$APP_DIR"
+npm run build
+npm run start

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ombuto Code</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@6.x/css/materialdesignicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/src/renderer/assets/titlebar.css">
+</head>
+<body>
+    <div class="app-shell">
+        <div class="window-controls">
+            <div class="app-title">
+                <img src="/src/renderer/assets/logo.svg" alt="Ombuto Code Logo" class="app-logo">
+                <span>Ombuto Code</span>
+            </div>
+            <div class="window-actions">
+                <div class="mac-controls">
+                    <div class="window-btn close" onclick="window.api.window.close()"></div>
+                    <div class="window-btn minimize" onclick="window.api.window.minimize()"></div>
+                    <div class="window-btn maximize" onclick="window.api.window.maximize()"></div>
+                </div>
+                <div class="windows-controls">
+                    <div class="window-btn minimize" onclick="window.api.window.minimize()">
+                        <span class="mdi mdi-window-minimize"></span>
+                    </div>
+                    <div class="window-btn maximize" onclick="window.api.window.toggleMaximize()">
+                        <span class="mdi mdi-window-maximize"></span>
+                    </div>
+                    <div class="window-btn close" onclick="window.api.window.close()">
+                        <span class="mdi mdi-close"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="app">
+            <!-- Vue app will be mounted here -->
+        </div>
+    </div>
+    <script>
+        // Add platform class for OS-specific titlebar styling
+        if (window.electron && window.electron.platform === 'darwin') {
+            document.body.classList.add('platform-darwin');
+        }
+    </script>
+    <script type="module" src="/src/renderer/main.js"></script>
+</body>
+</html>

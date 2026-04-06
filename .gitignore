@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/
+frontend/release/
+frontend/dist/
+.ombutoplan/src/release/
+.ombutoplan/src/dist/
+.ombutoplan/src/node_modules/
+.next/
+.nuxt/
+.output/
+out/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# OmbutoCode
+.ombutocode/src/node_modules/
+
+# Claude
+.claude/
+
+# Cloudflare Origin Certificate
+docker-compose/nginx/ssl/
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/.terraform.lock.hcl
+
+# Logs
+*.log
+npm-debug.log*

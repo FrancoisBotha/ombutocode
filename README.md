@@ -19,7 +19,7 @@
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
   <img src="https://img.shields.io/badge/Pinia-State-ffd859?logo=pinia&logoColor=black" alt="Pinia" />
   <img src="https://img.shields.io/badge/SQLite-sql.js-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
-  <img src="https://img.shields.io/badge/License-Proprietary-blue" alt="License" />
+  <img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License" />
 </p>
 
 ---
@@ -168,7 +168,9 @@ ombutocode/
 
 ## License
 
-Copyright &copy; 2026 Francois Botha. All rights reserved.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+
+Copyright &copy; 2026 Francois Botha.
 
 ---
 

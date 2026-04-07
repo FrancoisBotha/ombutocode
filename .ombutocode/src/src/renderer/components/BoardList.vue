@@ -402,7 +402,7 @@
             <p class="about-modal-version" v-if="aboutBuildVersion">Version {{ aboutBuildVersion }}</p>
           </div>
           <div class="about-modal-body">
-            <p class="about-modal-copyright">&copy; {{ new Date().getFullYear() }} Francois Botha. All rights reserved.</p>
+            <p class="about-modal-copyright">&copy; {{ new Date().getFullYear() }} Francois Botha. Licensed under Apache 2.0.</p>
             <div class="about-modal-section">
               <h3>Open Source Licenses</h3>
               <div class="about-modal-oss-list">

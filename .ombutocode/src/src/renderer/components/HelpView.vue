@@ -152,22 +152,88 @@
             to reset the workspace and populate <code>docs/</code> with sample content.
           </li>
           <li>
-            <strong>Switch to Plan mode</strong> — Click the <strong>Plan</strong> tab to see the
-            file tree and start editing requirements.
+            <strong>Configure a coding agent</strong> — Go to <strong>Settings > Coding Agents</strong>,
+            install a CLI (e.g. Claude), and click <strong>Test</strong> to verify connectivity.
           </li>
           <li>
-            <strong>Define your structure</strong> — Open <code>Structure/ProjectStructure.md</code>
-            to outline your system components.
+            <strong>Create your PRD</strong> — Switch to <strong>Plan > PRD</strong> and click
+            <strong>Create PRD</strong>. The AI agent guides you through defining your product
+            requirements interactively. <em>See "Start with the PRD" below.</em>
           </li>
           <li>
-            <strong>Write requirements</strong> — Add use cases, functional requirements, and
-            non-functional requirements.
+            <strong>Flesh out requirements</strong> — Define your project structure, add use cases,
+            functional requirements, class diagrams, and other planning artifacts.
           </li>
           <li>
-            <strong>Switch to Build mode</strong> — Use the backlog, board, and coding agents to
-            turn requirements into working code.
+            <strong>Switch to Build mode</strong> — Create backlog tickets, assign them to agents,
+            and enable <strong>Auto</strong> to let the scheduler drive automated development.
           </li>
         </ol>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-file-document-outline"></span> Start with the PRD</h2>
+        <p>
+          The Product Requirements Document is the foundation of every project in Ombuto Code.
+          It captures your product's vision, goals, users, features, and success criteria —
+          everything the AI coding agents need to build the right thing.
+        </p>
+
+        <h3>Why start here?</h3>
+        <p>
+          A well-written PRD serves as the single source of truth. When agents pick up tickets
+          in Build mode, they reference the PRD to understand context and make better decisions.
+          The more complete your PRD, the better the automated output.
+        </p>
+
+        <h3>Creating a PRD with AI assistance</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Go to Plan > PRD</strong> — click the PRD icon in the Plan sidebar nav bar.
+          </li>
+          <li>
+            <strong>Choose a skill</strong> — the left panel shows a dropdown of available skills.
+            The <em>PRD Guide</em> skill is auto-selected and provides structured instructions
+            to the AI agent on how to walk you through each section.
+          </li>
+          <li>
+            <strong>Click "Create PRD"</strong> — this launches your default coding agent
+            (configured in Settings > Coding Agents) in an interactive terminal on the right panel.
+          </li>
+          <li>
+            <strong>Answer the agent's questions</strong> — the AI will guide you through each
+            section one at a time: overview, goals, users, features, metrics, and constraints.
+          </li>
+          <li>
+            <strong>Review the result</strong> — the agent saves the PRD to
+            <code>docs/Product Requirements Document/PRD.md</code>. Click "View" to see the
+            rendered Markdown, or "Edit" to make manual adjustments.
+          </li>
+        </ol>
+
+        <h3>Refining an existing PRD</h3>
+        <p>
+          If you already have a PRD, click <strong>"Refine with AI"</strong> instead. The agent
+          reads your existing document, identifies gaps or weak areas, and suggests improvements
+          section by section — waiting for your approval before making changes.
+        </p>
+
+        <h3>Skills as system prompts</h3>
+        <p>
+          Skills are reusable Markdown documents in <code>docs/Skills/</code> that act as system
+          prompts for AI agents. The PRD page lets you select a skill before starting a session —
+          its content is prepended to the agent's instructions. You can create custom skills
+          (e.g. "Healthcare PRD Template" or "Mobile App PRD Guide") to tailor the AI's approach
+          for different project types.
+        </p>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> You can also access "Create PRD" and "Refine with AI" buttons
+            directly from the file preview when viewing a PRD document.
+          </p>
+        </div>
       </section>
 
       <section class="help-section">

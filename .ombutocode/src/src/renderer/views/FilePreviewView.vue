@@ -16,6 +16,9 @@
           <h1 class="file-name">{{ fileName }}</h1>
         </div>
         <div v-if="!isImage" class="title-actions">
+          <button v-if="isSkill && !viewingHistorical && !isEditMode" class="back-btn" type="button" @click="backToSkills">
+            <span class="mdi mdi-arrow-left"></span> Skills
+          </button>
           <template v-if="isPrd && !viewingHistorical && !isEditMode">
             <button class="prd-ai-btn" type="button" @click="createNewPrd">
               <span class="mdi mdi-robot-outline"></span> Create PRD
@@ -160,6 +163,7 @@ export default {
 
     const isImage = computed(() => IMAGE_EXTS.test(activePath.value));
     const isPrd = computed(() => activePath.value.startsWith('Product Requirements Document/') && activePath.value.endsWith('.md'));
+    const isSkill = computed(() => activePath.value.startsWith('Skills/') && activePath.value.endsWith('.md'));
 
     function refinePrdWithAi() {
       if (window.__planNavigate) window.__planNavigate('plan-prd');
@@ -167,6 +171,10 @@ export default {
 
     function createNewPrd() {
       if (window.__planNavigate) window.__planNavigate('plan-prd');
+    }
+
+    function backToSkills() {
+      if (window.__planNavigate) window.__planNavigate('plan-skills');
     }
 
     const normalizedPath = computed(() => {
@@ -460,8 +468,10 @@ export default {
       isEditMode,
       isImage,
       isPrd,
+      isSkill,
       refinePrdWithAi,
       createNewPrd,
+      backToSkills,
       isVersionsPanelOpen,
       loading,
       notFound,
@@ -536,6 +546,24 @@ export default {
   font-size: 1.75rem;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  transition: var(--transition);
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .prd-ai-btn {

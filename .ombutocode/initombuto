@@ -453,6 +453,19 @@ This scratch pad is for quick notes and ideas.
 EOF
 fi
 
+# ── Skills from templates ──
+SKILL_TEMPLATES="$OMBUTOCODE_DIR/templates/skills"
+if [ -d "$SKILL_TEMPLATES" ]; then
+  for skill in "$SKILL_TEMPLATES"/*.md; do
+    [ -f "$skill" ] || continue
+    dest="$DOCS/Skills/$(basename "$skill")"
+    if [ ! -f "$dest" ]; then
+      echo "  Copying Skills/$(basename "$skill")"
+      cp "$skill" "$dest"
+    fi
+  done
+fi
+
 # ── Sample Mockups ──
 MOCKUP_TEMPLATES="$OMBUTOCODE_DIR/templates/mockups"
 if [ -d "$MOCKUP_TEMPLATES" ]; then
@@ -464,56 +477,6 @@ if [ -d "$MOCKUP_TEMPLATES" ]; then
       cp "$img" "$dest"
     fi
   done
-fi
-
-# ── Sample Skill ──
-F="$DOCS/Skills/Coding_Standards.md"
-if [ ! -f "$F" ]; then
-  echo "  Writing Skills/Coding_Standards.md"
-  cat > "$F" << 'EOF'
----
-system: true
----
-
-# Coding Standards
-
-## Overview
-
-This skill defines the coding standards and conventions for this project. It serves as a reference for both human developers and AI coding agents.
-
-## Naming Conventions
-
-- **Variables and functions**: camelCase
-- **Classes and components**: PascalCase
-- **Constants**: UPPER_SNAKE_CASE
-- **Files**: kebab-case for utilities, PascalCase for components
-
-## Code Style
-
-- Use 2-space indentation
-- Maximum line length: 100 characters
-- Always use semicolons
-- Prefer const over let; avoid var
-- Use template literals over string concatenation
-
-## Error Handling
-
-- Always handle async errors with try/catch
-- Log errors with contextual information
-- Never swallow errors silently
-
-## Documentation
-
-- Add JSDoc comments to exported functions
-- Keep comments focused on "why", not "what"
-- Update documentation when changing public APIs
-
-## Git Conventions
-
-- Use conventional commit messages (feat:, fix:, chore:, docs:)
-- One logical change per commit
-- Keep PRs focused and reviewable
-EOF
 fi
 
 # ── .gitkeep for empty folders ──

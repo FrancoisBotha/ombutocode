@@ -1328,6 +1328,20 @@ body {
   border-color: rgba(60, 199, 122, 0.25);
 }
 
+/* ── Dark theme: About section ── */
+[data-theme="dark"] .about-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .about-name {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .about-tagline {
+  color: var(--text-muted);
+}
+
 /* ══════════════════════════════════════════════
    Dark theme: Coding Agents (AgentsToolsView)
    ══════════════════════════════════════════════ */
@@ -1423,4 +1437,67 @@ body {
 
 [data-theme="dark"] .error-message {
   color: var(--danger-color);
+}
+
+/* ══════════════════════════════════════════════
+   Dark theme: Plan tab views
+   ══════════════════════════════════════════════ */
+
+.plan-view {
+  flex: 1;
+  overflow: auto;
+  padding: 2rem;
+  background-color: var(--bg-color, #161a1f);
+  color: var(--text-color, #d4d8dd);
+}
+
+.plan-view-header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.25rem;
+  color: var(--text-color, #d4d8dd);
+}
+
+.plan-view-header p {
+  margin: 0 0 1.5rem;
+  color: var(--text-muted, #8b929a);
+  font-size: 0.9rem;
+}
+
+.plan-view-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.plan-view-empty .mdi {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.plan-view-empty p {
+  margin: 0;
+  font-size: 0.85rem;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+/* Plan views must fill available space inside the flex app-content container */
+.app-content > .view-container,
+.app-content > .editor-view,
+.app-content > .dashboard-view,
+.app-content > .artifact-list-view,
+.app-content > .file-preview-view,
+.app-content > .file-preview-view--edit {
+  flex: 1;
+  min-width: 0;
+  max-width: 100% !important;
+  overflow-y: auto;
 }

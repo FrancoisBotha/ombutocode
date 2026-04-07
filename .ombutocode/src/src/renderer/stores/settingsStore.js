@@ -251,6 +251,14 @@ export const useSettingsStore = defineStore('settings', () => {
     _saveStatus.value = null;
   }
 
+  // Plan tree sort mode (persisted locally)
+  const treeSortMode = ref('hierarchical');
+
+  async function saveTreeSortMode(value) {
+    treeSortMode.value = value;
+    return saveSettings({ tree_sort_mode: value });
+  }
+
   /**
    * Reset settings to defaults
    */
@@ -287,6 +295,8 @@ export const useSettingsStore = defineStore('settings', () => {
     setMaxEvalRetries,
     setTheme,
     clearSaveStatus,
-    resetToDefaults
+    resetToDefaults,
+    treeSortMode,
+    saveTreeSortMode
   };
 });

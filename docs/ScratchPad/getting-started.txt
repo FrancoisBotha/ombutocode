@@ -1,0 +1,12 @@
+# Getting Started
+
+Welcome to Ombuto Code!
+
+This scratch pad is for quick notes and ideas.
+
+## Next Steps
+- Review the PRD in the Product Requirements Document folder
+- Define your project structure
+- Add use cases for key user flows
+- Create class diagrams for your domain model
+- Fill in functional and non-functional requirements

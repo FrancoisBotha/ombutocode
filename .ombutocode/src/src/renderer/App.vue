@@ -29,6 +29,28 @@
       <AutomationView v-else-if="activeView === 'automation'" />
       <LogsTable v-else-if="activeView === 'logs'" />
       <SettingsView v-else-if="activeView === 'settings'" />
+      <HelpView v-else-if="activeView === 'help'" />
+
+      <PlanDashboardView v-else-if="activeView === 'plan-dashboard'" />
+      <PlanArtifactsView v-else-if="activeView === 'plan-artifacts'" />
+      <PlanTreeView v-else-if="activeView === 'plan-tree'" />
+      <PlanMockupsView v-else-if="activeView === 'plan-mockups'" />
+      <PlanGitView v-else-if="activeView === 'plan-git'" />
+      <PlanValidateView v-else-if="activeView === 'plan-validate'" />
+      <PlanFilePreviewView v-else-if="activeView === 'plan-file-preview'" :file-path="planFilePath" />
+      <PlanStructureView v-else-if="activeView === 'plan-structure'" />
+      <PlanUseCasesView v-else-if="activeView === 'plan-use-cases'" />
+      <PlanUseCaseDiagramsView v-else-if="activeView === 'plan-use-case-diagrams'" />
+      <PlanClassDiagramsView v-else-if="activeView === 'plan-class-diagrams'" />
+      <PlanScratchPadView v-else-if="activeView === 'plan-scratchpad'" />
+      <PlanSettingsView v-else-if="activeView === 'plan-settings'" />
+      <PlanFRView v-else-if="activeView === 'plan-functional-requirements'" />
+      <PlanNFRView v-else-if="activeView === 'plan-non-functional-requirements'" />
+      <PlanUseCaseEditorView v-else-if="activeView === 'plan-use-case-editor'" :file-path="planFilePath" />
+      <PlanUseCaseDiagramEditorView v-else-if="activeView === 'plan-use-case-diagram-editor'" :file-path="planFilePath" />
+      <PlanClassDiagramEditorView v-else-if="activeView === 'plan-class-diagram-editor'" :file-path="planFilePath" />
+      <PlanERDiagramView v-else-if="activeView === 'plan-er-diagram'" :file-path="planFilePath" />
+      <PlanArtifactDetailView v-else-if="activeView === 'plan-artifact-detail'" :file-path="planFilePath" />
       <WorkspaceView v-show="activeView === 'workspace'" :visible="activeView === 'workspace'" />
 
     </div>
@@ -103,6 +125,27 @@ import RequestsTable from '@/components/RequestsTable.vue';
 import SettingsView from '@/components/SettingsView.vue';
 import WorkspaceView from '@/components/WorkspaceView.vue';
 import StatusBar from '@/components/StatusBar.vue';
+import HelpView from '@/components/HelpView.vue';
+import PlanDashboardView from '@/views/DashboardView.vue';
+import PlanArtifactsView from '@/views/ArtifactListView.vue';
+import PlanTreeView from '@/views/TreeView.vue';
+import PlanMockupsView from '@/views/MockupsView.vue';
+import PlanGitView from '@/views/GitView.vue';
+import PlanValidateView from '@/views/ValidateView.vue';
+import PlanFilePreviewView from '@/views/FilePreviewView.vue';
+import PlanStructureView from '@/views/ProjectStructureView.vue';
+import PlanUseCasesView from '@/views/UseCasesListView.vue';
+import PlanUseCaseDiagramsView from '@/views/UseCaseDiagramsView.vue';
+import PlanClassDiagramsView from '@/views/ClassDiagramsView.vue';
+import PlanScratchPadView from '@/views/ScratchPadView.vue';
+import PlanSettingsView from '@/views/SettingsView.vue';
+import PlanFRView from '@/views/FunctionalRequirementsView.vue';
+import PlanNFRView from '@/views/NonFunctionalRequirementsView.vue';
+import PlanUseCaseEditorView from '@/views/UseCaseEditorView.vue';
+import PlanUseCaseDiagramEditorView from '@/views/UseCaseDiagramEditorView.vue';
+import PlanClassDiagramEditorView from '@/views/ClassDiagramEditorView.vue';
+import PlanERDiagramView from '@/views/ERDiagramView.vue';
+import PlanArtifactDetailView from '@/views/ArtifactDetailView.vue';
 
 export default {
   name: 'App',
@@ -119,7 +162,28 @@ export default {
     LogsTable,
     SettingsView,
     WorkspaceView,
-    StatusBar
+    StatusBar,
+    HelpView,
+    PlanDashboardView,
+    PlanArtifactsView,
+    PlanTreeView,
+    PlanMockupsView,
+    PlanGitView,
+    PlanValidateView,
+    PlanFilePreviewView,
+    PlanStructureView,
+    PlanUseCasesView,
+    PlanUseCaseDiagramsView,
+    PlanClassDiagramsView,
+    PlanScratchPadView,
+    PlanSettingsView,
+    PlanFRView,
+    PlanNFRView,
+    PlanUseCaseEditorView,
+    PlanUseCaseDiagramEditorView,
+    PlanClassDiagramEditorView,
+    PlanERDiagramView,
+    PlanArtifactDetailView
   },
   setup() {
     const boardStore = useBoardStore();
@@ -128,7 +192,7 @@ export default {
     const currentBoard = ref(null);
     const activeView = ref('kanban');
     const boardListRef = ref(null);
-    const titleBranding = ref('Jeff Code');
+    const titleBranding = ref('Ombuto Code');
     let pollInterval = null;
     let titleBrandingCleanup = null;
     let closeConfirmCleanup = null;
@@ -327,8 +391,14 @@ export default {
       currentBoard.value = board;
     }
 
+    const planFilePath = ref('');
+
     function handleChangeView(view) {
       activeView.value = view;
+      // Capture file path set by sidebar for Plan views
+      if (view.startsWith('plan-') && window.__planFilePreviewPath) {
+        planFilePath.value = window.__planFilePreviewPath;
+      }
     }
 
     const handleDeleteBoard = (boardId) => {
@@ -354,6 +424,7 @@ export default {
       getTasksForColumn,
       selectBoard,
       handleChangeView,
+      planFilePath,
       handleDeleteBoard,
       boardListRef,
       showCloseDialog,

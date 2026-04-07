@@ -25,15 +25,89 @@
         <span></span>
       </template>
       <button @click="toggleCollapse" class="collapse-btn" :title="isCollapsed ? 'Expand' : 'Collapse'">
-        <span class="mdi" :class="isCollapsed ? 'mdi-chevron-left' : 'mdi-chevron-right'"></span>
+        <span class="mdi" :class="isCollapsed ? 'mdi-chevron-right' : 'mdi-chevron-left'"></span>
       </button>
     </div>
 
-    <!-- ===== PLAN MODE (expanded) — placeholder for future ===== -->
-    <div class="board-list-content" v-if="!isCollapsed && sidebarMode === 'plan'">
-      <div class="plan-placeholder">
-        <span class="mdi mdi-map-outline plan-placeholder-icon"></span>
-        <p>Planning tools coming soon</p>
+    <!-- ===== PLAN MODE (expanded) ===== -->
+    <div class="board-list-content plan-mode-content" v-if="!isCollapsed && sidebarMode === 'plan'">
+      <!-- Plan nav icons bar -->
+      <div class="plan-nav-icons">
+        <button
+          v-for="item in planNavItems"
+          :key="item.view"
+          class="plan-nav-btn"
+          :class="{ 'is-active': activeView === item.view }"
+          :title="item.label"
+          @click="$emit('change-view', item.view)"
+        >
+          <span class="mdi" :class="item.icon"></span>
+        </button>
+        <button
+          class="plan-nav-btn"
+          :title="planSortMode === 'alphabetical' ? 'Switch to hierarchical sort' : 'Switch to alphabetical sort'"
+          @click="togglePlanSortMode"
+        >
+          <span class="mdi" :class="planSortMode === 'alphabetical' ? 'mdi-sort-alphabetical-ascending' : 'mdi-sort-variant'"></span>
+        </button>
+        <button class="plan-nav-btn" title="Refresh file tree" @click="loadFileTree">
+          <span class="mdi mdi-refresh"></span>
+        </button>
+      </div>
+
+      <!-- Filesystem tree -->
+      <div class="plan-file-tree">
+        <template v-for="node in planFlatNodes" :key="node.path">
+          <div
+            v-if="node.type === 'folder'"
+            class="plan-tree-node"
+            :class="{ 'drop-target': planDropTarget === node.path }"
+            :style="{ paddingLeft: node.depth * 16 + 8 + 'px' }"
+            @click="togglePlanFolder(node.path)"
+            @contextmenu.prevent="onPlanFolderContext($event, node)"
+            @dragover.prevent="onPlanDragOver($event, node)"
+            @dragleave="planDropTarget = null"
+            @drop.prevent="onPlanDrop($event, node)"
+          >
+            <button class="plan-expand-btn">
+              <span class="mdi" :class="planExpandedFolders.has(node.path) ? 'mdi-chevron-down' : 'mdi-chevron-right'"></span>
+            </button>
+            <span class="mdi plan-node-icon plan-folder-icon" :class="planExpandedFolders.has(node.path) ? 'mdi-folder-open' : 'mdi-folder'"></span>
+            <span class="plan-node-title">{{ node.name }}</span>
+          </div>
+          <div
+            v-else
+            class="plan-tree-node"
+            :class="{ 'is-active': planActivePath === node.path }"
+            :style="{ paddingLeft: node.depth * 16 + 8 + 'px' }"
+            draggable="true"
+            @click="navigatePlanFile(node)"
+            @dragstart="onPlanDragStart($event, node)"
+          >
+            <span class="plan-expand-spacer"></span>
+            <span class="mdi plan-node-icon plan-file-icon mdi-file-document-outline"></span>
+            <span class="plan-node-title">{{ node.name }}</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Context menu -->
+      <div v-if="planContextMenu" class="plan-context-menu" :style="{ left: planContextMenu.x + 'px', top: planContextMenu.y + 'px' }">
+        <button class="plan-ctx-item" @click="planCtxAddSubfolder"><span class="mdi mdi-folder-plus"></span> New Sub-folder</button>
+        <button v-if="planContextMenu.node.depth > 0" class="plan-ctx-item plan-ctx-delete" @click="planCtxDeleteFolder"><span class="mdi mdi-folder-remove"></span> Delete Folder</button>
+      </div>
+
+      <!-- New folder input -->
+      <div v-if="planNewFolderParent" class="plan-new-folder-bar">
+        <input
+          :ref="el => { if (el) el.focus() }"
+          v-model="planNewFolderName"
+          class="plan-new-folder-input"
+          placeholder="Folder name"
+          @keyup.enter="createPlanSubfolder"
+          @keyup.escape="planNewFolderParent = null"
+          @blur="createPlanSubfolder"
+        />
       </div>
     </div>
 
@@ -168,6 +242,25 @@
         </span>
         <span class="board-name">Settings</span>
       </div>
+      <div
+        class="board-item"
+        :class="{ 'is-active': activeView === 'help' }"
+        @click="$emit('change-view', 'help')"
+      >
+        <span class="board-icon">
+          <span class="mdi mdi-help-circle-outline"></span>
+        </span>
+        <span class="board-name">Help</span>
+      </div>
+      <div
+        class="board-item"
+        @click="showAboutModal = true"
+      >
+        <span class="board-icon">
+          <span class="mdi mdi-information-outline"></span>
+        </span>
+        <span class="board-name">About</span>
+      </div>
 
       <div v-if="showAutoToggle" class="auto-toggle-wrap">
         <div class="divider"></div>
@@ -200,6 +293,19 @@
         <span class="mdi mdi-hammer-wrench"></span>
       </div>
       <div class="divider collapsed-divider"></div>
+
+      <template v-if="sidebarMode === 'plan'">
+        <div
+          v-for="item in planNavItems"
+          :key="item.view"
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === item.view }"
+          @click="$emit('change-view', item.view)"
+          :title="item.label"
+        >
+          <span class="mdi" :class="item.icon"></span>
+        </div>
+      </template>
 
       <template v-if="sidebarMode === 'build'">
         <div
@@ -293,6 +399,21 @@
       >
         <span class="mdi mdi-cog-outline"></span>
       </div>
+      <div
+        class="collapsed-board"
+        :class="{ 'is-active': activeView === 'help' }"
+        @click="$emit('change-view', 'help')"
+        title="Help"
+      >
+        <span class="mdi mdi-help-circle-outline"></span>
+      </div>
+      <div
+        class="collapsed-board"
+        @click="showAboutModal = true"
+        title="About"
+      >
+        <span class="mdi mdi-information-outline"></span>
+      </div>
       <div v-if="showAutoToggle" class="collapsed-auto-wrap">
         <div
           class="collapsed-board"
@@ -304,13 +425,43 @@
         </div>
       </div>
     </div>
-    
+
+    <!-- About Modal -->
+    <Teleport to="body">
+      <div v-if="showAboutModal" class="about-modal-overlay" @click.self="showAboutModal = false">
+        <div class="about-modal">
+          <button class="about-modal-close" @click="showAboutModal = false">
+            <span class="mdi mdi-close"></span>
+          </button>
+          <div class="about-modal-hero">
+            <img src="../assets/logo.svg" alt="Ombuto Code" class="about-modal-logo" />
+            <h2 class="about-modal-name">Ombuto Code</h2>
+            <p class="about-modal-tagline">Agentic Software Engineering Workbench</p>
+            <p class="about-modal-version" v-if="aboutBuildVersion">Version {{ aboutBuildVersion }}</p>
+          </div>
+          <div class="about-modal-body">
+            <p class="about-modal-copyright">&copy; {{ new Date().getFullYear() }} Francois Botha. All rights reserved.</p>
+            <div class="about-modal-section">
+              <h3>Open Source Licenses</h3>
+              <div class="about-modal-oss-list">
+                <div v-for="lib in aboutLibraries" :key="lib.name" class="about-modal-oss-item">
+                  <span class="about-modal-oss-name">{{ lib.name }}</span>
+                  <span class="about-modal-oss-license">{{ lib.license }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
   </div>
 </template>
 
 <script>
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue';
 import { useBoardStore } from '@/stores/boardStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useDropbox } from '@/utils/dropbox';
 
 export default {
@@ -358,6 +509,216 @@ export default {
     const switchMode = (mode) => {
       sidebarMode.value = mode;
     };
+
+    // About modal
+    const showAboutModal = ref(false);
+    const aboutBuildVersion = ref('');
+    const aboutLibraries = [
+      { name: 'Electron', license: 'MIT' },
+      { name: 'Vue.js 3', license: 'MIT' },
+      { name: 'Pinia', license: 'MIT' },
+      { name: 'Vue Router', license: 'MIT' },
+      { name: 'Vite', license: 'MIT' },
+      { name: 'sql.js', license: 'MIT' },
+      { name: 'CodeMirror 6', license: 'MIT' },
+      { name: 'marked', license: 'MIT' },
+      { name: 'highlight.js', license: 'BSD-3' },
+      { name: 'gray-matter', license: 'MIT' },
+      { name: 'chokidar', license: 'MIT' },
+      { name: 'simple-git', license: 'MIT' },
+      { name: 'Tabulator', license: 'MIT' },
+      { name: 'xterm.js', license: 'MIT' },
+      { name: 'xlsx-js-style', license: 'Apache-2.0' },
+      { name: 'node-pty', license: 'MIT' },
+      { name: 'Material Design Icons', license: 'Apache-2.0' },
+    ];
+
+    // ── Plan mode: nav items and file tree ──
+    const planNavItems = [
+      { view: 'plan-dashboard', label: 'Dashboard', icon: 'mdi-view-dashboard' },
+      { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
+      { view: 'plan-use-cases', label: 'Use Cases', icon: 'mdi-text-box-multiple-outline' },
+      { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },
+      { view: 'plan-class-diagrams', label: 'Class Diagrams', icon: 'mdi-shape-outline' },
+      { view: 'plan-mockups', label: 'Mockups', icon: 'mdi-image-multiple' },
+      { view: 'plan-scratchpad', label: 'Scratch Pad', icon: 'mdi-note-text' },
+    ];
+
+    // Sort mode for Plan file tree
+    const settingsStore = useSettingsStore();
+    const planSortMode = computed(() => settingsStore.treeSortMode);
+
+    const HIERARCHICAL_ORDER = [
+      'product requirements document',
+      'architecture',
+      'structure',
+      'use case diagrams',
+      'class diagrams',
+      'functional requirements',
+      'non-functional requirements',
+      'epics',
+      'use cases',
+      'mockups',
+      'data model',
+      'references',
+      'scratchpad',
+    ];
+
+    function sortTopLevelFolders(children) {
+      const folders = children.filter(n => n.type === 'folder');
+      const files = children.filter(n => n.type === 'file');
+      folders.sort((a, b) => {
+        const aIdx = HIERARCHICAL_ORDER.indexOf(a.name.toLowerCase());
+        const bIdx = HIERARCHICAL_ORDER.indexOf(b.name.toLowerCase());
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+        if (aIdx !== -1) return -1;
+        if (bIdx !== -1) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      files.sort((a, b) => a.name.localeCompare(b.name));
+      return [...folders, ...files];
+    }
+
+    function togglePlanSortMode() {
+      const next = planSortMode.value === 'alphabetical' ? 'hierarchical' : 'alphabetical';
+      settingsStore.saveTreeSortMode(next);
+    }
+
+    const planTreeData = ref(null);
+    const planExpandedFolders = ref(new Set());
+    const planActivePath = ref(null);
+    const planContextMenu = ref(null);
+    const planNewFolderParent = ref(null);
+    const planNewFolderName = ref('');
+    const planDropTarget = ref(null);
+    let planDragFilePath = null;
+    let planWatcherCleanup = null;
+
+    function flattenPlanTree(nodes, depth) {
+      const result = [];
+      for (const node of nodes) {
+        result.push({ name: node.name, path: node.path, type: node.type, depth });
+        if (node.type === 'folder' && node.children && planExpandedFolders.value.has(node.path)) {
+          result.push(...flattenPlanTree(node.children, depth + 1));
+        }
+      }
+      return result;
+    }
+
+    const planFlatNodes = computed(() => {
+      if (!planTreeData.value || !planTreeData.value.children) return [];
+      let children = planTreeData.value.children;
+      if (planSortMode.value === 'hierarchical') {
+        children = sortTopLevelFolders(children);
+      }
+      return flattenPlanTree(children, 0);
+    });
+
+    const loadFileTree = async () => {
+      try {
+        if (window.electron?.ipcRenderer?.invoke) {
+          const data = await window.electron.ipcRenderer.invoke('filetree:scan');
+          planTreeData.value = data;
+        }
+      } catch (e) {
+        console.error('[BoardList] Failed to load file tree:', e);
+      }
+    };
+
+    const togglePlanFolder = (path) => {
+      if (path === 'ScratchPad') {
+        emit('change-view', 'plan-scratchpad');
+        return;
+      }
+      const s = new Set(planExpandedFolders.value);
+      if (s.has(path)) s.delete(path); else s.add(path);
+      planExpandedFolders.value = s;
+    };
+
+    const navigatePlanFile = (node) => {
+      planActivePath.value = node.path;
+      window.__planFilePreviewPath = node.path;
+
+      // Route to specialized views based on file type/location
+      if (node.path.startsWith('Class Diagrams/') && node.path.endsWith('.mmd')) {
+        emit('change-view', 'plan-class-diagram-editor');
+      } else if (node.path.endsWith('.mmd')) {
+        emit('change-view', 'plan-use-case-diagram-editor');
+      } else if (node.path === 'Structure/ProjectStructure.md') {
+        emit('change-view', 'plan-structure');
+      } else if (node.path === 'Functional Requirements/FunctionalRequirements.md') {
+        emit('change-view', 'plan-functional-requirements');
+      } else if (node.path === 'Non-Functional Requirements/NonFunctionalRequirements.md') {
+        emit('change-view', 'plan-non-functional-requirements');
+      } else if (node.path.startsWith('Use Cases/') && node.path.endsWith('.md')) {
+        emit('change-view', 'plan-use-case-editor');
+      } else if (node.path.endsWith('.ddl')) {
+        emit('change-view', 'plan-er-diagram');
+      } else {
+        emit('change-view', 'plan-file-preview');
+      }
+    };
+
+    // Context menu
+    const onPlanFolderContext = (e, node) => {
+      planContextMenu.value = { x: e.clientX, y: e.clientY, node };
+    };
+    const closePlanContextMenu = () => { planContextMenu.value = null; };
+    const planCtxAddSubfolder = () => {
+      planNewFolderParent.value = planContextMenu.value.node.path;
+      planNewFolderName.value = '';
+      closePlanContextMenu();
+    };
+    const planCtxDeleteFolder = async () => {
+      const node = planContextMenu.value.node;
+      closePlanContextMenu();
+      if (node.depth === 0) return;
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:deleteFolder', node.path);
+        loadFileTree();
+      } catch (e) { console.error('Failed to delete folder:', e); }
+    };
+    const createPlanSubfolder = async () => {
+      if (!planNewFolderParent.value || !planNewFolderName.value.trim()) {
+        planNewFolderParent.value = null;
+        return;
+      }
+      const safeName = planNewFolderName.value.trim().replace(/[<>:"/\\|?*]/g, '_');
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:createFolder', planNewFolderParent.value + '/' + safeName);
+        planExpandedFolders.value = new Set([...planExpandedFolders.value, planNewFolderParent.value]);
+        loadFileTree();
+      } catch (e) { console.error('Failed to create folder:', e); }
+      planNewFolderParent.value = null;
+    };
+
+    // Drag and drop
+    const onPlanDragStart = (e, node) => {
+      planDragFilePath = node.path;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', node.path);
+    };
+    const onPlanDragOver = (e, node) => {
+      if (!planDragFilePath) return;
+      const fileDir = planDragFilePath.substring(0, planDragFilePath.lastIndexOf('/'));
+      if (node.path === fileDir) return;
+      planDropTarget.value = node.path;
+      e.dataTransfer.dropEffect = 'move';
+    };
+    const onPlanDrop = async (e, node) => {
+      planDropTarget.value = null;
+      if (!planDragFilePath) return;
+      const fileName = planDragFilePath.substring(planDragFilePath.lastIndexOf('/') + 1);
+      const newPath = node.path + '/' + fileName;
+      if (newPath === planDragFilePath) return;
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:renameFile', planDragFilePath, newPath);
+        loadFileTree();
+      } catch (err) { console.error('Failed to move file:', err); }
+      planDragFilePath = null;
+    };
+
+    const onDocClickPlan = () => { closePlanContextMenu(); };
     
     // Track authentication state
   const authState = ref(0);
@@ -390,9 +751,30 @@ export default {
     };
 
     window.addEventListener('focus', handleFocus);
-    
+
+    // Load build version for About modal
+    try {
+      if (window.electron?.ipcRenderer?.invoke) {
+        window.electron.ipcRenderer.invoke('app:getBuildInfo').then(info => {
+          if (info) aboutBuildVersion.value = `${info.version} (${info.hash})`;
+        });
+      }
+    } catch (_) { /* ignore */ }
+
+    // Load plan file tree
+    loadFileTree();
+    if (window.electron?.ipcRenderer?.on) {
+      planWatcherCleanup = window.electron.ipcRenderer.on('watcher:fileChanged', () => loadFileTree());
+    }
+    document.addEventListener('click', onDocClickPlan);
+
     // Cleanup listener on unmount
     return () => window.removeEventListener('focus', handleFocus);
+  });
+
+  onBeforeUnmount(() => {
+    if (planWatcherCleanup) planWatcherCleanup();
+    document.removeEventListener('click', onDocClickPlan);
   });
   
     const toggleCollapse = () => {
@@ -692,7 +1074,30 @@ export default {
       showAutoToggle,
       toggleAutoMode,
       sidebarMode,
-      switchMode
+      switchMode,
+      showAboutModal,
+      aboutBuildVersion,
+      aboutLibraries,
+      planNavItems,
+      planSortMode,
+      togglePlanSortMode,
+      planFlatNodes,
+      planExpandedFolders,
+      planActivePath,
+      planContextMenu,
+      planNewFolderParent,
+      planNewFolderName,
+      planDropTarget,
+      loadFileTree,
+      togglePlanFolder,
+      navigatePlanFile,
+      onPlanFolderContext,
+      planCtxAddSubfolder,
+      planCtxDeleteFolder,
+      createPlanSubfolder,
+      onPlanDragStart,
+      onPlanDragOver,
+      onPlanDrop
     };
   }
 };
@@ -1073,28 +1478,6 @@ export default {
   font-size: 1.1rem;
 }
 
-/* Plan placeholder */
-.plan-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  padding: 2rem 1rem;
-  color: rgba(255, 255, 255, 0.25);
-  text-align: center;
-}
-
-.plan-placeholder-icon {
-  font-size: 2rem;
-  margin-bottom: 0.75rem;
-  opacity: 0.5;
-}
-
-.plan-placeholder p {
-  margin: 0;
-  font-size: 0.8rem;
-}
 
 .collapsed-divider {
   width: 24px;
@@ -1121,10 +1504,11 @@ export default {
   border-color: rgba(255, 255, 255, 0.25);
 }
 
-/* Bottom section (Settings + Auto, always visible) */
+/* Bottom section (Settings, Help, About, Auto — always visible) */
 .board-list-bottom {
   flex-shrink: 0;
-  padding-bottom: 0.5rem;
+  margin-top: auto;
+  padding-bottom: 0.25rem;
 }
 
 /* Auto toggle */
@@ -1265,5 +1649,350 @@ export default {
 
 .board-list-content::-webkit-scrollbar-thumb:hover {
   background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ══════════════════════════════════════════════
+   Plan mode: nav icons + file tree
+   ══════════════════════════════════════════════ */
+.plan-mode-content {
+  padding: 0;
+}
+
+.plan-nav-icons {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.plan-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-size: 1.05rem;
+}
+
+.plan-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.plan-nav-btn.is-active {
+  background: rgba(109, 212, 160, 0.12);
+  color: #6dd4a0;
+}
+
+/* File tree */
+.plan-file-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.plan-file-tree::-webkit-scrollbar {
+  width: 4px;
+}
+
+.plan-file-tree::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.plan-tree-node {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  gap: 2px;
+  margin: 1px 4px 1px 0;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 3px;
+}
+
+.plan-tree-node:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.plan-tree-node.is-active {
+  background: rgba(109, 212, 160, 0.1);
+}
+
+.plan-tree-node.is-active .plan-node-title {
+  color: #6dd4a0;
+  font-weight: 500;
+}
+
+.plan-tree-node.drop-target {
+  background: rgba(109, 212, 160, 0.12);
+  outline: 1px dashed #6dd4a0;
+  outline-offset: -1px;
+}
+
+.plan-expand-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.plan-expand-btn:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.plan-expand-btn .mdi {
+  font-size: 0.9rem;
+}
+
+.plan-expand-spacer {
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.plan-node-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.plan-folder-icon {
+  color: #E8EDF3;
+}
+
+.plan-file-icon {
+  color: #5b9bd5;
+}
+
+.plan-node-title {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 300;
+}
+
+/* Draggable */
+.plan-tree-node[draggable="true"] {
+  cursor: grab;
+}
+
+.plan-tree-node[draggable="true"]:active {
+  cursor: grabbing;
+  opacity: 0.6;
+}
+
+/* Context menu */
+.plan-context-menu {
+  position: fixed;
+  background: #1e2535;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  padding: 0.25rem 0;
+  min-width: 160px;
+}
+
+.plan-ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.plan-ctx-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.plan-ctx-item .mdi {
+  font-size: 0.95rem;
+}
+
+.plan-ctx-delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.plan-new-folder-bar {
+  padding: 0.35rem 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.plan-new-folder-input {
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #6dd4a0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+/* ══════════════════════════════════════════════
+   About Modal
+   ══════════════════════════════════════════════ */
+.about-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.about-modal {
+  background: #1e2535;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 420px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.about-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0.25rem;
+  border-radius: 4px;
+  display: flex;
+  transition: all 0.15s;
+}
+
+.about-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.about-modal-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 2rem 1.25rem;
+  text-align: center;
+}
+
+.about-modal-logo {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 0.75rem;
+}
+
+.about-modal-name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.about-modal-tagline {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 300;
+}
+
+.about-modal-version {
+  margin: 0.6rem 0 0;
+  font-size: 0.72rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+}
+
+.about-modal-body {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.about-modal-copyright {
+  margin: 0 0 1.25rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.about-modal-section h3 {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.35);
+  margin: 0 0 0.5rem;
+}
+
+.about-modal-oss-list {
+  display: flex;
+  flex-direction: column;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.about-modal-oss-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.about-modal-oss-item:nth-child(even) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.about-modal-oss-name {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.about-modal-oss-license {
+  color: rgba(255, 255, 255, 0.25);
+  font-weight: 300;
+}
+
+.about-modal::-webkit-scrollbar {
+  width: 4px;
+}
+
+.about-modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
 }
 </style>

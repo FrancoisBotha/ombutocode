@@ -19,18 +19,22 @@
     "@electron/remote": "^2.1.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
+    "chokidar": "^5.0.0",
     "dropbox": "^10.34.0",
     "electron-store": "^8.1.0",
+    "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.1",
     "marked": "^17.0.3",
     "node-pty": "^1.1.0",
     "pinia": "^3.0.3",
+    "simple-git": "^3.33.0",
     "sql.js": "^1.14.0",
     "tabulator-tables": "^6.3.1",
     "uuid": "^11.1.0",
     "vue": "^3.3.4",
     "vue-router": "^4.2.4",
-    "vuex": "^4.1.0"
+    "vuex": "^4.1.0",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.3.4",

@@ -2,10 +2,28 @@
   <div class="settings-view">
     <div class="settings-header">
       <h1>Settings</h1>
-      <p class="settings-subtitle">Configure global app behavior and preferences</p>
+      <div class="settings-tabs">
+        <button
+          class="settings-tab"
+          :class="{ 'is-active': settingsTab === 'general' }"
+          @click="settingsTab = 'general'"
+        >
+          <span class="mdi mdi-cog-outline"></span>
+          General
+        </button>
+        <button
+          class="settings-tab"
+          :class="{ 'is-active': settingsTab === 'agents' }"
+          @click="settingsTab = 'agents'"
+        >
+          <span class="mdi mdi-robot-outline"></span>
+          Coding Agents
+        </button>
+      </div>
     </div>
 
-    <div class="settings-content">
+    <!-- ===== General Tab ===== -->
+    <div v-if="settingsTab === 'general'" class="settings-content">
       <!-- Appearance Section -->
       <section class="settings-section">
         <div class="section-header">
@@ -350,7 +368,127 @@
           </div>
         </div>
       </section>
+
     </div>
+
+    <!-- ===== Coding Agents Tab ===== -->
+    <div v-if="settingsTab === 'agents'" class="settings-content">
+      <div class="agent-test-list">
+        <div v-for="agent in agentTests" :key="agent.id" class="agent-test-row">
+          <div class="agent-test-info">
+            <span class="agent-test-name">{{ agent.name }}</span>
+            <label class="agent-default-radio" :title="'Set ' + agent.name + ' as default agent'">
+              <span class="agent-default-label">Default Agent</span>
+              <input
+                type="radio"
+                name="defaultAgent"
+                :value="agent.id"
+                :checked="defaultAgentId === agent.id"
+                @change="setDefaultAgent(agent.id)"
+              />
+            </label>
+            <span class="agent-test-cmd"><code>{{ agent.command }}</code></span>
+          </div>
+          <div class="agent-test-status">
+            <span v-if="agent.status === 'idle'" class="agent-badge agent-badge-idle">Not tested</span>
+            <span v-else-if="agent.status === 'testing'" class="agent-badge agent-badge-testing">
+              <span class="mdi mdi-loading mdi-spin"></span> Testing...
+            </span>
+            <span v-else-if="agent.status === 'pass'" class="agent-badge agent-badge-pass">
+              <span class="mdi mdi-check-circle"></span> Connected
+            </span>
+            <span v-else-if="agent.status === 'fail'" class="agent-badge agent-badge-fail">
+              <span class="mdi mdi-close-circle"></span> Not available
+            </span>
+          </div>
+          <button
+            class="agent-test-btn"
+            :disabled="agent.status === 'testing'"
+            @click="testAgent(agent)"
+          >
+            Test
+          </button>
+        </div>
+      </div>
+      <div class="agent-test-actions">
+        <button class="agent-test-all-btn" :disabled="agentTestRunning" @click="testAllAgents">
+          <span class="mdi mdi-play-circle-outline"></span>
+          Test All
+        </button>
+      </div>
+      <div v-if="agentTestDetail" class="agent-test-detail">
+        <pre>{{ agentTestDetail }}</pre>
+      </div>
+
+      <section class="settings-section agent-setup-guide">
+        <div class="section-header">
+          <span class="section-icon mdi mdi-book-open-outline"></span>
+          <div class="section-title-group">
+            <h2>Setup Guide</h2>
+            <p class="section-description">How to install and configure coding agents</p>
+          </div>
+        </div>
+        <div class="section-content agent-guide-content">
+          <p class="agent-guide-intro">
+            Ombuto Code launches agent CLI tools as processes — it does not call any API directly.
+            Each CLI handles its own authentication. You can use an API key or the CLI's built-in login.
+          </p>
+
+          <table class="agent-guide-table">
+            <thead>
+              <tr><th>Agent</th><th>Install</th><th>Authentication</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Claude</strong></td>
+                <td><code>npm install -g @anthropic-ai/claude-code</code></td>
+                <td><code>ANTHROPIC_API_KEY</code> or <code>claude login</code></td>
+              </tr>
+              <tr>
+                <td><strong>Codex</strong></td>
+                <td><code>npm install -g @openai/codex</code></td>
+                <td><code>OPENAI_API_KEY</code> or <code>codex login</code></td>
+              </tr>
+              <tr>
+                <td><strong>Kimi</strong></td>
+                <td>Per Kimi docs</td>
+                <td>Per Kimi docs</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3>Quick Start</h3>
+          <ol class="agent-guide-steps">
+            <li>Install the CLI tool (see table above)</li>
+            <li>Authenticate — set the API key env var or run the CLI's login command</li>
+            <li>Click <strong>Test</strong> above to verify connectivity</li>
+            <li>Go to <strong>Build > Coding Agents</strong> to enable agents and configure models</li>
+            <li>Create a backlog ticket with <code>assignee: claude</code> (or codex/kimi)</li>
+            <li>Turn on <strong>Auto</strong> in the sidebar — the scheduler picks up tickets automatically</li>
+          </ol>
+
+          <h3>Configuration Files</h3>
+          <div class="agent-guide-files">
+            <div class="agent-guide-file">
+              <code>.ombutocode/codingagents/codingagents.yml</code>
+              <span>Agent definitions, models, rate limits</span>
+            </div>
+            <div class="agent-guide-file">
+              <code>.ombutocode/codingagent-templates.json</code>
+              <span>Command templates — controls what arguments are passed to each CLI</span>
+            </div>
+          </div>
+
+          <h3>Adding a Custom Agent</h3>
+          <p>
+            In <strong>Build > Coding Agents</strong>, click <strong>Add Tool</strong> and provide
+            a name, CLI command, max concurrent runs, and cooldown. Then add a template entry in
+            <code>codingagent-templates.json</code> following the existing patterns.
+          </p>
+        </div>
+      </section>
+    </div>
+
   </div>
 </template>
 
@@ -366,6 +504,69 @@ export default {
     const settingsStore = useSettingsStore();
     const agentToolsStore = useAgentToolsStore();
     const backlogStore = useBacklogStore();
+    const settingsTab = ref('general');
+
+    // Agent connectivity tests
+    const agentTests = ref([
+      { id: 'claude', name: 'Claude', command: 'claude', versionArg: '--version', status: 'idle' },
+      { id: 'codex', name: 'Codex', command: 'codex', versionArg: '--version', status: 'idle' },
+      { id: 'kimi', name: 'Kimi', command: 'kimi', versionArg: '--version', status: 'idle' },
+    ]);
+    const agentTestRunning = ref(false);
+    const agentTestDetail = ref('');
+    const defaultAgentId = ref('');
+
+    // Load default agent from settings
+    watch(() => settingsStore.settings.eval_default_agent, (val) => {
+      if (val) defaultAgentId.value = val;
+    }, { immediate: true });
+
+    async function setDefaultAgent(agentId) {
+      defaultAgentId.value = agentId;
+      await settingsStore.setEvalDefaultAgent(agentId);
+    }
+
+    async function testAgent(agent) {
+      agent.status = 'testing';
+      agentTestDetail.value = '';
+      try {
+        const result = await window.electron.ipcRenderer.invoke('agent:testConnectivity', agent.command, agent.versionArg);
+        if (result.success) {
+          agent.status = 'pass';
+          agentTestDetail.value = `${agent.name}: ${result.output.trim()}`;
+        } else {
+          agent.status = 'fail';
+          agentTestDetail.value = `${agent.name}: ${result.error || 'Command not found or not authenticated'}`;
+        }
+      } catch (e) {
+        agent.status = 'fail';
+        agentTestDetail.value = `${agent.name}: ${e.message}`;
+      }
+    }
+
+    async function testAllAgents() {
+      agentTestRunning.value = true;
+      agentTestDetail.value = '';
+      const lines = [];
+      for (const agent of agentTests.value) {
+        agent.status = 'testing';
+        try {
+          const result = await window.electron.ipcRenderer.invoke('agent:testConnectivity', agent.command, agent.versionArg);
+          if (result.success) {
+            agent.status = 'pass';
+            lines.push(`✓ ${agent.name}: ${result.output.trim()}`);
+          } else {
+            agent.status = 'fail';
+            lines.push(`✗ ${agent.name}: ${result.error || 'Not available'}`);
+          }
+        } catch (e) {
+          agent.status = 'fail';
+          lines.push(`✗ ${agent.name}: ${e.message}`);
+        }
+      }
+      agentTestDetail.value = lines.join('\n');
+      agentTestRunning.value = false;
+    }
 
     // Computed properties from stores
     const projectName = computed(() => settingsStore.projectName);
@@ -845,7 +1046,15 @@ export default {
       dbMessage,
       dbMessageType,
       exportDb,
-      importDb
+      importDb,
+      settingsTab,
+      agentTests,
+      agentTestRunning,
+      agentTestDetail,
+      testAgent,
+      testAllAgents,
+      defaultAgentId,
+      setDefaultAgent
     };
   }
 };
@@ -861,21 +1070,317 @@ export default {
 
 .settings-header {
   margin-bottom: 2rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e1e4e8;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .settings-header h1 {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 1rem 0;
   font-size: 1.75rem;
   font-weight: 600;
   color: #2c3e50;
 }
 
-.settings-subtitle {
-  margin: 0;
+.settings-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.settings-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  border: none;
+  background: transparent;
   color: #6b778c;
-  font-size: 0.95rem;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: all 0.15s;
+}
+
+.settings-tab:hover {
+  color: #2c3e50;
+}
+
+.settings-tab.is-active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+}
+
+.settings-tab .mdi {
+  font-size: 1.05rem;
+}
+
+/* Agent connectivity tests */
+.agent-test-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.agent-test-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: #f8f9fa;
+  border: 1px solid #e1e4e8;
+}
+
+.agent-default-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 0.5rem;
+}
+
+.agent-default-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.agent-default-radio input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4a90e2;
+}
+
+.agent-test-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.agent-test-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #2c3e50;
+  min-width: 60px;
+}
+
+.agent-test-cmd code {
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  color: #6b778c;
+}
+
+.agent-test-status {
+  min-width: 120px;
+}
+
+.agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+}
+
+.agent-badge-idle {
+  background: #e9ecef;
+  color: #6b778c;
+}
+
+.agent-badge-testing {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.agent-badge-pass {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.agent-badge-fail {
+  background: #fde8ea;
+  color: #c62828;
+}
+
+.agent-test-btn {
+  padding: 0.4rem 1rem;
+  border: 1px solid #d1d9e0;
+  border-radius: 6px;
+  background: #fff;
+  color: #2c3e50;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.agent-test-btn:hover:not(:disabled) {
+  background: #f0f2f5;
+  border-color: #c1c7d0;
+}
+
+.agent-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-test-actions {
+  margin-top: 0.75rem;
+}
+
+.agent-test-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1.25rem;
+  border: none;
+  border-radius: 6px;
+  background: #4a90e2;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.agent-test-all-btn:hover:not(:disabled) {
+  background: #357abd;
+}
+
+.agent-test-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.agent-test-detail {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: #1a1e24;
+  border-radius: 6px;
+  border: 1px solid #373d45;
+}
+
+.agent-test-detail pre {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: #d4d8dd;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+/* Agent setup guide */
+.agent-setup-guide {
+  margin-top: 1.5rem;
+}
+
+.agent-guide-content {
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.agent-guide-intro {
+  margin: 0 0 1rem;
+  color: #6b778c;
+}
+
+.agent-guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.75rem 0 1.25rem;
+  font-size: 0.84rem;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.agent-guide-table th {
+  text-align: left;
+  padding: 0.55rem 0.75rem;
+  background: #f8f9fa;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b778c;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.agent-guide-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #f1f2f4;
+  color: #2c3e50;
+}
+
+.agent-guide-table code {
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.12rem 0.35rem;
+  border-radius: 3px;
+}
+
+.agent-guide-content h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.agent-guide-steps {
+  margin: 0;
+  padding: 0 0 0 1.25rem;
+}
+
+.agent-guide-steps li {
+  margin-bottom: 0.4rem;
+  color: #5e6c84;
+}
+
+.agent-guide-steps code {
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.12rem 0.35rem;
+  border-radius: 3px;
+}
+
+.agent-guide-files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.agent-guide-file {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+}
+
+.agent-guide-file code {
+  font-size: 0.78rem;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.agent-guide-file span {
+  color: #6b778c;
+}
+
+.agent-guide-content p {
+  margin: 0 0 0.5rem;
+  color: #5e6c84;
 }
 
 .settings-content {
@@ -1305,6 +1810,48 @@ export default {
 .theme-btn .mdi {
   font-size: 1rem;
 }
+
+/* About section */
+.about-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.25rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.about-logo-img {
+  width: 56px;
+  height: 56px;
+}
+
+.about-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.about-tagline {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  color: #6b778c;
+}
+
+.about-version {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #8b929a;
+}
+
+.about-copyright {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: #a0a8b4;
+}
 </style>
 
 <style>
@@ -1318,8 +1865,98 @@ export default {
   border-color: var(--border-color);
 }
 
-[data-theme="dark"] .settings-header {
+[data-theme="dark"] .settings-tabs {
   border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .settings-tab {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .settings-tab:hover {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .settings-tab.is-active {
+  color: #5b9bd5;
+  border-bottom-color: #5b9bd5;
+}
+
+[data-theme="dark"] .agent-test-row {
+  background: #161a1f;
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .agent-test-name {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .agent-test-cmd code {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .agent-badge-idle {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .agent-badge-testing {
+  background: rgba(91, 155, 213, 0.15);
+  color: #7bb8e8;
+}
+
+[data-theme="dark"] .agent-badge-pass {
+  background: rgba(60, 199, 122, 0.15);
+  color: #5dd99a;
+}
+
+[data-theme="dark"] .agent-badge-fail {
+  background: rgba(224, 96, 96, 0.15);
+  color: #e06060;
+}
+
+[data-theme="dark"] .agent-test-btn {
+  background: #2d333b;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .agent-test-btn:hover:not(:disabled) {
+  background: #373d45;
+}
+
+[data-theme="dark"] .agent-guide-intro,
+[data-theme="dark"] .agent-guide-content p,
+[data-theme="dark"] .agent-guide-steps li,
+[data-theme="dark"] .agent-guide-file span {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .agent-guide-content h3 {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .agent-guide-table {
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .agent-guide-table th {
+  background: #1a1e24;
+  color: var(--text-muted);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .agent-guide-table td {
+  color: var(--text-color);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .agent-guide-table code,
+[data-theme="dark"] .agent-guide-steps code,
+[data-theme="dark"] .agent-guide-file code {
+  background: rgba(255, 255, 255, 0.06);
+  color: #6dd4a0;
 }
 
 [data-theme="dark"] .settings-header h1,

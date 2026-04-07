@@ -32,6 +32,11 @@ Thumbs.db
 
 # OmbutoCode
 .ombutocode/src/node_modules/
+.ombutocode/src/release/
+.ombutocode/src/dist/
+
+# JeffPlan temp (ported, no longer needed)
+.jeffplan-temp/
 
 # Claude
 .claude/

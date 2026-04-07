@@ -38,6 +38,7 @@ const ombutocodeDb = require('./src/main/ombutocodeDb');
 const logsDb = require('./src/main/logsDb');
 const backlogDb = require('./src/main/backlogDb');
 const { createSchedulerLogger } = require('./src/main/schedulerLogger');
+const fileTreeService = require('./src/main/fileTreeService');
 const {
   readBacklog,
   updateBacklogTicketStatus,
@@ -75,6 +76,7 @@ function resolveProjectRoot() {
 }
 
 const PROJECT_ROOT = resolveProjectRoot();
+fileTreeService.init(PROJECT_ROOT);
 const OMBUTOCODE_DIR    = path.join(PROJECT_ROOT, '.ombutocode');
 const BACKLOG_PATH    = path.join(OMBUTOCODE_DIR, 'planning', 'backlog.yml');
 const ARCHIVE_PATH    = path.join(OMBUTOCODE_DIR, 'planning', 'archive.yml');
@@ -1543,6 +1545,19 @@ app.whenReady().then(async () => {
     // Open unified database (creates schemas for both archive + requests + backlog)
     await ombutocodeDb.open(OMBUTOCODE_DB_PATH);
     console.log('[Database] Unified database initialized at', OMBUTOCODE_DB_PATH);
+
+    // Initialize artifact tables on the shared database
+    const artifactDb = require('./src/main/artifactDb');
+    try {
+      artifactDb.open(ombutocodeDb.getDb());
+      console.log('[Database] Artifact schema initialized');
+    } catch (e) {
+      console.error('[Database] Artifact schema init failed:', e);
+    }
+
+    // Initialize planCoreUtilities
+    const planCoreUtilities = require('./src/main/planCoreUtilities');
+    planCoreUtilities.init(PROJECT_ROOT);
 
     // One-time migration from standalone DBs into unified DB
     if (fs.existsSync(ARCHIVE_DB_PATH) || fs.existsSync(REQUESTS_DB_PATH)) {
@@ -3398,6 +3413,237 @@ ipcMain.handle('workspace:killShell', async (_, shellId) => {
     activeShells.delete(shellId);
   }
   return true;
+});
+
+// ── Agent connectivity test ──
+
+ipcMain.handle('agent:testConnectivity', async (_, command, versionArg) => {
+  const { exec } = require('child_process');
+  const escaped = command.replace(/"/g, '\\"');
+  const cmd = `"${escaped}" ${versionArg || '--version'}`;
+  return new Promise((resolve) => {
+    exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
+      if (err) {
+        resolve({ success: false, error: err.code === 'ENOENT' ? `"${command}" not found on PATH` : (stderr || err.message) });
+      } else {
+        resolve({ success: true, output: stdout || stderr || 'OK' });
+      }
+    });
+  });
+});
+
+// ── Plan: File tree operations ──
+
+ipcMain.handle('filetree:scan', async () => {
+  try { return fileTreeService.scan(); }
+  catch (e) { console.error('[FileTree] scan error:', e); return { name: 'docs', path: '', type: 'folder', children: [] }; }
+});
+
+ipcMain.handle('filetree:createFolder', async (_, relativePath) => {
+  return fileTreeService.createFolder(relativePath);
+});
+
+ipcMain.handle('filetree:deleteFolder', async (_, relativePath) => {
+  return fileTreeService.deleteFolder(relativePath);
+});
+
+ipcMain.handle('filetree:renameFile', async (_, oldPath, newPath) => {
+  return fileTreeService.renameFile(oldPath, newPath);
+});
+
+ipcMain.handle('filetree:readFile', async (_, relativePath) => {
+  return fileTreeService.readFile(relativePath);
+});
+
+ipcMain.handle('filetree:writeFile', async (_, relativePath, content) => {
+  return fileTreeService.writeFile(relativePath, content);
+});
+
+ipcMain.handle('filetree:deleteFile', async (_, relativePath) => {
+  return fileTreeService.deleteFile(relativePath);
+});
+
+ipcMain.handle('filetree:scanMockups', async () => {
+  return fileTreeService.scanMockups();
+});
+
+ipcMain.handle('filetree:readImage', async (_, relativePath) => {
+  return fileTreeService.readImageAsDataUrl(relativePath);
+});
+
+ipcMain.handle('filetree:scanUseCaseDiagrams', async () => {
+  return fileTreeService.scanUseCaseDiagrams();
+});
+
+ipcMain.handle('filetree:scanUseCases', async () => {
+  return fileTreeService.scanUseCases();
+});
+
+ipcMain.handle('filetree:scanAllFiles', async () => {
+  return fileTreeService.scanAllFiles();
+});
+
+ipcMain.handle('filetree:scanClassDiagrams', async () => {
+  return fileTreeService.scanClassDiagrams();
+});
+
+// ── Plan: Artifact operations ──
+
+const artifactService = require('./src/main/artifactService');
+const treeService = require('./src/main/treeService');
+const versionService = require('./src/main/versionService');
+
+ipcMain.handle('artifact:list', async (_, filters) => {
+  return artifactService.list(filters || {});
+});
+
+ipcMain.handle('artifact:get', async (_, id) => {
+  return artifactService.get(id);
+});
+
+ipcMain.handle('artifact:create', async (_, args) => {
+  const { type, parentId, title, body, tags, priority } = args;
+  return artifactService.create(type, parentId, { title, body, tags, priority });
+});
+
+ipcMain.handle('artifact:update', async (_, args) => {
+  const { id, title, status, parentId, body, tags, priority } = args;
+  return artifactService.update(id, { title, status, parentId, body, tags, priority });
+});
+
+ipcMain.handle('artifact:archive', async (_, id) => {
+  return artifactService.archive(id);
+});
+
+ipcMain.handle('artifact:nextId', async (_, type) => {
+  return artifactService.nextId(type);
+});
+
+ipcMain.handle('artifact:rebuildIndex', async () => {
+  return artifactService.rebuildIndex();
+});
+
+// ── Plan: Tree operations ──
+
+ipcMain.handle('tree:build', async () => {
+  return treeService.buildTree();
+});
+
+ipcMain.handle('tree:ancestors', async (_, id) => {
+  return treeService.ancestors(id);
+});
+
+ipcMain.handle('tree:descendants', async (_, id) => {
+  return treeService.descendants(id);
+});
+
+ipcMain.handle('tree:children', async (_, id) => {
+  return treeService.children(id);
+});
+
+ipcMain.handle('tree:breadcrumb', async (_, id) => {
+  return treeService.breadcrumb(id);
+});
+
+ipcMain.handle('tree:coverage', async () => {
+  return treeService.coverageReport();
+});
+
+ipcMain.handle('tree:componentSummary', async (_, compId) => {
+  return treeService.componentSummary(compId);
+});
+
+// ── Plan: Version history ──
+
+ipcMain.handle('version:log', async (_, relativePath, count) => {
+  return versionService.getFileLog(relativePath, count);
+});
+
+ipcMain.handle('version:fileAtCommit', async (_, hash, relativePath) => {
+  return versionService.getFileAtCommit(hash, relativePath);
+});
+
+// ── Plan: Excel export/import ──
+
+ipcMain.handle('excel:exportRequirements', async (event, payload) => {
+  try {
+    const { rows, title } = payload || {};
+    const XLSX = require('xlsx-js-style');
+    const win = BrowserWindow.fromWebContents(event.sender) || BrowserWindow.getFocusedWindow();
+    const dialogOpts = {
+      title: 'Export ' + (title || 'Requirements'),
+      defaultPath: (title || 'Requirements').replace(/\s+/g, '_') + '.xlsx',
+      filters: [{ name: 'Excel', extensions: ['xlsx'] }],
+    };
+    const result = win
+      ? await dialog.showSaveDialog(win, dialogOpts)
+      : await dialog.showSaveDialog(dialogOpts);
+    if (result.canceled || !result.filePath) return { success: false };
+    const sheetName = (title || 'Requirements').substring(0, 31);
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
+      fill: { fgColor: { rgb: '4472C4' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+      border: { top: { style: 'thin', color: { rgb: '2F5496' } }, bottom: { style: 'thin', color: { rgb: '2F5496' } }, left: { style: 'thin', color: { rgb: '2F5496' } }, right: { style: 'thin', color: { rgb: '2F5496' } } },
+    };
+    const borderThin = { top: { style: 'thin', color: { rgb: 'D6DCE4' } }, bottom: { style: 'thin', color: { rgb: 'D6DCE4' } }, left: { style: 'thin', color: { rgb: 'D6DCE4' } }, right: { style: 'thin', color: { rgb: 'D6DCE4' } } };
+    const headers = ['ID', 'Sub-System', 'Description', 'Status'];
+    const wsData = [headers];
+    for (const r of (rows || [])) {
+      wsData.push([r.id || '', r.subsystem || '', r.description || '', r.status || '']);
+    }
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    for (let c = 0; c < headers.length; c++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+      if (cell) cell.s = headerStyle;
+    }
+    for (let r = 1; r <= (rows || []).length; r++) {
+      const isEven = r % 2 === 0;
+      for (let c = 0; c < headers.length; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (cell) cell.s = { ...(isEven ? { fill: { fgColor: { rgb: 'D9E2F3' } } } : { fill: { fgColor: { rgb: 'FFFFFF' } } }), border: borderThin, alignment: c === 2 ? { wrapText: true, vertical: 'top' } : { vertical: 'top' }, font: { sz: 10 } };
+      }
+    }
+    ws['!cols'] = [{ wch: 10 }, { wch: 22 }, { wch: 65 }, { wch: 15 }];
+    ws['!rows'] = [{ hpt: 20 }];
+    for (let r = 1; r <= (rows || []).length; r++) {
+      const desc = (rows[r - 1] && rows[r - 1].description) || '';
+      ws['!rows'].push({ hpt: Math.max(18, Math.ceil(desc.length / 60) * 15) });
+    }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, result.filePath);
+    return { success: true, path: result.filePath };
+  } catch (err) {
+    console.error('[Excel Export] Error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('excel:importRequirements', async (event) => {
+  try {
+    const XLSX = require('xlsx-js-style');
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Import Requirements',
+      filters: [{ name: 'Excel', extensions: ['xlsx', 'xls', 'csv'] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || !result.filePaths.length) return { success: false };
+    const wb = XLSX.readFile(result.filePaths[0]);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
+    const rows = [];
+    let headerFound = false;
+    for (const row of data) {
+      if (!headerFound) { if (row[0] && String(row[0]).toUpperCase() === 'ID') { headerFound = true; } continue; }
+      if (row[0]) { rows.push({ id: String(row[0] || '').trim(), subsystem: String(row[1] || '').trim(), description: String(row[2] || '').trim(), status: String(row[3] || 'Draft').trim() }); }
+    }
+    return { success: true, rows };
+  } catch (err) {
+    console.error('[Excel Import] Error:', err);
+    return { success: false, error: err.message };
+  }
 });
 
 // ── Workspace: Git operations ──

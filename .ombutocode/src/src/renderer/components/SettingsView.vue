@@ -374,11 +374,33 @@
     <!-- ===== Coding Agents Tab ===== -->
     <div v-if="settingsTab === 'agents'" class="settings-content">
       <div class="agent-test-list">
-        <div v-for="agent in agentTests" :key="agent.id" class="agent-test-row">
-          <div class="agent-test-info">
-            <span class="agent-test-name">{{ agent.name }}</span>
+        <div v-for="agent in agentTests" :key="agent.id" class="agent-test-card">
+          <div class="agent-test-row">
+            <div class="agent-test-info">
+              <span class="agent-test-name">{{ agent.name }}</span>
+              <label class="agent-active-checkbox" :title="agent.enabled ? 'Disable ' + agent.name : 'Enable ' + agent.name">
+                <input
+                  type="checkbox"
+                  :checked="agent.enabled"
+                  @change="toggleAgentEnabled(agent)"
+                />
+                <span class="agent-active-label">Active</span>
+              </label>
+              <span v-if="agent.detail" class="agent-test-detail-inline">{{ agent.detail }}</span>
+            </div>
+            <div class="agent-concurrent-inline" title="Max concurrent runs">
+              <label class="agent-concurrent-inline-label">Max Concurrent</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                class="agent-concurrent-inline-input"
+                :value="getAgentConcurrent(agent.id)"
+                @change="setAgentConcurrent(agent.id, $event.target.value)"
+              />
+            </div>
             <label class="agent-default-radio" :title="'Set ' + agent.name + ' as default agent'">
-              <span class="agent-default-label">Default Agent</span>
+              <span class="agent-default-label">Default</span>
               <input
                 type="radio"
                 name="defaultAgent"
@@ -387,37 +409,27 @@
                 @change="setDefaultAgent(agent.id)"
               />
             </label>
-            <span class="agent-test-cmd"><code>{{ agent.command }}</code></span>
+            <div class="agent-test-status">
+              <span v-if="agent.status === 'idle'" class="agent-badge agent-badge-idle">Not tested</span>
+              <span v-else-if="agent.status === 'testing'" class="agent-badge agent-badge-testing">
+                <span class="mdi mdi-loading mdi-spin"></span> Testing...
+              </span>
+              <span v-else-if="agent.status === 'pass'" class="agent-badge agent-badge-pass">
+                <span class="mdi mdi-check-circle"></span> Connected
+              </span>
+              <span v-else-if="agent.status === 'fail'" class="agent-badge agent-badge-fail">
+                <span class="mdi mdi-close-circle"></span> Not available
+              </span>
+            </div>
+            <button
+              class="agent-test-btn"
+              :disabled="agent.status === 'testing'"
+              @click="testAgent(agent)"
+            >
+              Test
+            </button>
           </div>
-          <div class="agent-test-status">
-            <span v-if="agent.status === 'idle'" class="agent-badge agent-badge-idle">Not tested</span>
-            <span v-else-if="agent.status === 'testing'" class="agent-badge agent-badge-testing">
-              <span class="mdi mdi-loading mdi-spin"></span> Testing...
-            </span>
-            <span v-else-if="agent.status === 'pass'" class="agent-badge agent-badge-pass">
-              <span class="mdi mdi-check-circle"></span> Connected
-            </span>
-            <span v-else-if="agent.status === 'fail'" class="agent-badge agent-badge-fail">
-              <span class="mdi mdi-close-circle"></span> Not available
-            </span>
-          </div>
-          <button
-            class="agent-test-btn"
-            :disabled="agent.status === 'testing'"
-            @click="testAgent(agent)"
-          >
-            Test
-          </button>
         </div>
-      </div>
-      <div class="agent-test-actions">
-        <button class="agent-test-all-btn" :disabled="agentTestRunning" @click="testAllAgents">
-          <span class="mdi mdi-play-circle-outline"></span>
-          Test All
-        </button>
-      </div>
-      <div v-if="agentTestDetail" class="agent-test-detail">
-        <pre>{{ agentTestDetail }}</pre>
       </div>
 
       <section class="settings-section agent-setup-guide">
@@ -508,12 +520,11 @@ export default {
 
     // Agent connectivity tests
     const agentTests = ref([
-      { id: 'claude', name: 'Claude', command: 'claude', versionArg: '--version', status: 'idle' },
-      { id: 'codex', name: 'Codex', command: 'codex', versionArg: '--version', status: 'idle' },
-      { id: 'kimi', name: 'Kimi', command: 'kimi', versionArg: '--version', status: 'idle' },
+      { id: 'claude', name: 'Claude', command: 'claude', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
+      { id: 'codex', name: 'Codex', command: 'codex', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
+      { id: 'kimi', name: 'Kimi', command: 'kimi', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
     ]);
     const agentTestRunning = ref(false);
-    const agentTestDetail = ref('');
     const defaultAgentId = ref('');
 
     // Load default agent from settings
@@ -521,50 +532,90 @@ export default {
       if (val) defaultAgentId.value = val;
     }, { immediate: true });
 
+    async function toggleAgentEnabled(agent) {
+      agent.enabled = !agent.enabled;
+      try {
+        await window.electron.ipcRenderer.invoke('agents:toggleEnabled', agent.id, agent.enabled);
+      } catch (e) {
+        console.error('[Settings] Failed to toggle agent:', e);
+      }
+    }
+
     async function setDefaultAgent(agentId) {
       defaultAgentId.value = agentId;
       await settingsStore.setEvalDefaultAgent(agentId);
     }
 
+    function getAgentModels(agentId) {
+      const tool = agentToolsStore.tools.find(t => t.id === agentId);
+      return tool ? tool.models.filter(m => m.enabled) : [];
+    }
+
+    function getSelectedModel(agentId) {
+      // Use eval_default_model from settings if this is the default agent, otherwise first enabled model
+      const tool = agentToolsStore.tools.find(t => t.id === agentId);
+      if (!tool) return '';
+      const settingsModel = settingsStore.settings.eval_default_model;
+      if (settingsModel && tool.models.some(m => m.id === settingsModel)) return settingsModel;
+      const first = tool.models.find(m => m.enabled);
+      return first ? first.id : '';
+    }
+
+    async function setAgentModel(agentId, modelId) {
+      if (defaultAgentId.value === agentId) {
+        await settingsStore.setEvalDefaultModel(modelId);
+      }
+    }
+
+    function getAgentConcurrent(agentId) {
+      const tool = agentToolsStore.tools.find(t => t.id === agentId);
+      return tool ? tool.maxConcurrentRuns : 1;
+    }
+
+    async function setAgentConcurrent(agentId, value) {
+      const tool = agentToolsStore.tools.find(t => t.id === agentId);
+      if (tool) {
+        tool.maxConcurrentRuns = Math.max(1, parseInt(value) || 1);
+        await agentToolsStore.saveAgents();
+      }
+    }
+
+    function getAgentCooldown(agentId) {
+      const tool = agentToolsStore.tools.find(t => t.id === agentId);
+      return tool ? tool.cooldownMinutes : 5;
+    }
+
+    async function setAgentCooldown(agentId, value) {
+      const tool = agentToolsStore.tools.find(t => t.id === agentId);
+      if (tool) {
+        tool.cooldownMinutes = Math.max(0, parseInt(value) || 0);
+        await agentToolsStore.saveAgents();
+      }
+    }
+
     async function testAgent(agent) {
       agent.status = 'testing';
-      agentTestDetail.value = '';
+      agent.detail = '';
       try {
         const result = await window.electron.ipcRenderer.invoke('agent:testConnectivity', agent.command, agent.versionArg);
         if (result.success) {
           agent.status = 'pass';
-          agentTestDetail.value = `${agent.name}: ${result.output.trim()}`;
+          agent.detail = result.output.trim();
         } else {
           agent.status = 'fail';
-          agentTestDetail.value = `${agent.name}: ${result.error || 'Command not found or not authenticated'}`;
+          agent.detail = result.error || 'Command not found or not authenticated';
         }
       } catch (e) {
         agent.status = 'fail';
-        agentTestDetail.value = `${agent.name}: ${e.message}`;
+        agent.detail = e.message;
       }
     }
 
     async function testAllAgents() {
       agentTestRunning.value = true;
-      agentTestDetail.value = '';
-      const lines = [];
       for (const agent of agentTests.value) {
-        agent.status = 'testing';
-        try {
-          const result = await window.electron.ipcRenderer.invoke('agent:testConnectivity', agent.command, agent.versionArg);
-          if (result.success) {
-            agent.status = 'pass';
-            lines.push(`✓ ${agent.name}: ${result.output.trim()}`);
-          } else {
-            agent.status = 'fail';
-            lines.push(`✗ ${agent.name}: ${result.error || 'Not available'}`);
-          }
-        } catch (e) {
-          agent.status = 'fail';
-          lines.push(`✗ ${agent.name}: ${e.message}`);
-        }
+        await testAgent(agent);
       }
-      agentTestDetail.value = lines.join('\n');
       agentTestRunning.value = false;
     }
 
@@ -691,6 +742,23 @@ export default {
       } catch (err) {
         console.error('[SettingsView] Failed to load settings or agents:', err);
       }
+
+      // Load startup agent connectivity results
+      try {
+        if (window.electron?.ipcRenderer?.invoke) {
+          const results = await window.electron.ipcRenderer.invoke('agent:getStartupResults');
+          if (results) {
+            for (const agent of agentTests.value) {
+              const r = results[agent.id];
+              if (r) {
+                agent.status = r.status;
+                agent.detail = r.detail || '';
+                agent.enabled = r.enabled !== false;
+              }
+            }
+          }
+        }
+      } catch (_) { /* startup results not yet available */ }
     });
 
     // Update project name setting
@@ -1050,11 +1118,18 @@ export default {
       settingsTab,
       agentTests,
       agentTestRunning,
-      agentTestDetail,
       testAgent,
       testAllAgents,
       defaultAgentId,
-      setDefaultAgent
+      setDefaultAgent,
+      toggleAgentEnabled,
+      getAgentModels,
+      getSelectedModel,
+      setAgentModel,
+      getAgentConcurrent,
+      setAgentConcurrent,
+      getAgentCooldown,
+      setAgentCooldown
     };
   }
 };
@@ -1123,14 +1198,41 @@ export default {
   gap: 0.5rem;
 }
 
+.agent-test-card {
+  border-radius: 6px;
+  background: #f8f9fa;
+  border: 1px solid #e1e4e8;
+  overflow: hidden;
+}
+
 .agent-test-row {
   display: flex;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
-  border-radius: 6px;
-  background: #f8f9fa;
-  border: 1px solid #e1e4e8;
+}
+
+.agent-active-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: 0.75rem;
+}
+
+.agent-active-checkbox input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4a90e2;
+}
+
+.agent-active-label {
+  font-size: 0.72rem;
+  color: #9ca3af;
+  white-space: nowrap;
 }
 
 .agent-default-radio {
@@ -1262,21 +1364,40 @@ export default {
   cursor: not-allowed;
 }
 
-.agent-test-detail {
-  margin-top: 0.75rem;
-  padding: 0.6rem 0.75rem;
-  background: #1a1e24;
-  border-radius: 6px;
-  border: 1px solid #373d45;
+.agent-test-detail-inline {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  color: #8b929a;
+  margin-left: 0.5rem;
 }
 
-.agent-test-detail pre {
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78rem;
-  color: #d4d8dd;
-  white-space: pre-wrap;
-  line-height: 1.6;
+.agent-concurrent-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.agent-concurrent-inline-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.agent-concurrent-inline-input {
+  width: 42px;
+  padding: 0.25rem 0.3rem;
+  border: 1px solid #d1d9e0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  background: #fff;
+  color: #2c3e50;
+  text-align: center;
+}
+
+.agent-concurrent-inline-input:focus {
+  outline: none;
+  border-color: #4a90e2;
 }
 
 /* Agent setup guide */
@@ -1882,7 +2003,13 @@ export default {
   border-bottom-color: #5b9bd5;
 }
 
-[data-theme="dark"] .agent-test-row {
+[data-theme="dark"] .agent-concurrent-inline-input {
+  background: #161a1f;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .agent-test-card {
   background: #161a1f;
   border-color: var(--border-color);
 }

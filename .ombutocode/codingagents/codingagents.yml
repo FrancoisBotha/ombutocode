@@ -9,21 +9,15 @@ tools:
     enabled: true
     budget_limit: 0
     models:
-      - id: sonnet-4.6
-        name: Sonnet 4.6
-        model_id: claude-sonnet-4-6
-        rate_per_hour: 0
-        cost_per_run: 0
-        enabled: true
-      - id: sonnet-4.5
-        name: Sonnet 4.5
-        model_id: claude-sonnet-4-5-20250929
-        rate_per_hour: 0
-        cost_per_run: 0
-        enabled: true
       - id: opus-4.6
         name: Opus 4.6
         model_id: claude-opus-4-6
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: sonnet-4.6
+        name: Sonnet 4.6
+        model_id: claude-sonnet-4-6
         rate_per_hour: 0
         cost_per_run: 0
         enabled: true
@@ -42,11 +36,47 @@ tools:
     enabled: true
     budget_limit: 0
     models:
-      - id: gpt-5
-        name: GPT-5
-        model_id: gpt-5
+      - id: gpt-5.4
+        name: GPT-5.4
+        model_id: gpt-5.4
         rate_per_hour: 0
-        cost_per_run: 2
+        cost_per_run: 0
+        enabled: true
+      - id: gpt-5.4-mini
+        name: GPT-5.4 Mini
+        model_id: gpt-5.4-mini
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: gpt-5.3-codex
+        name: GPT-5.3 Codex
+        model_id: gpt-5.3-codex
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: gpt-5.2-codex
+        name: GPT-5.2 Codex
+        model_id: gpt-5.2-codex
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: gpt-5.2
+        name: GPT-5.2
+        model_id: gpt-5.2
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: gpt-5.1-codex-max
+        name: GPT-5.1 Codex Max
+        model_id: gpt-5.1-codex-max
+        rate_per_hour: 0
+        cost_per_run: 0
+        enabled: true
+      - id: gpt-5.1-codex-mini
+        name: GPT-5.1 Codex Mini
+        model_id: gpt-5.1-codex-mini
+        rate_per_hour: 0
+        cost_per_run: 0
         enabled: true
   - id: kimi
     name: Kimi

@@ -103,6 +103,29 @@
         </div>
       </div>
     </div>
+
+    <!-- No Agents Connected Dialog -->
+    <div v-if="showNoAgentsDialog" class="modal-overlay" @click.self="showNoAgentsDialog = false">
+      <div class="no-agents-dialog">
+        <div class="no-agents-icon">
+          <span class="mdi mdi-robot-off-outline"></span>
+        </div>
+        <h3>No Coding Agents Detected</h3>
+        <p>
+          Ombuto Code could not find any connected coding agents (Claude, Codex, or Kimi).
+          You need at least one agent CLI installed and authenticated to use automated development features.
+        </p>
+        <div class="no-agents-actions">
+          <button class="btn btn-secondary" @click="showNoAgentsDialog = false">
+            Dismiss
+          </button>
+          <button class="btn btn-primary" @click="showNoAgentsDialog = false; handleChangeView('settings'); $nextTick(() => { /* switch to agents tab handled by settings */ })">
+            <span class="mdi mdi-cog-outline"></span>
+            Open Settings
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -351,6 +374,10 @@ export default {
           };
           showCloseDialog.value = true;
         });
+
+        window.electron.ipcRenderer.on('app:noAgentsConnected', () => {
+          showNoAgentsDialog.value = true;
+        });
       }
     });
 
@@ -392,6 +419,7 @@ export default {
     }
 
     const planFilePath = ref('');
+    const showNoAgentsDialog = ref(false);
 
     function handleChangeView(view) {
       activeView.value = view;
@@ -425,6 +453,7 @@ export default {
       selectBoard,
       handleChangeView,
       planFilePath,
+      showNoAgentsDialog,
       handleDeleteBoard,
       boardListRef,
       showCloseDialog,
@@ -563,6 +592,75 @@ body {
 [data-theme="dark"] .close-dialog {
   background: #21262d;
   border-color: #373d45;
+}
+
+/* No Agents Dialog */
+.no-agents-dialog {
+  background: #1e2535;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 440px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.no-agents-icon {
+  margin-bottom: 1rem;
+}
+
+.no-agents-icon .mdi {
+  font-size: 3rem;
+  color: #e5a830;
+}
+
+.no-agents-dialog h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.no-agents-dialog p {
+  margin: 0 0 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.no-agents-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.no-agents-actions .btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.no-agents-actions .btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.no-agents-actions .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.no-agents-actions .btn-primary {
+  background: #4a90e2;
+  color: #fff;
+}
+
+.no-agents-actions .btn-primary:hover {
+  background: #357abd;
 }
 
 .close-dialog-header {

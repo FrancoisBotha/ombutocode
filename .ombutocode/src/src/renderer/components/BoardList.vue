@@ -159,17 +159,6 @@
 
       <div
         class="board-item"
-        :class="{ 'is-active': activeView === 'prd' }"
-        @click="$emit('change-view', 'prd')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-file-document-outline"></span>
-        </span>
-        <span class="board-name">PRD</span>
-      </div>
-
-      <div
-        class="board-item"
         :class="{ 'is-active': activeView === 'backlog' }"
         @click="$emit('change-view', 'backlog')"
       >
@@ -180,17 +169,6 @@
       </div>
 
       <div class="divider"></div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'agents' }"
-        @click="$emit('change-view', 'agents')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-robot-outline"></span>
-        </span>
-        <span class="board-name">Coding Agents</span>
-      </div>
 
       <div
         class="board-item"
@@ -342,27 +320,11 @@
         </div>
         <div
           class="collapsed-board"
-          :class="{ 'is-active': activeView === 'prd' }"
-          @click="$emit('change-view', 'prd')"
-          title="PRD"
-        >
-          <span class="mdi mdi-file-document-outline"></span>
-        </div>
-        <div
-          class="collapsed-board"
           :class="{ 'is-active': activeView === 'backlog' }"
           @click="$emit('change-view', 'backlog')"
           title="Backlog"
         >
           <span class="mdi mdi-format-list-bulleted"></span>
-        </div>
-        <div
-          class="collapsed-board"
-          :class="{ 'is-active': activeView === 'agents' }"
-          @click="$emit('change-view', 'agents')"
-          title="Coding Agents"
-        >
-          <span class="mdi mdi-robot-outline"></span>
         </div>
         <div
           class="collapsed-board"

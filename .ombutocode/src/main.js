@@ -1603,6 +1603,46 @@ app.whenReady().then(async () => {
     }
   }, refreshSeconds * 1000);
 
+  // ── Startup agent connectivity check ──
+  const agentConnectivityResults = {};
+  const AGENTS_TO_TEST = [
+    { id: 'claude', name: 'Claude', command: 'claude' },
+    { id: 'codex', name: 'Codex', command: 'codex' },
+    { id: 'kimi', name: 'Kimi', command: 'kimi' },
+  ];
+
+  (async () => {
+    const { exec } = require('child_process');
+    let anyConnected = false;
+    for (const agent of AGENTS_TO_TEST) {
+      try {
+        const output = await new Promise((resolve, reject) => {
+          exec(`"${agent.command}" --version`, { timeout: 10000 }, (err, stdout, stderr) => {
+            if (err) reject(err); else resolve((stdout || stderr || '').trim());
+          });
+        });
+        agentConnectivityResults[agent.id] = { status: 'pass', detail: output, enabled: true };
+        anyConnected = true;
+        console.log(`[Agent Check] ${agent.name}: connected (${output})`);
+      } catch (e) {
+        agentConnectivityResults[agent.id] = {
+          status: 'fail',
+          detail: e.code === 'ENOENT' ? `"${agent.command}" not found on PATH` : (e.message || 'Not available'),
+          enabled: false
+        };
+        console.log(`[Agent Check] ${agent.name}: not available`);
+      }
+    }
+
+    if (!anyConnected && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app:noAgentsConnected');
+    }
+  })();
+
+  ipcMain.handle('agent:getStartupResults', () => {
+    return agentConnectivityResults;
+  });
+
   // Restore scheduler state from last session (default: running)
   const savedState = scheduler.windowTracker.loadState();
   const shouldAutoStart = savedState.scheduler_running !== false;

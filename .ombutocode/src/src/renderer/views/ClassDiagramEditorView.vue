@@ -35,7 +35,7 @@
         <div class="spacer"></div>
         <span v-if="saved" class="saved-indicator">Saved</span>
         <button class="save-btn" @click="onSave" :disabled="saving || !dirty">{{ saving ? 'Saving...' : 'Save' }}</button>
-        <button class="cancel-btn" @click="$router.push('/class-diagrams')">Cancel</button>
+        <button class="cancel-btn" @click="goBack">Cancel</button>
       </div>
     </header>
 
@@ -450,6 +450,10 @@ export default {
       onClassMouseDown, onCanvasMouseDown, onCanvasMouseMove, onCanvasMouseUp,
       startEditName, startEditAttr, startEditOp, commitEdit, cancelEdit,
       onSave,
+      goBack() {
+        if (window.__planNavigate) window.__planNavigate('plan-class-diagrams');
+        else router.push('/class-diagrams');
+      },
     };
   },
 };

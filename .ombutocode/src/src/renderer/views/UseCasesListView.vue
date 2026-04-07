@@ -176,14 +176,22 @@ export default {
         await window.electron.ipcRenderer.invoke('filetree:writeFile', filePath, content);
         showNewInput.value = false;
         newName.value = '';
-        router.push('/use-case/' + encodeURIComponent(filePath));
+        if (window.__planNavigate) {
+          window.__planNavigate('plan-use-case-editor', filePath);
+        } else {
+          router.push('/use-case/' + encodeURIComponent(filePath));
+        }
       } catch (e) {
         console.error('Failed to create use case:', e);
       }
     }
 
     function openUseCase(uc) {
-      router.push('/use-case/' + encodeURIComponent(uc.path));
+      if (window.__planNavigate) {
+        window.__planNavigate('plan-use-case-editor', uc.path);
+      } else {
+        router.push('/use-case/' + encodeURIComponent(uc.path));
+      }
     }
 
     async function deleteUseCase(uc) {

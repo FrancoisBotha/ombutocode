@@ -15,7 +15,7 @@
         <h2 class="section-title">Project Summary</h2>
         <div class="stats-grid">
           <div class="stat-card" v-for="stat in stats" :key="stat.label"
-            @click="stat.route && $router.push(stat.route)" :class="{ clickable: stat.route }">
+            @click="stat.planView && window.__planNavigate ? window.__planNavigate(stat.planView) : (stat.route && $router.push(stat.route))" :class="{ clickable: stat.route }">
             <span class="mdi stat-icon" :class="stat.icon"></span>
             <div class="stat-info">
               <span class="stat-count">{{ stat.count }}</span>
@@ -56,7 +56,7 @@
         <h2 class="section-title">Use Cases</h2>
         <div class="recent-list">
           <div v-for="uc in useCases" :key="uc.path" class="recent-item"
-            @click="$router.push('/use-case/' + encodeURIComponent(uc.path))">
+            @click="window.__planNavigate ? window.__planNavigate('plan-use-case-editor', uc.path) : $router.push('/use-case/' + encodeURIComponent(uc.path))">
             <span class="mdi mdi-text-box-outline recent-icon"></span>
             <span class="recent-title">{{ uc.name.replace('.md', '') }}</span>
           </div>

@@ -1,27 +1,9 @@
-class User 100 100
-+id: string
-+email: string
-+name: string
-+role: Role
---
-+login(): Session
-+logout(): void
+class "NewClass" @150,100
+  attr "+ id: int"
+  op "+ getId(): int"
 
-class Session 400 100
-+id: string
-+userId: string
-+token: string
-+expiresAt: Date
---
-+isValid(): boolean
-+refresh(): Session
+class "NewClass" @492,104
+  attr "+ id: int"
+  op "+ getId(): int"
 
-class Role 100 350
-+id: string
-+name: string
-+permissions: string[]
---
-+hasPermission(p: string): boolean
-
-association User Session
-association User Role
+"NewClass" --> "NewClass"

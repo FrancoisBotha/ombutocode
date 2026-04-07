@@ -3472,6 +3472,37 @@ ipcMain.handle('agent:testConnectivity', async (_, command, versionArg) => {
   });
 });
 
+// ── Agent interactive terminal ──
+
+ipcMain.handle('agent:spawnInteractive', async (event, shellId, command, args) => {
+  const pty = require('node-pty');
+  const proc = pty.spawn(command, args || [], {
+    name: 'xterm-256color',
+    cols: 120,
+    rows: 30,
+    cwd: PROJECT_ROOT,
+    env: process.env,
+  });
+
+  activeShells.set(shellId, proc);
+  const win = BrowserWindow.fromWebContents(event.sender);
+
+  proc.onData((data) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('workspace:shellData', { shellId, data });
+    }
+  });
+
+  proc.onExit(({ exitCode }) => {
+    activeShells.delete(shellId);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('workspace:shellExit', { shellId, code: exitCode });
+    }
+  });
+
+  return { success: true };
+});
+
 // ── Plan: File tree operations ──
 
 ipcMain.handle('filetree:scan', async () => {

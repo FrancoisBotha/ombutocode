@@ -76,12 +76,20 @@ export default {
         await window.electron.ipcRenderer.invoke('filetree:writeFile', filePath, DEFAULT_TEMPLATE);
         showNewInput.value = false;
         newName.value = '';
-        router.push('/class-diagram/edit/' + encodeURIComponent(filePath));
+        if (window.__planNavigate) {
+          window.__planNavigate('plan-class-diagram-editor', filePath);
+        } else {
+          router.push('/class-diagram/edit/' + encodeURIComponent(filePath));
+        }
       } catch (e) { console.error(e); }
     }
 
     function openDiagram(d) {
-      router.push('/class-diagram/edit/' + encodeURIComponent(d.path));
+      if (window.__planNavigate) {
+        window.__planNavigate('plan-class-diagram-editor', d.path);
+      } else {
+        router.push('/class-diagram/edit/' + encodeURIComponent(d.path));
+      }
     }
 
     async function deleteDiagram(d) {

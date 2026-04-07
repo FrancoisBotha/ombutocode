@@ -32,12 +32,13 @@
       <HelpView v-else-if="activeView === 'help'" />
 
       <PlanDashboardView v-else-if="activeView === 'plan-dashboard'" />
+      <PlanPrdView v-else-if="activeView === 'plan-prd'" @change-view="handleChangeView" />
       <PlanArtifactsView v-else-if="activeView === 'plan-artifacts'" />
       <PlanTreeView v-else-if="activeView === 'plan-tree'" />
       <PlanMockupsView v-else-if="activeView === 'plan-mockups'" />
       <PlanGitView v-else-if="activeView === 'plan-git'" />
       <PlanValidateView v-else-if="activeView === 'plan-validate'" />
-      <PlanFilePreviewView v-else-if="activeView === 'plan-file-preview'" :file-path="planFilePath" />
+      <PlanFilePreviewView v-else-if="activeView === 'plan-file-preview'" :file-path="planFilePath" :key="'fp-' + planFilePath" />
       <PlanStructureView v-else-if="activeView === 'plan-structure'" />
       <PlanUseCasesView v-else-if="activeView === 'plan-use-cases'" />
       <PlanUseCaseDiagramsView v-else-if="activeView === 'plan-use-case-diagrams'" />
@@ -46,11 +47,11 @@
       <PlanSettingsView v-else-if="activeView === 'plan-settings'" />
       <PlanFRView v-else-if="activeView === 'plan-functional-requirements'" />
       <PlanNFRView v-else-if="activeView === 'plan-non-functional-requirements'" />
-      <PlanUseCaseEditorView v-else-if="activeView === 'plan-use-case-editor'" :file-path="planFilePath" />
-      <PlanUseCaseDiagramEditorView v-else-if="activeView === 'plan-use-case-diagram-editor'" :file-path="planFilePath" />
-      <PlanClassDiagramEditorView v-else-if="activeView === 'plan-class-diagram-editor'" :file-path="planFilePath" />
-      <PlanERDiagramView v-else-if="activeView === 'plan-er-diagram'" :file-path="planFilePath" />
-      <PlanArtifactDetailView v-else-if="activeView === 'plan-artifact-detail'" :file-path="planFilePath" />
+      <PlanUseCaseEditorView v-else-if="activeView === 'plan-use-case-editor'" :file-path="planFilePath" :key="'uc-' + planFilePath" />
+      <PlanUseCaseDiagramEditorView v-else-if="activeView === 'plan-use-case-diagram-editor'" :file-path="planFilePath" :key="'ucd-' + planFilePath" />
+      <PlanClassDiagramEditorView v-else-if="activeView === 'plan-class-diagram-editor'" :file-path="planFilePath" :key="'cd-' + planFilePath" />
+      <PlanERDiagramView v-else-if="activeView === 'plan-er-diagram'" :file-path="planFilePath" :key="'er-' + planFilePath" />
+      <PlanArtifactDetailView v-else-if="activeView === 'plan-artifact-detail'" :file-path="planFilePath" :key="'ad-' + planFilePath" />
       <WorkspaceView v-show="activeView === 'workspace'" :visible="activeView === 'workspace'" />
 
     </div>
@@ -150,6 +151,7 @@ import WorkspaceView from '@/components/WorkspaceView.vue';
 import StatusBar from '@/components/StatusBar.vue';
 import HelpView from '@/components/HelpView.vue';
 import PlanDashboardView from '@/views/DashboardView.vue';
+import PlanPrdView from '@/components/PlanPrdView.vue';
 import PlanArtifactsView from '@/views/ArtifactListView.vue';
 import PlanTreeView from '@/views/TreeView.vue';
 import PlanMockupsView from '@/views/MockupsView.vue';
@@ -188,6 +190,7 @@ export default {
     StatusBar,
     HelpView,
     PlanDashboardView,
+    PlanPrdView,
     PlanArtifactsView,
     PlanTreeView,
     PlanMockupsView,
@@ -428,6 +431,15 @@ export default {
         planFilePath.value = window.__planFilePreviewPath;
       }
     }
+
+    // Global navigation function for Plan views that can't emit directly
+    window.__planNavigate = (view, filePath) => {
+      if (filePath) {
+        window.__planFilePreviewPath = filePath;
+        planFilePath.value = filePath;
+      }
+      activeView.value = view;
+    };
 
     const handleDeleteBoard = (boardId) => {
       const boardIdStr = String(boardId);

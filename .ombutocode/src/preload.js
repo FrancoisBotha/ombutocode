@@ -91,6 +91,7 @@ const validChannels = [
   'workspace:shellData',
   'workspace:shellExit',
   'agent:testConnectivity',
+  'agent:spawnInteractive',
   'agent:getStartupResults',
   'app:noAgentsConnected',
   'filetree:scan',

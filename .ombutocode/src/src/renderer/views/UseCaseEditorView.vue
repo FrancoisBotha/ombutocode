@@ -16,7 +16,7 @@
         <button class="versions-btn" :disabled="!versionEntries.length" @click="toggleVersions">
           {{ versionEntries.length > 1 ? `Versions (${versionEntries.length})` : 'Versions' }}
         </button>
-        <button class="back-btn" @click="$router.push('/use-cases')">Back</button>
+        <button class="back-btn" @click="goBack">Back</button>
       </div>
     </header>
 
@@ -522,6 +522,10 @@ export default {
       linkedFRs, showFRPicker, frPickerFilter, filteredFRs, linkFR, unlinkFR,
       relatedArtifacts, showPicker, pickerFilter, filteredFiles,
       addArtifact, removeArtifact,
+      goBack() {
+        if (window.__planNavigate) window.__planNavigate('plan-use-cases');
+        else router.push('/use-cases');
+      },
     };
   },
 };

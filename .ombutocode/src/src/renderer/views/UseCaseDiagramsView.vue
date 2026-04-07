@@ -121,7 +121,11 @@ export default {
         await window.electron.ipcRenderer.invoke('filetree:writeFile', filePath, DEFAULT_TEMPLATE);
         showNewInput.value = false;
         newName.value = '';
-        router.push('/use-case-diagram/edit/' + encodeURIComponent(filePath));
+        if (window.__planNavigate) {
+          window.__planNavigate('plan-use-case-diagram-editor', filePath);
+        } else {
+          router.push('/use-case-diagram/edit/' + encodeURIComponent(filePath));
+        }
       } catch (e) {
         console.error('Failed to create diagram:', e);
       }
@@ -129,7 +133,11 @@ export default {
 
     function openDiagram(d) {
       if (renamingPath.value) return;
-      router.push('/use-case-diagram/edit/' + encodeURIComponent(d.path));
+      if (window.__planNavigate) {
+        window.__planNavigate('plan-use-case-diagram-editor', d.path);
+      } else {
+        router.push('/use-case-diagram/edit/' + encodeURIComponent(d.path));
+      }
     }
 
     async function deleteDiagram(d) {

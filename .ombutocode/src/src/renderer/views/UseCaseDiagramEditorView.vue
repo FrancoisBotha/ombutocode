@@ -625,7 +625,7 @@ export default {
     }
 
     function onCancel() {
-      router.push('/use-case-diagrams');
+      window.__planNavigate ? window.__planNavigate('plan-use-case-diagrams') : router.push('/use-case-diagrams');
     }
 
     function onKeyDown(e) {

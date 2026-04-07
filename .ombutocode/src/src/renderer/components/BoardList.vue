@@ -498,6 +498,7 @@ export default {
     // ── Plan mode: nav items and file tree ──
     const planNavItems = [
       { view: 'plan-dashboard', label: 'Dashboard', icon: 'mdi-view-dashboard' },
+      { view: 'plan-prd', label: 'PRD', icon: 'mdi-file-document-outline' },
       { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
       { view: 'plan-use-cases', label: 'Use Cases', icon: 'mdi-text-box-multiple-outline' },
       { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },

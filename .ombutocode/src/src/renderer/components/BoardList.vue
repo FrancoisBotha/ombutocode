@@ -504,6 +504,7 @@ export default {
       { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },
       { view: 'plan-class-diagrams', label: 'Class Diagrams', icon: 'mdi-shape-outline' },
       { view: 'plan-mockups', label: 'Mockups', icon: 'mdi-image-multiple' },
+      { view: 'plan-skills', label: 'Skills', icon: 'mdi-school-outline' },
       { view: 'plan-scratchpad', label: 'Scratch Pad', icon: 'mdi-note-text' },
     ];
 
@@ -524,6 +525,7 @@ export default {
       'mockups',
       'data model',
       'references',
+      'skills',
       'scratchpad',
     ];
 

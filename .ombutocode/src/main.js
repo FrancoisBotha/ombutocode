@@ -3476,7 +3476,20 @@ ipcMain.handle('agent:testConnectivity', async (_, command, versionArg) => {
 
 ipcMain.handle('agent:spawnInteractive', async (event, shellId, command, args) => {
   const pty = require('node-pty');
-  const proc = pty.spawn(command, args || [], {
+  const isWin = process.platform === 'win32';
+
+  // On Windows, node-pty needs the full path or .cmd extension
+  let resolvedCmd = command;
+  if (isWin) {
+    const { execSync } = require('child_process');
+    try {
+      resolvedCmd = execSync(`where ${command}`, { encoding: 'utf8' }).split('\n')[0].trim();
+    } catch (_) {
+      resolvedCmd = command + '.cmd'; // fallback
+    }
+  }
+
+  const proc = pty.spawn(resolvedCmd, args || [], {
     name: 'xterm-256color',
     cols: 120,
     rows: 30,

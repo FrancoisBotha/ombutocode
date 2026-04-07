@@ -16,6 +16,14 @@
           <h1 class="file-name">{{ fileName }}</h1>
         </div>
         <div v-if="!isImage" class="title-actions">
+          <template v-if="isPrd && !viewingHistorical && !isEditMode">
+            <button class="prd-ai-btn" type="button" @click="createNewPrd">
+              <span class="mdi mdi-robot-outline"></span> Create PRD
+            </button>
+            <button class="prd-ai-btn" type="button" @click="refinePrdWithAi">
+              <span class="mdi mdi-pencil-outline"></span> Refine with AI
+            </button>
+          </template>
           <template v-if="!viewingHistorical && !isEditMode">
             <button class="edit-btn" type="button" @click="onEdit">Edit</button>
           </template>
@@ -151,6 +159,15 @@ export default {
     const imageDataUrl = ref('');
 
     const isImage = computed(() => IMAGE_EXTS.test(activePath.value));
+    const isPrd = computed(() => activePath.value.startsWith('Product Requirements Document/') && activePath.value.endsWith('.md'));
+
+    function refinePrdWithAi() {
+      if (window.__planNavigate) window.__planNavigate('plan-prd');
+    }
+
+    function createNewPrd() {
+      if (window.__planNavigate) window.__planNavigate('plan-prd');
+    }
 
     const normalizedPath = computed(() => {
       const routePath = route.params.path;
@@ -442,6 +459,9 @@ export default {
       imageDataUrl,
       isEditMode,
       isImage,
+      isPrd,
+      refinePrdWithAi,
+      createNewPrd,
       isVersionsPanelOpen,
       loading,
       notFound,
@@ -516,6 +536,29 @@ export default {
   font-size: 1.75rem;
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.prd-ai-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #6dd4a0;
+  color: #0A1220;
+  border: none;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  transition: var(--transition);
+}
+
+.prd-ai-btn:hover {
+  background: #86efac;
+}
+
+.prd-ai-btn .mdi {
+  font-size: 1rem;
 }
 
 .edit-btn {

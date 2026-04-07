@@ -4,27 +4,11 @@
       <h1>Product Requirements Document</h1>
       <p class="prd-subtitle">Define the vision, goals, and requirements for your product</p>
 
-      <div class="prd-existing" v-if="existingPrd">
-        <div class="prd-existing-card">
-          <span class="mdi mdi-file-document-check-outline prd-existing-icon"></span>
-          <div class="prd-existing-info">
-            <strong>PRD exists</strong>
-            <span>{{ existingPrd }}</span>
-          </div>
-          <button class="prd-btn prd-btn-secondary" @click="viewExistingPrd">
-            <span class="mdi mdi-eye-outline"></span> View
-          </button>
-          <button class="prd-btn prd-btn-primary" @click="startSession">
-            <span class="mdi mdi-pencil-outline"></span> Refine with AI
-          </button>
-        </div>
-      </div>
-
-      <div class="prd-create" v-else>
+      <div class="prd-create">
         <div class="prd-create-card">
           <span class="mdi mdi-file-document-plus-outline prd-create-icon"></span>
           <div>
-            <h3>Create a PRD</h3>
+            <h3>Create a new PRD</h3>
             <p>
               Launch an interactive AI session that guides you through defining your product's
               vision, goals, target users, features, and success metrics.
@@ -42,16 +26,44 @@
           </button>
         </div>
       </div>
+
+      <div class="prd-existing" v-if="existingPrd">
+        <div class="prd-existing-card">
+          <span class="mdi mdi-file-document-check-outline prd-existing-icon"></span>
+          <div class="prd-existing-info">
+            <strong>PRD exists</strong>
+            <span>{{ existingPrd }}</span>
+          </div>
+          <button class="prd-btn prd-btn-secondary" @click="viewExistingPrd">
+            <span class="mdi mdi-eye-outline"></span> View
+          </button>
+          <button class="prd-btn prd-btn-primary" @click="startSession">
+            <span class="mdi mdi-pencil-outline"></span> Refine with AI
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="prd-terminal-wrap" v-if="sessionActive">
       <div class="prd-terminal-header">
         <span class="mdi mdi-robot-outline"></span>
-        <span>AI-Guided PRD Creation</span>
+        <span>AI-Guided PRD {{ existingPrd ? 'Refinement' : 'Creation' }}</span>
         <span class="prd-terminal-agent">{{ defaultAgent }}</span>
         <div class="prd-terminal-spacer"></div>
         <button class="prd-btn prd-btn-sm prd-btn-secondary" @click="stopSession">
           <span class="mdi mdi-stop"></span> End Session
+        </button>
+      </div>
+      <div class="prd-system-prompt">
+        <div class="prd-prompt-icon">
+          <span class="mdi mdi-message-text-outline"></span>
+        </div>
+        <div class="prd-prompt-body">
+          <div class="prd-prompt-label">System Prompt</div>
+          <div v-if="!promptCollapsed" class="prd-prompt-text">{{ sessionPrompt }}</div>
+        </div>
+        <button class="prd-prompt-collapse" @click="promptCollapsed = !promptCollapsed" :title="promptCollapsed ? 'Show prompt' : 'Hide prompt'">
+          <span class="mdi" :class="promptCollapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'"></span>
         </button>
       </div>
       <div ref="terminalContainer" class="prd-terminal"></div>
@@ -78,6 +90,8 @@ export default {
     const defaultAgent = ref('');
     const existingPrd = ref('');
     const currentShellId = ref('');
+    const sessionPrompt = ref('');
+    const promptCollapsed = ref(false);
 
     async function checkExistingPrd() {
       try {
@@ -152,31 +166,34 @@ export default {
       const shellId = 'prd-agent-' + (++sessionCounter);
       currentShellId.value = shellId;
 
-      // Build agent command
+      // Build the prompt
       const prdPath = 'docs/Product Requirements Document/PRD.md';
-      const prompt = [
-        `You are helping the user create a Product Requirements Document (PRD).`,
-        `The PRD should be saved to "${prdPath}".`,
-        `Guide the user through defining:`,
-        `1. Product overview and vision`,
-        `2. Goals and objectives`,
-        `3. Target users / personas`,
-        `4. Key features and capabilities`,
-        `5. Success metrics and KPIs`,
-        `6. Constraints and assumptions`,
-        ``,
-        `Ask questions one section at a time. After gathering all input, write the complete PRD as a Markdown file.`,
-        `Start by asking the user to describe their product in a few sentences.`
-      ].join('\n');
+      let prompt;
+      if (existingPrd.value) {
+        prompt = `Read the existing PRD at "${prdPath}" and help me refine it. Suggest improvements section by section. After each suggestion, wait for my feedback before making changes. When I approve, update the file.`;
+      } else {
+        prompt = `Help me create a Product Requirements Document and save it to "${prdPath}". Guide me through defining: 1) Product overview and vision, 2) Goals and objectives, 3) Target users / personas, 4) Key features, 5) Success metrics, 6) Constraints. Ask me about one section at a time, then write the complete PRD file when we are done.`;
+      }
+      sessionPrompt.value = prompt;
+      promptCollapsed.value = false;
 
+      // Launch the agent CLI directly (no shell wrapper)
       const agentCmd = defaultAgent.value;
-      const args = agentCmd === 'claude'
-        ? ['--model', 'claude-sonnet-4-6', '-p', prompt]
-        : agentCmd === 'codex'
-          ? ['-p', prompt]
-          : ['-p', prompt];
+      let args;
+      if (agentCmd === 'claude') {
+        args = ['--verbose', '--dangerously-skip-permissions', prompt];
+      } else if (agentCmd === 'codex') {
+        args = [prompt];
+      } else {
+        args = [prompt];
+      }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
+
+      // Refit after container is visible
+      setTimeout(() => {
+        if (fitAddon) fitAddon.fit();
+      }, 300);
 
       // Wire terminal I/O
       term.onData((data) => {
@@ -237,6 +254,7 @@ export default {
 
     return {
       sessionActive, terminalContainer, defaultAgent, existingPrd,
+      sessionPrompt, promptCollapsed,
       viewExistingPrd, startSession, stopSession
     };
   }
@@ -271,6 +289,10 @@ export default {
 }
 
 /* Create / Existing cards */
+.prd-existing + .prd-create {
+  margin-top: 1rem;
+}
+
 .prd-create-card,
 .prd-existing-card {
   display: flex;
@@ -417,14 +439,80 @@ export default {
   flex: 1;
 }
 
+/* System prompt panel */
+.prd-system-prompt {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #0d1720;
+  border-bottom: 1px solid rgba(109, 212, 160, 0.1);
+  flex-shrink: 0;
+}
+
+.prd-prompt-icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.prd-prompt-icon .mdi {
+  font-size: 1.1rem;
+  color: #6dd4a0;
+}
+
+.prd-prompt-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.prd-prompt-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #6dd4a0;
+  margin-bottom: 0.3rem;
+}
+
+.prd-prompt-text {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 300;
+}
+
+.prd-prompt-collapse {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.prd-prompt-collapse:hover {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 .prd-terminal {
   flex: 1;
-  padding: 0.5rem;
   background: #0A1220;
+  position: relative;
 }
 
 .prd-terminal :deep(.xterm) {
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.5rem;
+}
+
+.prd-terminal :deep(.xterm-screen) {
+  height: 100% !important;
 }
 
 .prd-terminal :deep(.xterm-viewport) {

@@ -52,6 +52,7 @@
       <PlanClassDiagramEditorView v-else-if="activeView === 'plan-class-diagram-editor'" :file-path="planFilePath" :key="'cd-' + planFilePath" />
       <PlanERDiagramView v-else-if="activeView === 'plan-er-diagram'" :file-path="planFilePath" :key="'er-' + planFilePath" />
       <PlanArtifactDetailView v-else-if="activeView === 'plan-artifact-detail'" :file-path="planFilePath" :key="'ad-' + planFilePath" />
+      <PlanSkillsView v-else-if="activeView === 'plan-skills'" />
       <WorkspaceView v-show="activeView === 'workspace'" :visible="activeView === 'workspace'" />
 
     </div>
@@ -171,6 +172,7 @@ import PlanUseCaseDiagramEditorView from '@/views/UseCaseDiagramEditorView.vue';
 import PlanClassDiagramEditorView from '@/views/ClassDiagramEditorView.vue';
 import PlanERDiagramView from '@/views/ERDiagramView.vue';
 import PlanArtifactDetailView from '@/views/ArtifactDetailView.vue';
+import PlanSkillsView from '@/views/SkillsView.vue';
 
 export default {
   name: 'App',
@@ -209,7 +211,8 @@ export default {
     PlanUseCaseDiagramEditorView,
     PlanClassDiagramEditorView,
     PlanERDiagramView,
-    PlanArtifactDetailView
+    PlanArtifactDetailView,
+    PlanSkillsView
   },
   setup() {
     const boardStore = useBoardStore();

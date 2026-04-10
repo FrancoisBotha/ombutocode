@@ -553,7 +553,7 @@ export default {
           { view: 'plan-use-cases', label: 'Use Cases' },
           { view: 'plan-mockups', label: 'Mockups' },
           { view: 'plan-class-diagrams', label: 'Class Diagrams' },
-          { view: 'plan-er-diagram', label: 'Data Model', filePath: 'Data Model/Schema.ddl' },
+          { view: 'plan-data-model', label: 'Data Model' },
         ]
       },
     ];
@@ -1533,7 +1533,19 @@ export default {
 .board-list-bottom {
   flex-shrink: 0;
   margin-top: auto;
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.15rem;
+}
+
+.board-list-bottom .divider {
+  margin: 0.25rem 1rem;
+}
+
+.board-list-bottom .board-item {
+  padding: 0.3rem 1rem;
+}
+
+.board-list-bottom .auto-toggle-item {
+  padding: 0.3rem 1rem;
 }
 
 /* Auto toggle */
@@ -1542,7 +1554,7 @@ export default {
 }
 
 .auto-toggle-wrap {
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.15rem;
 }
 
 .auto-toggle-item {

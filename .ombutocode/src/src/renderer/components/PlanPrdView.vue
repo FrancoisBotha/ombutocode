@@ -1,14 +1,14 @@
 <template>
   <div class="plan-prd-view">
     <div class="prd-header" v-if="!sessionActive">
-      <h1>Product Requirements Document</h1>
-      <p class="prd-subtitle">Define the vision, goals, and requirements for your product</p>
+      <h1>{{ docTitle }}</h1>
+      <p class="prd-subtitle">{{ docSubtitle }}</p>
 
       <div class="prd-create">
         <div class="prd-create-card">
           <span class="mdi mdi-file-document-plus-outline prd-create-icon"></span>
           <div>
-            <h3>Create a new PRD</h3>
+            <h3>Create a new {{ docShortName }}</h3>
             <p>
               Launch an interactive AI session that guides you through defining your product's
               vision, goals, target users, features, and success metrics.
@@ -22,19 +22,19 @@
             </p>
           </div>
           <button class="prd-btn prd-btn-primary" :disabled="!defaultAgent" @click="confirmCreate">
-            <span class="mdi mdi-robot-outline"></span> Create PRD
+            <span class="mdi mdi-robot-outline"></span> Create {{ docShortName }}
           </button>
         </div>
       </div>
 
-      <div class="prd-existing" v-if="existingPrd">
+      <div class="prd-existing" v-if="existingDoc">
         <div class="prd-existing-card">
           <span class="mdi mdi-file-document-check-outline prd-existing-icon"></span>
           <div class="prd-existing-info">
-            <strong>PRD exists</strong>
-            <span>{{ existingPrd }}</span>
+            <strong>{{ docShortName }} exists</strong>
+            <span>{{ existingDoc }}</span>
           </div>
-          <button class="prd-btn prd-btn-secondary" @click="viewExistingPrd">
+          <button class="prd-btn prd-btn-secondary" @click="viewExistingDoc">
             <span class="mdi mdi-eye-outline"></span> View
           </button>
           <button class="prd-btn prd-btn-primary" @click="startSession('refine')">
@@ -47,7 +47,7 @@
     <div class="prd-session-wrap" v-if="sessionActive">
       <div class="prd-session-header">
         <span class="mdi mdi-robot-outline"></span>
-        <span>AI-Guided PRD {{ sessionMode === 'refine' ? 'Refinement' : 'Creation' }}</span>
+        <span>AI-Guided {{ docShortName }} {{ sessionMode === 'refine' ? 'Refinement' : 'Creation' }}</span>
         <span class="prd-terminal-agent">{{ defaultAgent }}</span>
         <div class="prd-terminal-spacer"></div>
         <button class="prd-btn prd-btn-sm prd-btn-secondary" @click="stopSession">
@@ -82,6 +82,24 @@
         </div>
       </div>
     </div>
+    <!-- Overwrite confirmation modal -->
+    <Teleport to="body">
+      <div v-if="showOverwriteConfirm" class="prd-confirm-overlay" @click.self="showOverwriteConfirm = false">
+        <div class="prd-confirm-dialog">
+          <div class="prd-confirm-icon">
+            <span class="mdi mdi-alert-outline"></span>
+          </div>
+          <h3>Overwrite existing {{ docShortName }}?</h3>
+          <p>A {{ docShortName }} already exists. Creating a new one will overwrite the current document. This action cannot be undone.</p>
+          <div class="prd-confirm-actions">
+            <button class="prd-btn prd-btn-secondary" @click="showOverwriteConfirm = false">Cancel</button>
+            <button class="prd-btn prd-btn-danger" @click="onConfirmOverwrite">
+              <span class="mdi mdi-file-replace-outline"></span> Overwrite &amp; Create
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -99,11 +117,22 @@ let sessionCounter = 0;
 export default {
   name: 'PlanPrdView',
   emits: ['change-view'],
+  props: {
+    docTitle: { type: String, default: 'Product Requirements Document' },
+    docSubtitle: { type: String, default: 'Define the vision, goals, and requirements for your product' },
+    docFolder: { type: String, default: 'Product Requirements Document' },
+    docFileName: { type: String, default: 'PRD.md' },
+    docShortName: { type: String, default: 'PRD' },
+    skillMatch: { type: String, default: 'prd' },
+    createInstruction: { type: String, default: '' },
+    refineInstruction: { type: String, default: '' },
+    contextFiles: { type: Array, default: () => [] },
+  },
   setup(props, { emit }) {
     const sessionActive = ref(false);
     const terminalContainer = ref(null);
     const defaultAgent = ref('');
-    const existingPrd = ref('');
+    const existingDoc = ref('');
     const currentShellId = ref('');
     const sessionPrompt = ref('');
     const promptCollapsed = ref(false);
@@ -152,9 +181,10 @@ export default {
       }
     }
 
-    function autoSelectPrdSkill() {
+    function autoSelectSkill() {
+      const match = props.skillMatch.toLowerCase();
       const prdSkill = availableSkills.value.find(s =>
-        s.name.toLowerCase().includes('prd') || s.displayName.toLowerCase().includes('prd')
+        s.name.toLowerCase().includes(match) || s.displayName.toLowerCase().includes(match)
       );
       if (prdSkill) {
         selectedSkillPath.value = prdSkill.path;
@@ -183,21 +213,21 @@ export default {
       document.addEventListener('mouseup', onUp);
     }
 
-    async function checkExistingPrd() {
+    async function checkExistingDoc() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
         if (tree && tree.children) {
-          const prdFolder = tree.children.find(c => c.name === 'Product Requirements Document');
-          if (prdFolder && prdFolder.children) {
-            const mdFile = prdFolder.children.find(f => f.type === 'file' && f.name.endsWith('.md'));
+          const folder = tree.children.find(c => c.name === props.docFolder);
+          if (folder && folder.children) {
+            const mdFile = folder.children.find(f => f.type === 'file' && f.name.endsWith('.md'));
             if (mdFile) {
-              existingPrd.value = mdFile.path;
+              existingDoc.value = mdFile.path;
               return;
             }
           }
         }
       } catch (_) {}
-      existingPrd.value = '';
+      existingDoc.value = '';
     }
 
     async function loadDefaultAgent() {
@@ -220,15 +250,23 @@ export default {
       } catch (_) {}
     }
 
+    const showOverwriteConfirm = ref(false);
+
     function confirmCreate() {
-      if (existingPrd.value) {
-        if (!confirm('A PRD already exists. Creating a new one will overwrite it. Do you want to proceed?')) return;
+      if (existingDoc.value) {
+        showOverwriteConfirm.value = true;
+      } else {
+        startSession('create');
       }
+    }
+
+    function onConfirmOverwrite() {
+      showOverwriteConfirm.value = false;
       startSession('create');
     }
 
-    function viewExistingPrd() {
-      window.__planFilePreviewPath = existingPrd.value;
+    function viewExistingDoc() {
+      window.__planFilePreviewPath = existingDoc.value;
       emit('change-view', 'plan-file-preview');
     }
 
@@ -266,7 +304,7 @@ export default {
       currentShellId.value = shellId;
 
       // Build the prompt — use selected skill if available, otherwise default
-      const prdPath = 'docs/Product Requirements Document/PRD.md';
+      const docPath = `docs/${props.docFolder}/${props.docFileName}`;
       let prompt;
 
       // Strip frontmatter from skill content for the prompt
@@ -274,8 +312,16 @@ export default {
         ? selectedSkillContent.value.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '').trim()
         : '';
 
-      const createInstruction = `Help me create a new Product Requirements Document and save it to "${prdPath}". Guide me through defining: 1) Product overview and vision, 2) Goals and objectives, 3) Target users / personas, 4) Key features, 5) Success metrics, 6) Constraints. Ask me about one section at a time, then write the complete PRD file when we are done.`;
-      const refineInstruction = `Read the existing PRD at "${prdPath}" and help me refine it. Suggest improvements section by section. After each suggestion, wait for my feedback before making changes. When I approve, update the file.`;
+      let contextNote = '';
+      if (props.contextFiles.length > 0) {
+        const files = props.contextFiles.map(f => `"${f}"`).join(', ');
+        contextNote = ` For context, also read these related documents: ${files}.`;
+      }
+
+      const defaultCreate = `Help me create a new ${props.docTitle} and save it to "${docPath}".${contextNote} Guide me through each section one at a time, then write the complete document when we are done.`;
+      const defaultRefine = `Read the existing ${props.docTitle} at "${docPath}" and help me refine it.${contextNote} Suggest improvements section by section. After each suggestion, wait for my feedback before making changes. When I approve, update the file.`;
+      const createInstruction = props.createInstruction || defaultCreate;
+      const refineInstruction = props.refineInstruction || defaultRefine;
       const instruction = isRefine ? refineInstruction : createInstruction;
 
       if (skillText) {
@@ -338,7 +384,7 @@ export default {
       }
       cleanup();
       sessionActive.value = false;
-      checkExistingPrd();
+      checkExistingDoc();
     }
 
     function cleanup() {
@@ -350,10 +396,10 @@ export default {
     }
 
     onMounted(async () => {
-      checkExistingPrd();
+      checkExistingDoc();
       loadDefaultAgent();
       await loadAvailableSkills();
-      autoSelectPrdSkill();
+      autoSelectSkill();
     });
 
     onBeforeUnmount(() => {
@@ -364,11 +410,12 @@ export default {
     });
 
     return {
-      sessionActive, terminalContainer, defaultAgent, existingPrd,
+      sessionActive, terminalContainer, defaultAgent, existingDoc,
       sessionPrompt, promptCollapsed, sessionMode,
       availableSkills, selectedSkillPath, selectedSkillContent, renderedSkillHtml,
       skillPanelWidth, loadSelectedSkill, startResize,
-      confirmCreate, viewExistingPrd, startSession, stopSession
+      confirmCreate, showOverwriteConfirm, onConfirmOverwrite,
+      viewExistingDoc, startSession, stopSession
     };
   }
 };
@@ -711,5 +758,63 @@ export default {
 
 .prd-terminal :deep(.xterm-viewport) {
   overflow-y: auto !important;
+}
+
+/* Overwrite confirmation modal */
+.prd-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.prd-confirm-dialog {
+  background: #1e2535;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 400px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.prd-confirm-icon {
+  margin-bottom: 0.75rem;
+}
+
+.prd-confirm-icon .mdi {
+  font-size: 2.5rem;
+  color: #e5a830;
+}
+
+.prd-confirm-dialog h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.prd-confirm-dialog p {
+  margin: 0 0 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.prd-confirm-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.prd-btn-danger {
+  background: #e06060;
+  color: #fff;
+}
+
+.prd-btn-danger:hover {
+  background: #c94040;
 }
 </style>

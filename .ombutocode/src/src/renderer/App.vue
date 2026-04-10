@@ -33,6 +33,7 @@
 
       <PlanDashboardView v-else-if="activeView === 'plan-dashboard'" />
       <PlanPrdView v-else-if="activeView === 'plan-prd'" @change-view="handleChangeView" />
+      <PlanArchitectureView v-else-if="activeView === 'plan-architecture'" @change-view="handleChangeView" />
       <PlanArtifactsView v-else-if="activeView === 'plan-artifacts'" />
       <PlanTreeView v-else-if="activeView === 'plan-tree'" />
       <PlanMockupsView v-else-if="activeView === 'plan-mockups'" />
@@ -153,6 +154,7 @@ import StatusBar from '@/components/StatusBar.vue';
 import HelpView from '@/components/HelpView.vue';
 import PlanDashboardView from '@/views/DashboardView.vue';
 import PlanPrdView from '@/components/PlanPrdView.vue';
+import PlanArchitectureView from '@/components/PlanArchitectureView.vue';
 import PlanArtifactsView from '@/views/ArtifactListView.vue';
 import PlanTreeView from '@/views/TreeView.vue';
 import PlanMockupsView from '@/views/MockupsView.vue';
@@ -193,6 +195,7 @@ export default {
     HelpView,
     PlanDashboardView,
     PlanPrdView,
+    PlanArchitectureView,
     PlanArtifactsView,
     PlanTreeView,
     PlanMockupsView,

@@ -27,6 +27,14 @@
               <span class="mdi mdi-pencil-outline"></span> Refine with AI
             </button>
           </template>
+          <template v-if="isArchitecture && !viewingHistorical && !isEditMode">
+            <button class="prd-ai-btn" type="button" @click="createNewArch">
+              <span class="mdi mdi-robot-outline"></span> Create Architecture
+            </button>
+            <button class="prd-ai-btn" type="button" @click="refineArchWithAi">
+              <span class="mdi mdi-pencil-outline"></span> Refine with AI
+            </button>
+          </template>
           <template v-if="!viewingHistorical && !isEditMode">
             <button class="edit-btn" type="button" @click="onEdit">Edit</button>
           </template>
@@ -164,6 +172,7 @@ export default {
     const isImage = computed(() => IMAGE_EXTS.test(activePath.value));
     const isPrd = computed(() => activePath.value.startsWith('Product Requirements Document/') && activePath.value.endsWith('.md'));
     const isSkill = computed(() => activePath.value.startsWith('Skills/') && activePath.value.endsWith('.md'));
+    const isArchitecture = computed(() => activePath.value.startsWith('Architecture/') && activePath.value.endsWith('.md'));
 
     function refinePrdWithAi() {
       if (window.__planNavigate) window.__planNavigate('plan-prd');
@@ -171,6 +180,14 @@ export default {
 
     function createNewPrd() {
       if (window.__planNavigate) window.__planNavigate('plan-prd');
+    }
+
+    function refineArchWithAi() {
+      if (window.__planNavigate) window.__planNavigate('plan-architecture');
+    }
+
+    function createNewArch() {
+      if (window.__planNavigate) window.__planNavigate('plan-architecture');
     }
 
     function backToSkills() {
@@ -468,9 +485,12 @@ export default {
       isEditMode,
       isImage,
       isPrd,
+      isArchitecture,
       isSkill,
       refinePrdWithAi,
       createNewPrd,
+      refineArchWithAi,
+      createNewArch,
       backToSkills,
       isVersionsPanelOpen,
       loading,

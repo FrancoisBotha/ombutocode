@@ -31,10 +31,10 @@
 
     <!-- ===== PLAN MODE (expanded) ===== -->
     <div class="board-list-content plan-mode-content" v-if="!isCollapsed && sidebarMode === 'plan'">
-      <!-- Plan nav icons bar -->
+      <!-- Plan nav icon bar -->
       <div class="plan-nav-icons">
         <button
-          v-for="item in planNavItems"
+          v-for="item in planNavIconItems"
           :key="item.view"
           class="plan-nav-btn"
           :class="{ 'is-active': activeView === item.view }"
@@ -53,6 +53,20 @@
         <button class="plan-nav-btn" title="Refresh file tree" @click="loadFileTree">
           <span class="mdi mdi-refresh"></span>
         </button>
+      </div>
+
+      <!-- Plan text menu -->
+      <div class="plan-text-menu">
+        <div v-for="group in planNavGroups" :key="group.label" class="plan-text-group">
+          <div class="plan-text-group-label">{{ group.label }}</div>
+          <a
+            v-for="item in group.items"
+            :key="item.view"
+            class="plan-text-link"
+            :class="{ 'is-active': activeView === item.view }"
+            @click="onTextMenuClick(item)"
+          >{{ item.label }}</a>
+        </div>
       </div>
 
       <!-- Filesystem tree -->
@@ -496,9 +510,21 @@ export default {
     ];
 
     // ── Plan mode: nav items and file tree ──
+    // Icons shown in the top toolbar
+    const planNavIconItems = [
+      { view: 'plan-dashboard', label: 'Dashboard', icon: 'mdi-view-dashboard' },
+      { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
+      { view: 'plan-prd', label: 'PRD', icon: 'mdi-file-document-outline' },
+      { view: 'plan-mockups', label: 'Mockups', icon: 'mdi-image-multiple' },
+      { view: 'plan-skills', label: 'Skills', icon: 'mdi-school-outline' },
+      { view: 'plan-scratchpad', label: 'Scratch Pad', icon: 'mdi-note-text' },
+    ];
+
+    // Full list for collapsed sidebar view
     const planNavItems = [
       { view: 'plan-dashboard', label: 'Dashboard', icon: 'mdi-view-dashboard' },
       { view: 'plan-prd', label: 'PRD', icon: 'mdi-file-document-outline' },
+      { view: 'plan-architecture', label: 'Architecture', icon: 'mdi-layers-outline' },
       { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
       { view: 'plan-use-cases', label: 'Use Cases', icon: 'mdi-text-box-multiple-outline' },
       { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },
@@ -508,6 +534,30 @@ export default {
       { view: 'plan-scratchpad', label: 'Scratch Pad', icon: 'mdi-note-text' },
     ];
 
+    const planNavGroups = [
+      {
+        label: 'Core',
+        items: [
+          { view: 'plan-prd', label: 'PRD' },
+          { view: 'plan-architecture', label: 'Architecture' },
+          { view: 'plan-structure', label: 'Epics' },
+          { view: 'plan-dashboard', label: 'Ticket Generation' },
+        ]
+      },
+      {
+        label: 'Requirements & Design',
+        items: [
+          { view: 'plan-functional-requirements', label: 'Functional Requirements' },
+          { view: 'plan-non-functional-requirements', label: 'Non-Functional Requirements' },
+          { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams' },
+          { view: 'plan-use-cases', label: 'Use Cases' },
+          { view: 'plan-mockups', label: 'Mockups' },
+          { view: 'plan-class-diagrams', label: 'Class Diagrams' },
+          { view: 'plan-er-diagram', label: 'Data Model', filePath: 'Data Model/Schema.ddl' },
+        ]
+      },
+    ];
+
     // Sort mode for Plan file tree
     const settingsStore = useSettingsStore();
     const planSortMode = computed(() => settingsStore.treeSortMode);
@@ -515,6 +565,7 @@ export default {
     const HIERARCHICAL_ORDER = [
       'product requirements document',
       'architecture',
+      'data model',
       'structure',
       'use case diagrams',
       'class diagrams',
@@ -523,7 +574,6 @@ export default {
       'epics',
       'use cases',
       'mockups',
-      'data model',
       'references',
       'skills',
       'scratchpad',
@@ -682,6 +732,13 @@ export default {
       } catch (err) { console.error('Failed to move file:', err); }
       planDragFilePath = null;
     };
+
+    function onTextMenuClick(item) {
+      if (item.filePath) {
+        window.__planFilePreviewPath = item.filePath;
+      }
+      emit('change-view', item.view);
+    }
 
     const onDocClickPlan = () => { closePlanContextMenu(); };
     
@@ -1044,6 +1101,8 @@ export default {
       aboutBuildVersion,
       aboutLibraries,
       planNavItems,
+      planNavIconItems,
+      planNavGroups,
       planSortMode,
       togglePlanSortMode,
       planFlatNodes,
@@ -1062,7 +1121,8 @@ export default {
       createPlanSubfolder,
       onPlanDragStart,
       onPlanDragOver,
-      onPlanDrop
+      onPlanDrop,
+      onTextMenuClick
     };
   }
 };
@@ -1628,9 +1688,52 @@ export default {
   align-items: center;
   gap: 1px;
   padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   flex-wrap: wrap;
   flex-shrink: 0;
+}
+
+/* Text menu below icons */
+.plan-text-menu {
+  padding: 0.35rem 0.5rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.plan-text-group {
+  margin-bottom: 0.35rem;
+}
+
+.plan-text-group:last-child {
+  margin-bottom: 0;
+}
+
+.plan-text-group-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.25);
+  margin-bottom: 0.1rem;
+}
+
+.plan-text-link {
+  display: block;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: color 0.12s;
+  text-decoration: none;
+  padding: 0.1rem 0 0.1rem 0.75rem;
+  font-weight: 300;
+}
+
+.plan-text-link:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.plan-text-link.is-active {
+  color: #6dd4a0;
+  font-weight: 400;
 }
 
 .plan-nav-btn {

@@ -161,8 +161,14 @@
             requirements interactively. <em>See "Start with the PRD" below.</em>
           </li>
           <li>
-            <strong>Flesh out requirements</strong> — Define your project structure, add use cases,
-            functional requirements, class diagrams, and other planning artifacts.
+            <strong>Define your architecture</strong> — Go to <strong>Plan > Architecture</strong>
+            and click <strong>Create Architecture</strong>. The AI reads your PRD for context and
+            guides you through technology choices, components, and design decisions.
+            <em>See "Define your Architecture" below.</em>
+          </li>
+          <li>
+            <strong>Flesh out requirements</strong> — Add use cases, functional requirements,
+            class diagrams, and other planning artifacts using the Plan sidebar tools.
           </li>
           <li>
             <strong>Switch to Build mode</strong> — Create backlog tickets, assign them to agents,
@@ -232,6 +238,68 @@
           <p>
             <strong>Tip:</strong> You can also access "Create PRD" and "Refine with AI" buttons
             directly from the file preview when viewing a PRD document.
+          </p>
+        </div>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-layers-outline"></span> Define your Architecture</h2>
+        <p>
+          Once your PRD is in place, the next step is to define how the system will be built.
+          The Architecture document captures your technology choices, system components,
+          data design, security model, and deployment strategy.
+        </p>
+
+        <h3>Why architecture matters</h3>
+        <p>
+          A clear architecture document ensures that everyone — including AI coding agents —
+          understands the technical boundaries and conventions of the project. When agents
+          generate code, they reference the architecture to choose the right patterns, frameworks,
+          and integration approaches.
+        </p>
+
+        <h3>Creating an Architecture document with AI</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Go to Plan > Architecture</strong> — click the Architecture icon
+            (<span class="mdi mdi-layers-outline" style="font-size: 1em;"></span>) in the Plan sidebar nav bar.
+          </li>
+          <li>
+            <strong>Select a skill</strong> — the <em>Architecture Guide</em> skill is auto-selected,
+            providing structured guidance on system overview, tech stack, components, APIs,
+            security, infrastructure, and scalability.
+          </li>
+          <li>
+            <strong>Click "Create Architecture"</strong> — this launches your default coding agent.
+            The agent automatically reads your PRD for context, so it can tailor architectural
+            recommendations to your product's requirements.
+          </li>
+          <li>
+            <strong>Walk through the sections</strong> — the AI guides you through architecture
+            style, technology stack, component design, data architecture, security, deployment,
+            and more. Answer its questions and it builds the document incrementally.
+          </li>
+          <li>
+            <strong>Review and refine</strong> — the document is saved to
+            <code>docs/Architecture/Architecture.md</code>. Use "Refine with AI" later to
+            revisit and improve specific sections as your understanding evolves.
+          </li>
+        </ol>
+
+        <h3>PRD as context</h3>
+        <p>
+          The Architecture page automatically passes your PRD as a context file to the AI agent.
+          This means the agent understands your product goals, features, and constraints before
+          making any architectural recommendations — resulting in a design that is aligned with
+          what you are actually building.
+        </p>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> Create your PRD first, then Architecture. Each subsequent
+            document builds on the previous ones. The AI reads related documents automatically,
+            so your architecture will be grounded in your product requirements.
           </p>
         </div>
       </section>

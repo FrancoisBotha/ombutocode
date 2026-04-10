@@ -16,6 +16,14 @@
           <h1 class="file-name">{{ fileName }}</h1>
         </div>
         <div v-if="!isImage" class="title-actions">
+          <button v-if="isEpic && !viewingHistorical && !isEditMode" class="back-btn" type="button" @click="backToEpics">
+            <span class="mdi mdi-arrow-left"></span> Epics
+          </button>
+          <template v-if="isEpic && !viewingHistorical && !isEditMode">
+            <button class="prd-ai-btn" type="button" @click="refineEpicWithAi">
+              <span class="mdi mdi-pencil-outline"></span> Refine with AI
+            </button>
+          </template>
           <button v-if="isSkill && !viewingHistorical && !isEditMode" class="back-btn" type="button" @click="backToSkills">
             <span class="mdi mdi-arrow-left"></span> Skills
           </button>
@@ -173,6 +181,7 @@ export default {
     const isPrd = computed(() => activePath.value.startsWith('Product Requirements Document/') && activePath.value.endsWith('.md'));
     const isSkill = computed(() => activePath.value.startsWith('Skills/') && activePath.value.endsWith('.md'));
     const isArchitecture = computed(() => activePath.value.startsWith('Architecture/') && activePath.value.endsWith('.md'));
+    const isEpic = computed(() => activePath.value.startsWith('Epics/') && activePath.value.endsWith('.md'));
 
     function refinePrdWithAi() {
       if (window.__planNavigate) window.__planNavigate('plan-prd');
@@ -192,6 +201,14 @@ export default {
 
     function backToSkills() {
       if (window.__planNavigate) window.__planNavigate('plan-skills');
+    }
+
+    function backToEpics() {
+      if (window.__planNavigate) window.__planNavigate('plan-epics');
+    }
+
+    function refineEpicWithAi() {
+      if (window.__planNavigate) window.__planNavigate('plan-epics');
     }
 
     const normalizedPath = computed(() => {
@@ -487,6 +504,9 @@ export default {
       isPrd,
       isArchitecture,
       isSkill,
+      isEpic,
+      backToEpics,
+      refineEpicWithAi,
       refinePrdWithAi,
       createNewPrd,
       refineArchWithAi,

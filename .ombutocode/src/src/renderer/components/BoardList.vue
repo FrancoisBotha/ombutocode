@@ -540,7 +540,7 @@ export default {
         items: [
           { view: 'plan-prd', label: 'PRD' },
           { view: 'plan-architecture', label: 'Architecture' },
-          { view: 'plan-structure', label: 'Epics' },
+          { view: 'plan-epics', label: 'Epics' },
           { view: 'plan-dashboard', label: 'Ticket Generation' },
         ]
       },

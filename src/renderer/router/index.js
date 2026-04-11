@@ -5,6 +5,7 @@ import BackupLogsView from '../views/BackupLogsView.vue'
 const routes = [
   { path: '/', redirect: '/jobs' },
   { path: '/jobs', component: BackupJobsView },
+  { path: '/jobs/new', component: BackupJobsView },
   { path: '/logs', component: BackupLogsView }
 ]
 

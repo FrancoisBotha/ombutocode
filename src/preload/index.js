@@ -2,7 +2,10 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('dropsync', {
   ping: () => 'pong',
-  getAppVersion: () => ipcRenderer.invoke('dropsync:getAppVersion')
+  getAppVersion: () => ipcRenderer.invoke('dropsync:getAppVersion'),
+  jobs: {
+    listWithLatestRun: () => ipcRenderer.invoke('jobs:listWithLatestRun')
+  }
 })
 
 contextBridge.exposeInMainWorld('api', {

@@ -13,34 +13,41 @@
       <div class="epics-create-card">
         <span class="mdi mdi-flag-outline epics-create-icon"></span>
         <div class="epics-create-info">
-          <h3>{{ epics.length ? 'Create more Epics' : 'Create Initial Epics' }}</h3>
+          <h3>{{ epics.length ? 'Create Epic' : 'Create Initial Epics' }}</h3>
           <p>
             Launch an AI session to analyse your PRD and break it down into epics —
             each representing a deliverable milestone with clear scope and acceptance criteria.
           </p>
 
-          <div class="epics-context-field">
-            <label class="epics-context-label">PRD Document</label>
-            <select class="epics-context-select" v-model="selectedPrd">
-              <option value="">-- None --</option>
-              <option v-for="f in prdFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
-            </select>
-          </div>
-
-          <div class="epics-context-field">
-            <label class="epics-context-label">Architecture Document</label>
-            <select class="epics-context-select" v-model="selectedArch">
-              <option value="">-- None --</option>
-              <option v-for="f in archFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
-            </select>
-          </div>
-
-          <div class="epics-context-field">
-            <label class="epics-context-label">Data Model</label>
-            <select class="epics-context-select" v-model="selectedDataModel">
-              <option value="">-- None --</option>
-              <option v-for="f in dataModelFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
-            </select>
+          <div class="epics-context-grid">
+            <div class="epics-context-field">
+              <label class="epics-context-label">PRD Document</label>
+              <select class="epics-context-select" v-model="selectedPrd">
+                <option value="">-- None --</option>
+                <option v-for="f in prdFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+              </select>
+            </div>
+            <div class="epics-context-field">
+              <label class="epics-context-label">Data Model</label>
+              <select class="epics-context-select" v-model="selectedDataModel">
+                <option value="">-- None --</option>
+                <option v-for="f in dataModelFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+              </select>
+            </div>
+            <div class="epics-context-field">
+              <label class="epics-context-label">Architecture Document</label>
+              <select class="epics-context-select" v-model="selectedArch">
+                <option value="">-- None --</option>
+                <option v-for="f in archFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+              </select>
+            </div>
+            <div class="epics-context-field">
+              <label class="epics-context-label">Style Guide</label>
+              <select class="epics-context-select" v-model="selectedStyleGuide">
+                <option value="">-- None --</option>
+                <option v-for="f in styleGuideFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+              </select>
+            </div>
           </div>
 
           <p class="epics-agent-info" v-if="defaultAgent">
@@ -52,7 +59,7 @@
           </p>
         </div>
         <button class="epics-btn epics-btn-primary" :disabled="!defaultAgent || !selectedPrd" @click="startSession">
-          <span class="mdi mdi-robot-outline"></span> {{ epics.length ? 'Create Epics' : 'Create Initial Epics' }}
+          <span class="mdi mdi-robot-outline"></span> {{ epics.length ? 'Create Epic' : 'Create Initial Epics' }}
         </button>
       </div>
 
@@ -90,7 +97,7 @@
           <tbody>
             <tr v-for="epic in epics" :key="epic.path" @click="openEpic(epic)" class="epics-row">
               <td class="col-name">{{ epic.displayName }}</td>
-              <td class="col-status"><span class="epic-status-badge" :class="'status-' + (epic.status || 'draft').toLowerCase()">{{ epic.status || 'draft' }}</span></td>
+              <td class="col-status"><span class="epic-status-badge" :class="'status-' + (epic.status || 'NEW').toLowerCase()">{{ epic.status || 'NEW' }}</span></td>
               <td class="col-path">{{ epic.path }}</td>
               <td class="col-actions">
                 <button class="epics-delete-btn" @click.stop="deleteEpic(epic)" title="Delete epic">
@@ -132,6 +139,10 @@
               <span class="mdi mdi-database-outline epics-ctx-icon"></span>
               <span>{{ selectedDataModel }}</span>
             </div>
+            <div class="epics-ctx-item" v-if="selectedStyleGuide">
+              <span class="mdi mdi-palette-outline epics-ctx-icon"></span>
+              <span>{{ selectedStyleGuide }}</span>
+            </div>
             <div class="epics-prompt-section">
               <div class="epics-panel-label" style="margin-top: 0.75rem;">System Prompt</div>
               <p class="epics-prompt-text">{{ sessionPrompt }}</p>
@@ -157,17 +168,30 @@ let shellCleanup = null;
 let exitCleanup = null;
 let sessionCounter = 0;
 
-const EPIC_TEMPLATE = `---
-status: draft
+const EPIC_TEMPLATE = `# Epic: {NAME}
+
+Status: NEW
+Owner: human
+Created: ${new Date().toISOString().split('T')[0]}
+Last Updated: ${new Date().toISOString().split('T')[0]}
+
 ---
 
-# {NAME}
-
-## Overview
+## 1. Purpose
 
 _Describe what this epic delivers and why it matters._
 
-## Scope
+---
+
+## 2. User Story
+
+As a [role],
+I want [capability],
+So that [benefit].
+
+---
+
+## 3. Scope
 
 ### In Scope
 -
@@ -175,15 +199,74 @@ _Describe what this epic delivers and why it matters._
 ### Out of Scope
 -
 
-## Acceptance Criteria
+---
+
+## 4. Functional Requirements
+
+1.
+
+---
+
+## 5. Non-Functional Requirements
+
+-
+
+---
+
+## 6. UI/UX Notes
+
+_Describe key UI elements, layouts, or interactions._
+
+---
+
+## 7. Data Model Impact
+
+_Describe any new entities, field changes, or migrations._
+
+---
+
+## 8. Integration Impact
+
+_List affected systems, APIs, or services._
+
+---
+
+## 9. Acceptance Criteria
+
+Epic is complete when:
+
 - [ ]
 - [ ]
 
-## Dependencies
+---
+
+## 10. Risks & Unknowns
+
 -
 
-## Notes
+---
+
+## 11. Dependencies
+
 -
+
+---
+
+## 12. References
+
+- prd: docs/Product Requirements Document/PRD.md
+- architecture: docs/Architecture/Architecture.md
+
+---
+
+## 13. Implementation Notes (For Planning Agent)
+
+Suggested ticket breakdown:
+
+1.
+
+Expected complexity:
+Estimated total effort:
 `;
 
 export default {
@@ -204,6 +287,8 @@ export default {
     const selectedPrd = ref('');
     const selectedArch = ref('');
     const selectedDataModel = ref('');
+    const styleGuideFiles = ref([]);
+    const selectedStyleGuide = ref('');
 
     const showNewInput = ref(false);
     const newName = ref('');
@@ -218,7 +303,7 @@ export default {
             const files = folder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
             const loaded = [];
             for (const f of files) {
-              let status = 'draft';
+              let status = 'NEW';
               try {
                 const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
                 // Check frontmatter
@@ -227,10 +312,11 @@ export default {
                   const statusMatch = fmMatch[1].match(/^status:\s*(.+)/m);
                   if (statusMatch) status = statusMatch[1].trim();
                 }
-                // Also check "Status:" line outside frontmatter
-                if (status === 'draft') {
-                  const statusLine = content.match(/^Status:\s*(.+)/m);
-                  if (statusLine) status = statusLine[1].trim();
+                // Also check "Status:" or "**Status:**" line in markdown body
+                const bodyStatus = content.match(/^\*?\*?Status:?\*?\*?\s*(.+)/m);
+                if (bodyStatus) {
+                  const parsed = bodyStatus[1].replace(/\*\*/g, '').trim();
+                  if (parsed) status = parsed;
                 }
               } catch (_) {}
               loaded.push({
@@ -268,6 +354,12 @@ export default {
           if (dmFolder && dmFolder.children) {
             dataModelFiles.value = dmFolder.children.filter(f => f.type === 'file');
             if (dataModelFiles.value.length === 1) selectedDataModel.value = dataModelFiles.value[0].path;
+          }
+
+          const sgFolder = tree.children.find(c => c.name === 'Style Guide');
+          if (sgFolder && sgFolder.children) {
+            styleGuideFiles.value = sgFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+            if (styleGuideFiles.value.length === 1) selectedStyleGuide.value = styleGuideFiles.value[0].path;
           }
         }
       } catch (_) {}
@@ -359,25 +451,47 @@ export default {
       const contextParts = [`Read the PRD at "docs/${selectedPrd.value}"`];
       if (selectedArch.value) contextParts.push(`the Architecture document at "docs/${selectedArch.value}"`);
       if (selectedDataModel.value) contextParts.push(`the Data Model at "docs/${selectedDataModel.value}"`);
+      if (selectedStyleGuide.value) contextParts.push(`the Style Guide at "docs/${selectedStyleGuide.value}"`);
 
       const prompt = `${contextParts.join(', and ')}. Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the project conventions and ticket workflow.
 
 Break the requirements down into epics. Each epic represents a deliverable milestone that can be independently developed and verified. For each epic:
 
 1. Create a separate Markdown file in "docs/Epics/" with the naming convention "epic_EPIC_NAME.md"
-2. Each epic file must contain:
-   - A title (# Epic: Name)
-   - Status: NEW
-   - Overview — what this epic delivers and why
-   - Scope — what is in scope and out of scope
-   - Functional Requirements — specific requirements this epic addresses
-   - Acceptance Criteria — a checklist of verifiable criteria
-   - Dependencies — other epics or external dependencies
-   - Tickets — a list of implementation tickets (to be created later)
+2. Each epic file MUST follow this structure with numbered sections:
+   - Title: # Epic: Name
+   - Status: NEW, Owner: human, Created/Last Updated dates
+   - §1. Purpose — what this epic delivers and why
+   - §2. User Story — As a [role], I want [capability], So that [benefit]
+   - §3. Scope — In Scope / Out of Scope lists
+   - §4. Functional Requirements — numbered specific requirements
+   - §5. Non-Functional Requirements — performance, security, etc.
+   - §6. UI/UX Notes — key UI elements, layouts, interactions
+   - §7. Data Model Impact — entities, fields, migrations
+   - §8. Integration Impact — affected systems, APIs, services
+   - §9. Acceptance Criteria — checklist with [ ] markers
+   - §10. Risks & Unknowns
+   - §11. Dependencies — other epics or external dependencies
+   - §12. References — linking back to project documents:
+     - prd: docs/Product Requirements Document/PRD.md
+     - architecture: docs/Architecture/Architecture.md (if exists)
+     - data_model: docs/Data Model/Schema.ddl (if exists)
+     - style_guide: docs/Style Guide/StyleGuide.md (if exists)
+   - §13. Implementation Notes — suggested ticket breakdown, complexity estimate
 
 3. Epics should be sized so that each can be broken into 3-8 development tickets
 4. Follow the conventions in the engineering guide for naming and structure
 5. Epic statuses follow: NEW → TICKETS → BUILDING → DONE
+
+6. IMPORTANT — Functional and Non-Functional Requirements cross-referencing:
+   - When an epic contains functional requirements, add each one as a row in "docs/Functional Requirements/FunctionalRequirements.md"
+   - Use the table format: | ID | Sub-System | Description | Status | Epic |
+   - The Epic column should reference the epic file (e.g. epic_USER_AUTH)
+   - Assign sequential FR IDs (FR-001, FR-002, etc.) — continue from existing IDs if the file already has entries
+   - Similarly, when an epic contains non-functional requirements, add them to "docs/Non-Functional Requirements/NonFunctionalRequirements.md"
+   - Use the same table format with NFR IDs (NFR-001, NFR-002, etc.)
+   - Read both files first to check existing entries and avoid duplicates
+   - Each requirement in the epic should include its FR/NFR ID for traceability
 
 Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
 
@@ -463,7 +577,7 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 
     return {
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
-      epics, prdFiles, archFiles, dataModelFiles, selectedPrd, selectedArch, selectedDataModel,
+      epics, prdFiles, archFiles, dataModelFiles, styleGuideFiles, selectedPrd, selectedArch, selectedDataModel, selectedStyleGuide,
       showNewInput, newName, newNameInput,
       openEpic, deleteEpic, onNewEpic, createManualEpic,
       startSession, stopSession, startResize,
@@ -495,7 +609,8 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-agent-info { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: rgba(255,255,255,0.4) !important; }
 .epics-agent-warning { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: #e5a830 !important; display: flex; align-items: center; gap: 0.3rem; }
 
-.epics-context-field { display: flex; flex-direction: column; gap: 0.2rem; margin: 0.75rem 0 0; }
+.epics-context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin: 0.75rem 0 0; }
+.epics-context-field { display: flex; flex-direction: column; gap: 0.2rem; }
 .epics-context-label { font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.4); }
 .epics-context-select {
   padding: 0.4rem 0.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px;

@@ -16,7 +16,7 @@ The output is a set of tickets added to the project backlog, each linked back to
 - **Read the engineering guide** (`.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md`) to understand ticket conventions
 - **One ticket = one deliverable** — each ticket should produce a testable, reviewable change
 - **Order matters** — infrastructure and setup tickets come before feature tickets
-- **Include test tickets** where the epic has testable acceptance criteria
+- **Do not create separate test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket
 - **Size tickets appropriately** — aim for 3-8 tickets per epic, each completable in one agent session
 - **Always confirm** with the user before writing to the backlog
 
@@ -32,6 +32,15 @@ Each ticket added to the backlog must include:
 - **epic_ref** — Path to the epic file (e.g. `docs/Epics/epic_USER_AUTH.md`)
 - **acceptance_criteria** — List of specific, testable criteria
 - **dependencies** — List of ticket IDs this ticket depends on (empty if none)
+
+### Required Context References
+Each ticket must include a `references` section so the executing agent has full context:
+- **prd** — Path to the PRD (e.g. `docs/Product Requirements Document/PRD.md`)
+- **architecture** — Path to the architecture document (e.g. `docs/Architecture/Architecture.md`)
+- **style_guide** — Path to the style guide, if it exists (e.g. `docs/Style Guide/StyleGuide.md`)
+- **epic_ref** — Already included above — path to the parent epic
+
+These references are passed to the coding agent when it picks up the ticket, giving it the full project context to make informed implementation decisions.
 
 ### Optional Fields
 - **description** — Additional context if the title is not self-explanatory
@@ -64,12 +73,7 @@ When breaking down an epic, consider these ticket types:
 - Third-party API integration
 - Inter-service communication
 
-### 5. Testing
-- Unit tests for core logic
-- Integration tests for API endpoints
-- End-to-end tests for critical paths
-
-### 6. Documentation
+### 5. Documentation
 - API documentation
 - User-facing help content
 - Architecture decision records
@@ -96,17 +100,17 @@ Example:
 - A ticket's dependencies must only reference other tickets in the same epic or already-completed tickets
 - Setup tickets should have no dependencies (they come first)
 - UI tickets typically depend on their corresponding API tickets
-- Test tickets depend on the implementation tickets they test
 
 ## Workflow
 
 1. **Read** the epic specification completely
 2. **Identify** the logical work units
-3. **Order** them by dependency (setup → core → integration → UI → tests)
-4. **Propose** a summary table with: ID, Title, Type, Dependencies
-5. **Wait** for user confirmation
-6. **Write** the tickets to `.ombutocode/planning/backlog.yml`
-7. **Update** the epic status from `NEW` to `TICKETS`
+3. **Order** them by dependency (setup → core → integration → UI)
+4. **Detect** project documents for references (PRD, Architecture, Style Guide)
+5. **Propose** a summary table with: ID, Title, Type, Dependencies
+6. **Wait** for user confirmation
+7. **Write** the tickets to `.ombutocode/planning/backlog.yml` with references included
+8. **Update** the epic status from `NEW` to `TICKETS`
 
 ## Example Output
 
@@ -119,8 +123,28 @@ Example:
 | 3 | OMBUTO-012 | Create login and register API endpoints | Core | OMBUTO-011 |
 | 4 | OMBUTO-013 | Add authentication middleware for protected routes | Core | OMBUTO-011 |
 | 5 | OMBUTO-014 | Create login and registration UI components | UI | OMBUTO-012 |
-| 6 | OMBUTO-015 | Write unit tests for authentication service | Test | OMBUTO-011 |
-| 7 | OMBUTO-016 | Write API integration tests for auth endpoints | Test | OMBUTO-012 |
+
+### Example Ticket YAML
+
+```yaml
+- id: OMBUTO-011
+  title: Implement authentication service with JWT
+  status: backlog
+  assignee: null
+  epic_ref: docs/Epics/epic_USER_AUTH.md
+  references:
+    prd: docs/Product Requirements Document/PRD.md
+    architecture: docs/Architecture/Architecture.md
+    style_guide: docs/Style Guide/StyleGuide.md
+  acceptance_criteria:
+    - "[ ] Accepts email and password, returns signed JWT"
+    - "[ ] Validates password against bcrypt hash"
+    - "[ ] Token includes user ID and role in payload"
+    - "[ ] Token expires after 24 hours"
+  dependencies:
+    - OMBUTO-010
+  notes: "Use jsonwebtoken package. See Architecture §6 for auth approach."
+```
 
 ## References
 

@@ -475,9 +475,16 @@ ${colorSwatches}
 ${typoSection}
 ${componentSection}
 <div class="sg-section"><h2>Full Style Guide</h2></div>
-${body}
+${postProcessHexCodes(body)}
 </body>
 </html>`;
+    }
+
+    function postProcessHexCodes(html) {
+      // Replace <code>#XXXXXX</code> with a swatch + code anywhere in the rendered HTML
+      return html.replace(/<code>(#[0-9A-Fa-f]{3,8})<\/code>/g, (match, hex) => {
+        return '<span style="display:inline-flex;align-items:center;gap:0.4rem"><span style="display:inline-block;width:18px;height:18px;border-radius:3px;background:' + hex + ';border:1px solid rgba(255,255,255,0.15);vertical-align:middle;flex-shrink:0"></span><code>' + hex + '</code></span>';
+      });
     }
 
     function backToSkills() {
@@ -879,6 +886,7 @@ Use ONLY the colours, fonts, spacing, and conventions documented in the style gu
       fileChangeSubscribers.add(handleFileChange);
       window.addEventListener('keydown', handleEscapeKey);
       loadFile();
+      checkAiPreviewExists();
     });
 
     onUnmounted(() => {

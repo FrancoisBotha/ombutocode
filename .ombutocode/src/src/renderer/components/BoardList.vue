@@ -97,6 +97,7 @@
             :style="{ paddingLeft: node.depth * 16 + 8 + 'px' }"
             draggable="true"
             @click="navigatePlanFile(node)"
+            @contextmenu.prevent="onPlanFileContext($event, node)"
             @dragstart="onPlanDragStart($event, node)"
           >
             <span class="plan-expand-spacer"></span>
@@ -106,10 +107,15 @@
         </template>
       </div>
 
-      <!-- Context menu -->
+      <!-- Folder context menu -->
       <div v-if="planContextMenu" class="plan-context-menu" :style="{ left: planContextMenu.x + 'px', top: planContextMenu.y + 'px' }">
         <button class="plan-ctx-item" @click="planCtxAddSubfolder"><span class="mdi mdi-folder-plus"></span> New Sub-folder</button>
         <button v-if="planContextMenu.node.depth > 0" class="plan-ctx-item plan-ctx-delete" @click="planCtxDeleteFolder"><span class="mdi mdi-folder-remove"></span> Delete Folder</button>
+      </div>
+
+      <!-- File context menu -->
+      <div v-if="planFileContextMenu" class="plan-context-menu" :style="{ left: planFileContextMenu.x + 'px', top: planFileContextMenu.y + 'px' }">
+        <button class="plan-ctx-item plan-ctx-delete" @click="planCtxDeleteFile"><span class="mdi mdi-file-remove"></span> Delete File</button>
       </div>
 
       <!-- New folder input -->
@@ -402,6 +408,25 @@
         </div>
       </div>
     </div>
+
+    <!-- File Delete Confirmation -->
+    <Teleport to="body">
+      <div v-if="showFileDeleteConfirm" class="plan-delete-overlay" @click.self="showFileDeleteConfirm = false">
+        <div class="plan-delete-dialog">
+          <div class="plan-delete-icon">
+            <span class="mdi mdi-file-remove-outline"></span>
+          </div>
+          <h3>Delete file?</h3>
+          <p>Are you sure you want to delete <strong>{{ fileToDelete?.name }}</strong>? This action cannot be undone.</p>
+          <div class="plan-delete-actions">
+            <button class="prd-btn prd-btn-secondary" @click="showFileDeleteConfirm = false">Cancel</button>
+            <button class="prd-btn prd-btn-danger" @click="confirmDeleteFile">
+              <span class="mdi mdi-delete-outline"></span> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- About Modal -->
     <Teleport to="body">
@@ -743,7 +768,39 @@ export default {
       emit('change-view', item.view);
     }
 
-    const onDocClickPlan = () => { closePlanContextMenu(); };
+    // File context menu
+    const planFileContextMenu = ref(null);
+    const showFileDeleteConfirm = ref(false);
+    const fileToDelete = ref(null);
+
+    function onPlanFileContext(e, node) {
+      closePlanContextMenu();
+      planFileContextMenu.value = { x: e.clientX, y: e.clientY, node };
+    }
+
+    function closePlanFileContextMenu() {
+      planFileContextMenu.value = null;
+    }
+
+    function planCtxDeleteFile() {
+      fileToDelete.value = planFileContextMenu.value.node;
+      closePlanFileContextMenu();
+      showFileDeleteConfirm.value = true;
+    }
+
+    async function confirmDeleteFile() {
+      if (!fileToDelete.value) return;
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:deleteFile', fileToDelete.value.path);
+        loadFileTree();
+      } catch (e) {
+        console.error('Failed to delete file:', e);
+      }
+      showFileDeleteConfirm.value = false;
+      fileToDelete.value = null;
+    }
+
+    const onDocClickPlan = () => { closePlanContextMenu(); closePlanFileContextMenu(); };
     
     // Track authentication state
   const authState = ref(0);
@@ -1125,7 +1182,13 @@ export default {
       onPlanDragStart,
       onPlanDragOver,
       onPlanDrop,
-      onTextMenuClick
+      onTextMenuClick,
+      planFileContextMenu,
+      onPlanFileContext,
+      planCtxDeleteFile,
+      showFileDeleteConfirm,
+      fileToDelete,
+      confirmDeleteFile
     };
   }
 };
@@ -1941,6 +2004,92 @@ export default {
   color: rgba(255, 255, 255, 0.85);
   font-size: 0.8rem;
   outline: none;
+}
+
+/* File delete confirmation */
+.plan-delete-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.plan-delete-dialog {
+  background: #1e2535;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 2rem;
+  width: 380px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.plan-delete-icon {
+  margin-bottom: 0.75rem;
+}
+
+.plan-delete-icon .mdi {
+  font-size: 2.5rem;
+  color: #e06060;
+}
+
+.plan-delete-dialog h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.plan-delete-dialog p {
+  margin: 0 0 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.plan-delete-dialog strong {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.plan-delete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.prd-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prd-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.prd-btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #e06060;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prd-btn-danger:hover {
+  background: #c94040;
 }
 
 /* ══════════════════════════════════════════════

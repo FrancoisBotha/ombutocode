@@ -37,5 +37,11 @@ contextBridge.exposeInMainWorld('api', {
     pickSourceFolder: () => ipcRenderer.invoke('jobs.pickSourceFolder'),
     listExclusionRules: (jobId) => ipcRenderer.invoke('jobs.listExclusionRules', jobId),
     listDefaultExclusionPatterns: () => ipcRenderer.invoke('jobs.listDefaultExclusionPatterns')
+  },
+  logs: {
+    listRuns: (filters, pagination) => ipcRenderer.invoke('logs.listRuns', filters, pagination),
+    getRun: (runId) => ipcRenderer.invoke('logs.getRun', runId),
+    listFiles: (runId, options) => ipcRenderer.invoke('logs.listFiles', runId, options),
+    listEntries: (runId, options) => ipcRenderer.invoke('logs.listEntries', runId, options)
   }
 })

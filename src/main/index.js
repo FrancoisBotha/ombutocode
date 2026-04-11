@@ -1,6 +1,7 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const path = require('path')
 const jobManager = require('../../.ombutocode/src/src/main/jobManager')
+const logsManager = require('./logsManager')
 
 function createWindow () {
   const win = new BrowserWindow({
@@ -98,6 +99,11 @@ ipcMain.handle('runs.runNow', toIpcResponse(async (_event, jobId) => {
 
   return { id: runId, jobId, status: 'running', started_at: startedAt }
 }))
+
+ipcMain.handle('logs.listRuns', toIpcResponse((_event, filters, pagination) => logsManager.listRuns(filters, pagination)))
+ipcMain.handle('logs.getRun', toIpcResponse((_event, runId) => logsManager.getRun(runId)))
+ipcMain.handle('logs.listFiles', toIpcResponse((_event, runId, options) => logsManager.listFiles(runId, options)))
+ipcMain.handle('logs.listEntries', toIpcResponse((_event, runId, options) => logsManager.listEntries(runId, options)))
 
 app.whenReady().then(createWindow)
 

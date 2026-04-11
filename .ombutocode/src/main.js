@@ -3478,14 +3478,16 @@ ipcMain.handle('agent:spawnInteractive', async (event, shellId, command, args) =
   const pty = require('node-pty');
   const isWin = process.platform === 'win32';
 
-  // On Windows, node-pty needs the full path or .cmd extension
+  // On Windows, node-pty needs a .cmd/.exe — pick the .cmd version if available
   let resolvedCmd = command;
   if (isWin) {
     const { execSync } = require('child_process');
     try {
-      resolvedCmd = execSync(`where ${command}`, { encoding: 'utf8' }).split('\n')[0].trim();
+      const lines = execSync(`where ${command}`, { encoding: 'utf8' }).split('\n').map(l => l.trim()).filter(Boolean);
+      // Prefer .cmd over extensionless (which is a bash script on Windows)
+      resolvedCmd = lines.find(l => l.endsWith('.cmd')) || lines.find(l => l.endsWith('.exe')) || lines[0] || command + '.cmd';
     } catch (_) {
-      resolvedCmd = command + '.cmd'; // fallback
+      resolvedCmd = command + '.cmd';
     }
   }
 

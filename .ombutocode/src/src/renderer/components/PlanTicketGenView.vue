@@ -239,17 +239,15 @@ Start by reading all the selected epics. Then propose the tickets for the first 
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
-      } else if (agentCmd === 'codex') {
-        args = [prompt];
       } else {
         args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
-      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+      if (agentCmd !== 'claude') {
         setTimeout(() => {
-          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\r');
         }, 2000);
       }
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
@@ -332,7 +330,7 @@ Start by reading all the selected epics. Then propose the tickets for the first 
 .tg-empty-hint { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: rgba(255,255,255,0.18); max-width: 380px; line-height: 1.5; }
 
 /* Table */
-.tg-table-section { margin-bottom: 1rem; max-width: 800px; }
+.tg-table-section { margin-bottom: 1rem; max-width: 100%; }
 .tg-table-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); margin: 0 0 0.5rem; }
 .tg-table { width: 100%; border-collapse: collapse; }
 .tg-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.06); }
@@ -348,7 +346,7 @@ Start by reading all the selected epics. Then propose the tickets for the first 
 .col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(255,255,255,0.3); }
 
 /* Actions */
-.tg-actions { display: flex; align-items: center; gap: 0.75rem; max-width: 800px; margin-bottom: 1rem; }
+.tg-actions { display: flex; align-items: center; gap: 0.75rem; max-width: 100%; margin-bottom: 1rem; }
 .tg-agent-info { font-size: 0.82rem; color: rgba(255,255,255,0.4); }
 .tg-agent-warning { font-size: 0.82rem; color: #e5a830; display: flex; align-items: center; gap: 0.3rem; }
 

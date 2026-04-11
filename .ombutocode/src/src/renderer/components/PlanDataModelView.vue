@@ -201,7 +201,7 @@ export default {
         const preferred = settings?.eval_default_agent;
         if (preferred && results?.[preferred]?.status === 'pass') {
           defaultAgent.value = preferred;
-        } else if (agentCmd === 'codex') {
+        } else {
           for (const id of ['claude', 'codex', 'kimi']) {
             if (results?.[id]?.status === 'pass') { defaultAgent.value = id; break; }
           }
@@ -217,7 +217,7 @@ export default {
     function confirmCreate() {
       if (existingDoc.value) {
         showOverwriteConfirm.value = true;
-      } else if (agentCmd === 'codex') {
+      } else {
         startSession('create');
       }
     }
@@ -271,7 +271,7 @@ export default {
       let prompt;
       if (isRefine) {
         prompt = `Read the existing data model at "docs/${DOC_PATH}" and help me refine it.${contextNote} Suggest improvements to the schema — missing tables, better constraints, indexing, normalisation issues. After each suggestion, wait for my feedback before making changes.`;
-      } else if (agentCmd === 'codex') {
+      } else {
         prompt = `Create a PostgreSQL DDL data model and save it to "docs/${DOC_PATH}".${contextNote} Based on the requirements and architecture, design a complete database schema with tables, columns, primary keys, foreign keys, indexes, and constraints. Use proper data types and naming conventions. Ask me clarifying questions about the domain before writing the schema.`;
       }
       sessionPrompt.value = prompt;
@@ -281,17 +281,15 @@ export default {
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
-      } else if (agentCmd === 'codex') {
-        args = [prompt];
       } else {
         args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
-      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+      if (agentCmd !== 'claude') {
         setTimeout(() => {
-          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\r');
         }, 2000);
       }
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
@@ -388,7 +386,7 @@ export default {
 
 .prd-create-card, .prd-existing-card {
   display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.5rem;
-  border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); max-width: 700px;
+  border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); max-width: 100%;
 }
 .prd-create-icon, .prd-existing-icon { font-size: 2rem; color: #6dd4a0; flex-shrink: 0; margin-top: 0.15rem; }
 .prd-create-card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }

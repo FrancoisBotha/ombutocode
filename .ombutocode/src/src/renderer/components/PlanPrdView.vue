@@ -337,17 +337,15 @@ export default {
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
-      } else if (agentCmd === 'codex') {
-        args = [prompt];
       } else {
         args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
-      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+      if (agentCmd !== 'claude') {
         setTimeout(() => {
-          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\r');
         }, 2000);
       }
       setTimeout(() => {
@@ -466,7 +464,7 @@ export default {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
-  max-width: 640px;
+  max-width: 100%;
 }
 
 .prd-create-icon,

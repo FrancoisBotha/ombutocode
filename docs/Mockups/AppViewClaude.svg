@@ -1,0 +1,277 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" font-family="Inter, -apple-system, Segoe UI, system-ui, sans-serif">
+  <title>DropSync Jobs View Mockup</title>
+  <desc>Light theme Electron desktop app mockup for DropSync showing the Jobs view with sidebar navigation, summary KPIs, and a list of backup jobs with status pills. Colours, typography, spacing, and components follow docs/Style Guide/StyleGuide.md.</desc>
+
+  <!-- Palette (StyleGuide.md):
+       Primary #4A90E2, Primary hover #3A7BC8, Background #F7F8FA,
+       Surface #FFFFFF, Surface hover #F0F3F7, Border #E1E5EB,
+       Text #1F2430, Muted #6B7280, Success #2FA96A,
+       Warning #D98B1F, Error #D14545. -->
+
+  <!-- App background -->
+  <rect width="1280" height="800" fill="#F7F8FA"/>
+
+  <!-- Window frame -->
+  <rect x="32" y="28" width="1216" height="744" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+  <rect x="33" y="29" width="1214" height="39" rx="6" fill="#FFFFFF"/>
+  <line x1="32" y1="68" x2="1248" y2="68" stroke="#E1E5EB"/>
+
+  <!-- Title bar: logo + title -->
+  <g transform="translate(56 42)">
+    <rect x="0" y="0" width="16" height="16" rx="3" fill="#4A90E2"/>
+    <path d="M4 7.5 L8 4 L12 7.5 L8 11 Z" fill="#FFFFFF"/>
+    <text x="28" y="13" font-size="14" font-weight="600" fill="#1F2430">DropSync</text>
+  </g>
+
+  <!-- Title bar: window controls (minimise, maximise, close) -->
+  <g transform="translate(1160 42)" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round">
+    <line x1="0" y1="8" x2="12" y2="8"/>
+    <rect x="32" y="2" width="12" height="12" rx="1" fill="none"/>
+    <line x1="68" y1="3" x2="80" y2="15"/>
+    <line x1="80" y1="3" x2="68" y2="15"/>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- Sidebar (220px, white, 1px right border) -->
+  <!-- ============================================================ -->
+  <rect x="32" y="68" width="220" height="704" fill="#FFFFFF"/>
+  <line x1="252" y1="68" x2="252" y2="772" stroke="#E1E5EB"/>
+
+  <g transform="translate(56 96)">
+    <text x="0" y="0" font-size="12" font-weight="400" fill="#6B7280">NAVIGATION</text>
+
+    <!-- Jobs (active: 3px left accent bar + primary text) -->
+    <g transform="translate(-16 22)">
+      <rect x="0" y="0" width="188" height="44" rx="6" fill="#F0F3F7"/>
+      <rect x="0" y="0" width="3" height="44" rx="1.5" fill="#4A90E2"/>
+      <g transform="translate(16 14)" stroke="#4A90E2" stroke-width="1.6" fill="none" stroke-linejoin="round">
+        <path d="M1 4 L1 14 L15 14 L15 5 L8 5 L6 3 L1 3 Z"/>
+      </g>
+      <text x="44" y="28" font-size="14" font-weight="600" fill="#4A90E2">Jobs</text>
+    </g>
+
+    <!-- Logs -->
+    <g transform="translate(-16 74)">
+      <rect x="0" y="0" width="188" height="44" rx="6" fill="#FFFFFF"/>
+      <g transform="translate(16 14)" stroke="#6B7280" stroke-width="1.6" fill="none" stroke-linecap="round">
+        <line x1="1" y1="2" x2="15" y2="2"/>
+        <line x1="1" y1="8" x2="12" y2="8"/>
+        <line x1="1" y1="14" x2="15" y2="14"/>
+      </g>
+      <text x="44" y="28" font-size="14" font-weight="400" fill="#1F2430">Logs</text>
+    </g>
+
+    <!-- Settings -->
+    <g transform="translate(-16 126)">
+      <rect x="0" y="0" width="188" height="44" rx="6" fill="#FFFFFF"/>
+      <g transform="translate(16 14)" stroke="#6B7280" stroke-width="1.6" fill="none">
+        <circle cx="8" cy="8" r="2.5"/>
+        <path d="M8 1 L8 3 M8 13 L8 15 M1 8 L3 8 M13 8 L15 8 M3 3 L4.5 4.5 M11.5 11.5 L13 13 M3 13 L4.5 11.5 M11.5 4.5 L13 3" stroke-linecap="round"/>
+      </g>
+      <text x="44" y="28" font-size="14" font-weight="400" fill="#1F2430">Settings</text>
+    </g>
+
+    <!-- Divider -->
+    <line x1="-16" y1="200" x2="172" y2="200" stroke="#E1E5EB"/>
+
+    <!-- Dropbox account panel -->
+    <text x="0" y="232" font-size="12" font-weight="400" fill="#6B7280">ACCOUNT</text>
+    <g transform="translate(-16 252)">
+      <rect x="0" y="0" width="188" height="76" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+      <circle cx="24" cy="26" r="14" fill="#F0F3F7" stroke="#E1E5EB"/>
+      <text x="24" y="31" font-size="12" font-weight="600" fill="#4A90E2" text-anchor="middle">FB</text>
+      <text x="48" y="24" font-size="14" font-weight="600" fill="#1F2430">Francois B.</text>
+      <text x="48" y="42" font-size="12" font-weight="400" fill="#6B7280">Connected</text>
+      <circle cx="18" cy="58" r="4" fill="#2FA96A"/>
+      <text x="30" y="62" font-size="12" font-weight="400" fill="#6B7280">12.4 / 50 GB used</text>
+    </g>
+  </g>
+
+  <!-- Sidebar footer -->
+  <g transform="translate(56 720)">
+    <line x1="-16" y1="-16" x2="172" y2="-16" stroke="#E1E5EB"/>
+    <text x="0" y="4" font-size="12" font-weight="400" fill="#6B7280">DropSync v0.1.0</text>
+    <text x="0" y="22" font-size="12" font-weight="400" fill="#6B7280">Local-only renderer</text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- Main content -->
+  <!-- ============================================================ -->
+  <g transform="translate(276 92)">
+
+    <!-- Page header: H1 + subtitle + action buttons -->
+    <text x="0" y="26" font-size="24" font-weight="700" fill="#1F2430">Backup Jobs</text>
+    <text x="0" y="54" font-size="14" font-weight="400" fill="#6B7280">Manage your scheduled Dropbox backups and run them on demand.</text>
+
+    <!-- Secondary "Run All" button -->
+    <g transform="translate(696 0)">
+      <rect x="0" y="0" width="108" height="36" rx="6" fill="#FFFFFF" stroke="#4A90E2"/>
+      <text x="54" y="23" font-size="14" font-weight="600" fill="#4A90E2" text-anchor="middle">Run All</text>
+    </g>
+
+    <!-- Primary "+ Create Job" button -->
+    <g transform="translate(820 0)">
+      <rect x="0" y="0" width="128" height="36" rx="6" fill="#4A90E2"/>
+      <g transform="translate(16 12)" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round">
+        <line x1="0" y1="6" x2="12" y2="6"/>
+        <line x1="6" y1="0" x2="6" y2="12"/>
+      </g>
+      <text x="72" y="23" font-size="14" font-weight="600" fill="#FFFFFF" text-anchor="middle">Create Job</text>
+    </g>
+
+    <!-- ============================================================ -->
+    <!-- Summary KPI cards -->
+    <!-- ============================================================ -->
+    <g transform="translate(0 88)">
+      <!-- Active Jobs -->
+      <g>
+        <rect x="0" y="0" width="300" height="100" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="16" y="30" font-size="12" font-weight="400" fill="#6B7280">ACTIVE JOBS</text>
+        <text x="16" y="66" font-size="24" font-weight="700" fill="#1F2430">4</text>
+        <circle cx="56" cy="58" r="4" fill="#4A90E2"/>
+        <text x="66" y="62" font-size="12" font-weight="400" fill="#6B7280">1 running now</text>
+      </g>
+
+      <!-- Last Backup -->
+      <g transform="translate(324 0)">
+        <rect x="0" y="0" width="300" height="100" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="16" y="30" font-size="12" font-weight="400" fill="#6B7280">LAST BACKUP</text>
+        <text x="16" y="66" font-size="24" font-weight="700" fill="#1F2430">2 min ago</text>
+        <text x="16" y="88" font-size="12" font-weight="400" fill="#6B7280">Documents Backup · Completed</text>
+      </g>
+
+      <!-- Total Synced -->
+      <g transform="translate(648 0)">
+        <rect x="0" y="0" width="300" height="100" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="16" y="30" font-size="12" font-weight="400" fill="#6B7280">TOTAL SYNCED</text>
+        <text x="16" y="66" font-size="24" font-weight="700" fill="#1F2430">42.6 GB</text>
+        <text x="16" y="88" font-size="12" font-weight="400" fill="#6B7280">Across 4 jobs · 18 429 files</text>
+      </g>
+    </g>
+
+    <!-- ============================================================ -->
+    <!-- Jobs list card -->
+    <!-- ============================================================ -->
+    <g transform="translate(0 216)">
+      <rect x="0" y="0" width="948" height="448" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+
+      <!-- Card header -->
+      <text x="16" y="34" font-size="19" font-weight="600" fill="#1F2430">Your Jobs</text>
+      <text x="16" y="56" font-size="12" font-weight="400" fill="#6B7280">4 configured · sorted by last run</text>
+
+      <!-- Filter ghost button -->
+      <g transform="translate(836 18)">
+        <rect x="0" y="0" width="96" height="32" rx="6" fill="#FFFFFF"/>
+        <g transform="translate(14 11)" stroke="#4A90E2" stroke-width="1.6" fill="none" stroke-linecap="round">
+          <line x1="0" y1="1" x2="10" y2="1"/>
+          <line x1="2" y1="5" x2="8" y2="5"/>
+          <line x1="4" y1="9" x2="6" y2="9"/>
+        </g>
+        <text x="34" y="21" font-size="14" font-weight="600" fill="#4A90E2">Filter</text>
+      </g>
+
+      <!-- Table header strip -->
+      <g transform="translate(0 80)">
+        <rect x="0" y="0" width="948" height="40" fill="#F0F3F7"/>
+        <text x="68" y="25" font-size="12" font-weight="600" fill="#6B7280">NAME</text>
+        <text x="504" y="25" font-size="12" font-weight="600" fill="#6B7280">LAST RUN</text>
+        <text x="660" y="25" font-size="12" font-weight="600" fill="#6B7280">STATUS</text>
+        <text x="820" y="25" font-size="12" font-weight="600" fill="#6B7280">ACTIONS</text>
+      </g>
+
+      <!-- ======= Row 1: Documents Backup — Completed ======= -->
+      <g transform="translate(0 120)">
+        <rect x="0" y="0" width="948" height="80" fill="#FFFFFF"/>
+        <line x1="0" y1="80" x2="948" y2="80" stroke="#E1E5EB"/>
+        <!-- Folder icon -->
+        <g transform="translate(24 28)" stroke="#6B7280" stroke-width="1.6" fill="none" stroke-linejoin="round">
+          <path d="M1 6 L1 22 L23 22 L23 9 L12 9 L9 6 L1 6 Z"/>
+        </g>
+        <text x="68" y="34" font-size="14" font-weight="600" fill="#1F2430">Documents Backup</text>
+        <text x="68" y="54" font-size="12" font-weight="400" fill="#6B7280">C:\Users\Francois\Documents  →  /DropSync/Documents</text>
+
+        <text x="504" y="40" font-size="14" font-weight="400" fill="#1F2430">2 minutes ago</text>
+        <text x="504" y="58" font-size="12" font-weight="400" fill="#6B7280">342 files · 1.2 GB</text>
+
+        <!-- Completed pill -->
+        <rect x="660" y="28" width="100" height="24" rx="12" fill="#2FA96A"/>
+        <text x="710" y="45" font-size="12" font-weight="600" fill="#FFFFFF" text-anchor="middle">COMPLETED</text>
+
+        <!-- Ghost actions -->
+        <text x="820" y="45" font-size="14" font-weight="600" fill="#4A90E2">Run Now</text>
+        <text x="898" y="45" font-size="18" font-weight="600" fill="#6B7280">⋯</text>
+      </g>
+
+      <!-- ======= Row 2: Photos Archive — Running ======= -->
+      <g transform="translate(0 200)">
+        <rect x="0" y="0" width="948" height="80" fill="#F0F3F7"/>
+        <line x1="0" y1="80" x2="948" y2="80" stroke="#E1E5EB"/>
+        <g transform="translate(24 28)" stroke="#6B7280" stroke-width="1.6" fill="none" stroke-linejoin="round">
+          <path d="M1 6 L1 22 L23 22 L23 9 L12 9 L9 6 L1 6 Z"/>
+        </g>
+        <text x="68" y="34" font-size="14" font-weight="600" fill="#1F2430">Photos Archive</text>
+        <text x="68" y="54" font-size="12" font-weight="400" fill="#6B7280">D:\Photos  →  /DropSync/Photos</text>
+
+        <text x="504" y="40" font-size="14" font-weight="400" fill="#1F2430">Running now</text>
+        <!-- Inline progress bar -->
+        <rect x="504" y="50" width="140" height="6" rx="3" fill="#E1E5EB"/>
+        <rect x="504" y="50" width="94" height="6" rx="3" fill="#4A90E2"/>
+        <text x="504" y="72" font-size="12" font-weight="400" fill="#6B7280">67% · 8.4 / 12.6 GB</text>
+
+        <rect x="660" y="28" width="100" height="24" rx="12" fill="#4A90E2"/>
+        <text x="710" y="45" font-size="12" font-weight="600" fill="#FFFFFF" text-anchor="middle">RUNNING</text>
+
+        <text x="820" y="45" font-size="14" font-weight="600" fill="#4A90E2">Cancel</text>
+        <text x="898" y="45" font-size="18" font-weight="600" fill="#6B7280">⋯</text>
+      </g>
+
+      <!-- ======= Row 3: Projects — Completed ======= -->
+      <g transform="translate(0 280)">
+        <rect x="0" y="0" width="948" height="80" fill="#FFFFFF"/>
+        <line x1="0" y1="80" x2="948" y2="80" stroke="#E1E5EB"/>
+        <g transform="translate(24 28)" stroke="#6B7280" stroke-width="1.6" fill="none" stroke-linejoin="round">
+          <path d="M1 6 L1 22 L23 22 L23 9 L12 9 L9 6 L1 6 Z"/>
+        </g>
+        <text x="68" y="34" font-size="14" font-weight="600" fill="#1F2430">Projects</text>
+        <text x="68" y="54" font-size="12" font-weight="400" fill="#6B7280">C:\dev  →  /DropSync/dev</text>
+
+        <text x="504" y="40" font-size="14" font-weight="400" fill="#1F2430">1 hour ago</text>
+        <text x="504" y="58" font-size="12" font-weight="400" fill="#6B7280">1 284 files · 620 MB</text>
+
+        <rect x="660" y="28" width="100" height="24" rx="12" fill="#2FA96A"/>
+        <text x="710" y="45" font-size="12" font-weight="600" fill="#FFFFFF" text-anchor="middle">COMPLETED</text>
+
+        <text x="820" y="45" font-size="14" font-weight="600" fill="#4A90E2">Run Now</text>
+        <text x="898" y="45" font-size="18" font-weight="600" fill="#6B7280">⋯</text>
+      </g>
+
+      <!-- ======= Row 4: Desktop Snapshots — Failed ======= -->
+      <g transform="translate(0 360)">
+        <rect x="0" y="0" width="948" height="80" fill="#FFFFFF"/>
+        <g transform="translate(24 28)" stroke="#6B7280" stroke-width="1.6" fill="none" stroke-linejoin="round">
+          <path d="M1 6 L1 22 L23 22 L23 9 L12 9 L9 6 L1 6 Z"/>
+        </g>
+        <text x="68" y="34" font-size="14" font-weight="600" fill="#1F2430">Desktop Snapshots</text>
+        <text x="68" y="54" font-size="12" font-weight="400" fill="#6B7280">C:\Users\Francois\Desktop  →  /DropSync/Desktop</text>
+
+        <text x="504" y="40" font-size="14" font-weight="400" fill="#1F2430">Yesterday, 18:42</text>
+        <text x="504" y="58" font-size="12" font-weight="400" fill="#D14545">Auth token expired</text>
+
+        <rect x="660" y="28" width="100" height="24" rx="12" fill="#D14545"/>
+        <text x="710" y="45" font-size="12" font-weight="600" fill="#FFFFFF" text-anchor="middle">FAILED</text>
+
+        <text x="820" y="45" font-size="14" font-weight="600" fill="#4A90E2">Retry</text>
+        <text x="898" y="45" font-size="18" font-weight="600" fill="#6B7280">⋯</text>
+      </g>
+    </g>
+
+    <!-- ============================================================ -->
+    <!-- Footer status bar -->
+    <!-- ============================================================ -->
+    <g transform="translate(0 684)">
+      <line x1="0" y1="-4" x2="948" y2="-4" stroke="#E1E5EB"/>
+      <circle cx="8" cy="16" r="4" fill="#2FA96A"/>
+      <text x="20" y="20" font-size="12" font-weight="400" fill="#6B7280">Ready · Connected to Dropbox · Next scheduled run in 28 minutes</text>
+    </g>
+  </g>
+</svg>

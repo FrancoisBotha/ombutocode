@@ -387,17 +387,15 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
-      } else if (agentCmd === 'codex') {
-        args = [prompt];
       } else {
         args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
-      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+      if (agentCmd !== 'claude') {
         setTimeout(() => {
-          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\r');
         }, 2000);
       }
 
@@ -488,7 +486,7 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 /* Create card */
 .epics-create-card {
   display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.5rem;
-  border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); max-width: 700px; margin-bottom: 1.5rem;
+  border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); max-width: 100%; margin-bottom: 1.5rem;
 }
 .epics-create-icon { font-size: 2rem; color: #6dd4a0; flex-shrink: 0; margin-top: 0.15rem; }
 .epics-create-info { flex: 1; }
@@ -518,7 +516,7 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
 
 /* Table */
-.epics-table-section { margin-bottom: 1.5rem; max-width: 700px; }
+.epics-table-section { margin-bottom: 1.5rem; max-width: 100%; }
 .epics-table-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); margin: 0 0 0.5rem; }
 .epics-table { width: 100%; border-collapse: collapse; }
 .epics-table th {
@@ -550,7 +548,7 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-delete-btn:hover { color: #e06060; background: rgba(224,96,96,0.1); }
 
 /* Manual create */
-.epics-manual-create { max-width: 700px; margin-bottom: 1.5rem; }
+.epics-manual-create { max-width: 100%; margin-bottom: 1.5rem; }
 .epics-new-input-wrap { display: flex; align-items: center; gap: 0.5rem; }
 .epics-new-input {
   padding: 0.45rem 0.7rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;

@@ -188,6 +188,11 @@ function deserializeTicket(row) {
 
   // Ensure string defaults
   if (data.title === undefined) data.title = '';
+  // Migrate feature_ref → epic_ref
+  if (data.feature_ref !== undefined && data.epic_ref === undefined) {
+    data.epic_ref = data.feature_ref;
+    delete data.feature_ref;
+  }
   if (data.epic_ref === undefined) data.epic_ref = '';
   if (data.status === undefined) data.status = 'backlog';
   if (data.last_updated === undefined) data.last_updated = '';

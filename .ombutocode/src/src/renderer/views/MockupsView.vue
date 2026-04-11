@@ -112,6 +112,13 @@
               <span v-if="frFiles.length === 0" class="mockup-fr-none">No FR documents found</span>
             </div>
           </div>
+          <div class="mockup-detail-item" v-if="styleGuideFile">
+            <span class="mockup-detail-label">Style Guide</span>
+            <label class="mockup-fr-item">
+              <input type="checkbox" v-model="includeStyleGuide" />
+              <span>{{ styleGuideFile }}</span>
+            </label>
+          </div>
           <div class="mockup-detail-item">
             <span class="mockup-detail-label">Additional Instructions</span>
             <textarea
@@ -166,6 +173,8 @@ export default {
     const selectedSkill = ref('');
     const selectedSkillContent = ref('');
     const additionalInstructions = ref('');
+    const styleGuideFile = ref('');
+    const includeStyleGuide = ref(false);
 
     // Session
     const sessionActive = ref(false);
@@ -204,6 +213,14 @@ export default {
           const frFolder = tree.children.find(c => c.name === 'Functional Requirements');
           if (frFolder && frFolder.children) {
             frFiles.value = frFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+          }
+          const sgFolder = tree.children.find(c => c.name === 'Style Guide');
+          if (sgFolder && sgFolder.children) {
+            const sgFile = sgFolder.children.find(f => f.type === 'file' && f.name.endsWith('.md'));
+            if (sgFile) {
+              styleGuideFile.value = sgFile.path;
+              includeStyleGuide.value = true;
+            }
           }
           const skillsFolder = tree.children.find(c => c.name === 'Skills');
           if (skillsFolder && skillsFolder.children) {
@@ -285,6 +302,9 @@ export default {
 
       const contextParts = [];
       if (selectedEpic.value) contextParts.push(`Read the epic specification at "docs/${selectedEpic.value}" for context on what this screen should accomplish.`);
+      if (includeStyleGuide.value && styleGuideFile.value) {
+        contextParts.push(`Read the project style guide at "docs/${styleGuideFile.value}" and follow its design conventions, colours, typography, and component standards.`);
+      }
       if (selectedFRs.value.length > 0) {
         const frPaths = selectedFRs.value.map(p => `"docs/${p}"`).join(', ');
         contextParts.push(`Read the following functional requirements documents for detailed requirements: ${frPaths}.`);
@@ -301,9 +321,10 @@ Before saving, confirm the file path with me and let me modify it if needed.
 
 Guidelines:
 - Create a clean, professional UI mockup
-- Use a dark theme consistent with the application's color palette
+- If a Style Guide is provided, follow it for all visual decisions (theme, colours, fonts, spacing)
 - Include realistic placeholder content
-- Show the layout clearly with proper spacing and hierarchy${extraInstructions}`;
+- Show the layout clearly with proper spacing and hierarchy
+- Do not invent design conventions — use what is documented${extraInstructions}`;
 
       sessionPrompt.value = prompt;
 
@@ -311,20 +332,18 @@ Guidelines:
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
-      } else if (agentCmd === 'codex') {
-        args = [prompt];
       } else {
-        // Kimi and others: spawn without prompt, send as input after startup
+        // Codex, Kimi, and others: spawn without prompt, send as interactive input
         args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
-      // For agents that don't accept prompt as argument, send it as input
-      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+      // For non-Claude agents, send prompt as input after agent starts up
+      if (agentCmd !== 'claude') {
         setTimeout(() => {
-          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
-        }, 2000);
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\r');
+        }, 3000);
       }
 
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
@@ -388,7 +407,7 @@ Guidelines:
       mockups, loading, lightbox, openLightbox,
       showGenPanel, agents, selectedAgent, mockupDescription, mockupFilename,
       epicFiles, frFiles, skillFiles, selectedEpic, selectedFRs, selectedSkill, loadSelectedSkillContent,
-      additionalInstructions,
+      additionalInstructions, styleGuideFile, includeStyleGuide,
       sessionActive, terminalContainer, sessionPrompt, panelWidth,
       startGenSession, stopSession, startResize,
     };

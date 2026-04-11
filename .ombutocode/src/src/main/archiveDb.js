@@ -97,6 +97,15 @@ function initializeSchema() {
     )
   `);
 
+  // Migrate feature_ref → epic_ref if old column exists
+  try {
+    const cols = db.exec("PRAGMA table_info(tickets)");
+    if (cols.length && cols[0].values.some(row => row[1] === 'feature_ref')) {
+      db.run(`ALTER TABLE tickets RENAME COLUMN feature_ref TO epic_ref`);
+      console.log('[ArchiveDb] Migrated feature_ref → epic_ref');
+    }
+  } catch (_) { /* column already renamed or doesn't exist */ }
+
   // Create indexes
   db.run(`CREATE INDEX IF NOT EXISTS idx_tickets_epic_ref ON tickets(epic_ref)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_tickets_last_updated ON tickets(last_updated)`);

@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 
 function createWindow () {
@@ -18,6 +18,10 @@ function createWindow () {
     win.loadFile(path.join(__dirname, '..', '..', 'dist', 'index.html'))
   }
 }
+
+ipcMain.handle('dropsync:getAppVersion', () => {
+  return app.getVersion()
+})
 
 app.whenReady().then(createWindow)
 

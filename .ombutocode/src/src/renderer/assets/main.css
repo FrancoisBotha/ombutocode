@@ -1342,6 +1342,76 @@ body {
   color: var(--text-muted);
 }
 
+/* ── Dark theme: Epics detail panel ── */
+[data-theme="dark"] .epics-detail {
+  background: var(--card-bg);
+  border-left-color: var(--border-color);
+}
+
+[data-theme="dark"] .detail-title {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .epic-content {
+  background-color: #161a1f;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .epic-content :deep(h1),
+[data-theme="dark"] .epic-content :deep(h2),
+[data-theme="dark"] .epic-content :deep(h3),
+[data-theme="dark"] .epic-content :deep(h4) {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .epic-content :deep(h2) {
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .epic-content code,
+[data-theme="dark"] .epic-content :deep(code) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #6dd4a0 !important;
+}
+
+[data-theme="dark"] .epic-content pre,
+[data-theme="dark"] .epic-content :deep(pre) {
+  background: #0d1117 !important;
+}
+
+[data-theme="dark"] .epic-content pre code,
+[data-theme="dark"] .epic-content :deep(pre code) {
+  background: transparent !important;
+  color: #d4d8dd !important;
+}
+
+[data-theme="dark"] .epic-content :deep(blockquote) {
+  color: var(--text-muted);
+  border-left-color: var(--primary-color);
+}
+
+[data-theme="dark"] .epic-content :deep(table th) {
+  background: #1a1e24 !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .epic-content :deep(table td) {
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .epic-content :deep(hr) {
+  border-top-color: var(--border-color);
+}
+
+[data-theme="dark"] .epic-content :deep(strong) {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="dark"] .epic-content :deep(a) {
+  color: var(--primary-color);
+}
+
 /* ══════════════════════════════════════════════
    Dark theme: Coding Agents (AgentsToolsView)
    ══════════════════════════════════════════════ */

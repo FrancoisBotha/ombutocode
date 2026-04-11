@@ -2648,19 +2648,15 @@ ipcMain.handle('epics:read', async () => {
     const lines = content.split(/\r?\n/);
 
     const titleLine = lines.find((line) => line.startsWith('# ')) || '';
-    const statusLine = lines.find((line) => line.startsWith('Status:')) || '';
-    const ownerLine = lines.find((line) => line.startsWith('Owner:')) || '';
-    const createdLine = lines.find((line) => line.startsWith('Created:')) || '';
-    const updatedLine = lines.find((line) => line.startsWith('Last Updated:')) || '';
+    // Handle "Status: X", "**Status:** X", "- **Status:** X" formats
+    const statusLine = lines.find((line) => /status:/i.test(line)) || '';
+    const statusMatch = statusLine.match(/status:\*?\*?\s*(.*)/i);
 
     return {
       id: fileName.replace(/\.md$/i, ''),
       fileName,
       title: titleLine.replace(/^#\s*/, '').trim() || fileName,
-      status: statusLine.replace(/^Status:\s*/, '').trim() || '',
-      owner: ownerLine.replace(/^Owner:\s*/, '').trim() || '',
-      created: createdLine.replace(/^Created:\s*/, '').trim() || '',
-      lastUpdated: updatedLine.replace(/^Last Updated:\s*/, '').trim() || '',
+      status: statusMatch ? statusMatch[1].replace(/\*\*/g, '').trim() : '',
       content
     };
   });

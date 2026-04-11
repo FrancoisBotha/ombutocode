@@ -59,7 +59,7 @@
               {{ starting ? 'Starting...' : 'Start Epic' }}
             </button>
             <button
-              v-if="selectedEpic.status !== 'complete' && selectedEpic.status !== 'implemented'"
+              v-if="selectedEpic.status && ['BUILDING', 'DONE', 'building', 'done'].includes(selectedEpic.status)"
               class="btn-evaluate"
               :disabled="evaluating"
               @click="evaluateSelectedFeature"
@@ -94,9 +94,6 @@
 
             <dt>Status</dt>
             <dd>{{ selectedEpic.status || '—' }}</dd>
-
-            <dt>Last Updated</dt>
-            <dd>{{ selectedEpic.lastUpdated || '—' }}</dd>
           </dl>
           <div class="epic-content markdown-body" v-html="renderedContent"></div>
         </aside>
@@ -206,26 +203,6 @@ export default {
             },
             cssClass: 'col-status'
           },
-          {
-            title: 'Owner',
-            field: 'owner',
-            width: 120,
-            headerSort: true,
-            formatter: function(cell) {
-              return cell.getValue() || '—';
-            },
-            cssClass: 'col-owner'
-          },
-          {
-            title: 'Last Updated',
-            field: 'lastUpdated',
-            width: 150,
-            headerSort: true,
-            formatter: function(cell) {
-              return cell.getValue() || '—';
-            },
-            cssClass: 'col-updated'
-          }
         ]
       });
 

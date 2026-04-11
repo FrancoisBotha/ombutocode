@@ -133,99 +133,34 @@
     </div>
 
     <!-- ===== BUILD MODE (expanded) ===== -->
-    <div class="board-list-content" v-if="!isCollapsed && sidebarMode === 'build'">
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'workspace' }"
-        @click="$emit('change-view', 'workspace')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-view-dashboard-outline"></span>
-        </span>
-        <span class="board-name">Workspace</span>
+    <div class="board-list-content plan-mode-content" v-if="!isCollapsed && sidebarMode === 'build'">
+      <!-- Build nav icon bar -->
+      <div class="plan-nav-icons">
+        <button
+          v-for="item in buildNavIconItems"
+          :key="item.view"
+          class="plan-nav-btn"
+          :class="{ 'is-active': activeView === item.view }"
+          :title="item.label"
+          @click="$emit('change-view', item.view)"
+        >
+          <span class="mdi" :class="item.icon"></span>
+        </button>
       </div>
 
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'kanban' }"
-        @click="$emit('change-view', 'kanban')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-view-column"></span>
-        </span>
-        <span class="board-name">Board</span>
+      <!-- Build text menu -->
+      <div class="plan-text-menu">
+        <div v-for="group in buildNavGroups" :key="group.label" class="plan-text-group">
+          <div class="plan-text-group-label">{{ group.label }}</div>
+          <a
+            v-for="item in group.items"
+            :key="item.view"
+            class="plan-text-link"
+            :class="{ 'is-active': activeView === item.view }"
+            @click="$emit('change-view', item.view)"
+          >{{ item.label }}</a>
+        </div>
       </div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'requests' }"
-        @click="$emit('change-view', 'requests')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-message-text-outline"></span>
-        </span>
-        <span class="board-name">Requests</span>
-      </div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'epics' }"
-        @click="$emit('change-view', 'epics')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-shape-outline"></span>
-        </span>
-        <span class="board-name">Epics</span>
-      </div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'backlog' }"
-        @click="$emit('change-view', 'backlog')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-format-list-bulleted"></span>
-        </span>
-        <span class="board-name">Backlog</span>
-      </div>
-
-      <div class="divider"></div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'automation' }"
-        @click="$emit('change-view', 'automation')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-lightning-bolt-outline"></span>
-        </span>
-        <span class="board-name">Automation</span>
-      </div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'logs' }"
-        @click="$emit('change-view', 'logs')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-text-box-outline"></span>
-        </span>
-        <span class="board-name">Logs</span>
-      </div>
-
-      <div class="divider"></div>
-
-      <div
-        class="board-item"
-        :class="{ 'is-active': activeView === 'archive' }"
-        @click="$emit('change-view', 'archive')"
-      >
-        <span class="board-icon">
-          <span class="mdi mdi-archive"></span>
-        </span>
-        <span class="board-name">Archive</span>
-      </div>
-
     </div>
 
     <!-- ===== Bottom section (always visible, both tabs) ===== -->
@@ -511,6 +446,37 @@ export default {
     const switchMode = (mode) => {
       sidebarMode.value = mode;
     };
+
+    const buildNavIconItems = [
+      { view: 'workspace', label: 'Workspace', icon: 'mdi-view-dashboard-outline' },
+      { view: 'kanban', label: 'Board', icon: 'mdi-view-column' },
+      { view: 'epics', label: 'Epics', icon: 'mdi-shape-outline' },
+      { view: 'backlog', label: 'Backlog', icon: 'mdi-format-list-bulleted' },
+      { view: 'automation', label: 'Automation', icon: 'mdi-lightning-bolt-outline' },
+      { view: 'logs', label: 'Logs', icon: 'mdi-text-box-outline' },
+      { view: 'archive', label: 'Archive', icon: 'mdi-archive' },
+    ];
+
+    const buildNavGroups = [
+      {
+        label: 'Development',
+        items: [
+          { view: 'workspace', label: 'Workspace' },
+          { view: 'kanban', label: 'Board' },
+          { view: 'epics', label: 'Epics' },
+          { view: 'backlog', label: 'Backlog' },
+          { view: 'requests', label: 'Requests' },
+        ]
+      },
+      {
+        label: 'Operations',
+        items: [
+          { view: 'automation', label: 'Automation' },
+          { view: 'logs', label: 'Logs' },
+          { view: 'archive', label: 'Archive' },
+        ]
+      },
+    ];
 
     // About modal
     const showAboutModal = ref(false);
@@ -1157,6 +1123,8 @@ export default {
       toggleAutoMode,
       sidebarMode,
       switchMode,
+      buildNavIconItems,
+      buildNavGroups,
       showAboutModal,
       aboutBuildVersion,
       aboutLibraries,
@@ -1292,7 +1260,7 @@ export default {
 .board-list-content {
   flex: 1;
   overflow-y: auto;
-  padding: 0.5rem 0;
+  padding: 0.25rem 0;
   display: flex;
   flex-direction: column;
 }
@@ -1300,14 +1268,14 @@ export default {
 .board-item {
   display: flex;
   align-items: center;
-  padding: 0.55rem 1rem;
-  margin: 1px 0;
+  padding: 0.35rem 1rem;
+  margin: 0;
   cursor: pointer;
   transition: all 0.15s;
   position: relative;
   border-left: 3px solid transparent;
   border-radius: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 300;
 }
 
@@ -1434,7 +1402,7 @@ export default {
 .divider {
   height: 1px;
   background-color: rgba(255, 255, 255, 0.06);
-  margin: 0.5rem 1rem;
+  margin: 0.3rem 1rem;
 }
 
 .board-actions {

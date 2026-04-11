@@ -37,6 +37,7 @@ const requestsDb = require('./src/main/requestsDb');
 const ombutocodeDb = require('./src/main/ombutocodeDb');
 const logsDb = require('./src/main/logsDb');
 const backlogDb = require('./src/main/backlogDb');
+const jobManager = require('./src/main/jobManager');
 const { createSchedulerLogger } = require('./src/main/schedulerLogger');
 const fileTreeService = require('./src/main/fileTreeService');
 const {
@@ -1555,6 +1556,14 @@ app.whenReady().then(async () => {
       console.error('[Database] Artifact schema init failed:', e);
     }
 
+    // Initialize job manager (backup_job + backup_run schemas)
+    try {
+      jobManager.open(ombutocodeDb.getDb());
+      console.log('[Database] Job manager schema initialized');
+    } catch (e) {
+      console.error('[Database] Job manager schema init failed:', e);
+    }
+
     // Initialize planCoreUtilities
     const planCoreUtilities = require('./src/main/planCoreUtilities');
     planCoreUtilities.init(PROJECT_ROOT);
@@ -1764,6 +1773,11 @@ app.on('second-instance', (event, commandLine) => {
   if (process.platform === 'win32' && commandLine.length > 1) {
     handleUrl(commandLine.pop());
   }
+});
+
+// IPC handlers — jobs
+ipcMain.handle('jobs:listWithLatestRun', async () => {
+  return jobManager.listJobsWithLatestRun();
 });
 
 // IPC handlers

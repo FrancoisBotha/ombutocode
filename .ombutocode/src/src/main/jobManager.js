@@ -79,6 +79,30 @@ function initializeSchema() {
       updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS backup_run (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id          INTEGER NOT NULL REFERENCES backup_job(id) ON DELETE CASCADE,
+      status          TEXT    NOT NULL DEFAULT 'pending'
+                              CHECK(status IN ('pending','running','completed','failed','cancelled')),
+      trigger_source  TEXT    NOT NULL DEFAULT 'scheduler'
+                              CHECK(trigger_source IN ('scheduler','manual')),
+      started_at      TEXT,
+      finished_at     TEXT,
+      files_scanned   INTEGER NOT NULL DEFAULT 0,
+      files_uploaded  INTEGER NOT NULL DEFAULT 0,
+      files_skipped   INTEGER NOT NULL DEFAULT 0,
+      files_failed    INTEGER NOT NULL DEFAULT 0,
+      files_deleted   INTEGER NOT NULL DEFAULT 0,
+      bytes_uploaded  INTEGER NOT NULL DEFAULT 0,
+      error_message   TEXT,
+      created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT    NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+
+  db.run(`CREATE INDEX IF NOT EXISTS ix_backup_run_job_started ON backup_run(job_id, started_at DESC)`);
 }
 
 // ---------------------------------------------------------------------------
@@ -365,6 +389,50 @@ function toggleJobEnabled(id) {
 }
 
 // ---------------------------------------------------------------------------
+// backup_job + backup_run join
+// ---------------------------------------------------------------------------
+
+/**
+ * List all backup jobs joined with the most recent backup_run per job.
+ * Jobs with no runs are included with null last-run fields.
+ *
+ * The correlated subquery leverages the ix_backup_run_job_started index
+ * (job_id, started_at DESC) for efficient lookup.
+ *
+ * @returns {Object[]}
+ */
+function listJobsWithLatestRun() {
+  ensureDb();
+  const stmt = db.prepare(`
+    SELECT
+      j.*,
+      r.status       AS last_run_status,
+      r.finished_at  AS last_run_finished_at
+    FROM backup_job j
+    LEFT JOIN backup_run r
+      ON r.id = (
+        SELECT r2.id
+        FROM backup_run r2
+        WHERE r2.job_id = j.id
+        ORDER BY r2.started_at DESC
+        LIMIT 1
+      )
+    ORDER BY j.name ASC
+  `);
+  const results = [];
+  while (stmt.step()) {
+    const row = stmt.getAsObject();
+    results.push({
+      ...normalizeJobRow(row),
+      last_run_status: row.last_run_status ?? null,
+      last_run_finished_at: row.last_run_finished_at ?? null,
+    });
+  }
+  stmt.free();
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // exclusion_rule helpers
 // ---------------------------------------------------------------------------
 
@@ -443,6 +511,7 @@ module.exports = {
   open,
   close,
   listJobs,
+  listJobsWithLatestRun,
   getJob,
   createJob,
   updateJob,

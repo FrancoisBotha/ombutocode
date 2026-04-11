@@ -127,7 +127,8 @@ const validChannels = [
   'artifact:archive',
   'artifact:nextId',
   'artifact:rebuildIndex',
-  'watcher:fileChanged'
+  'watcher:fileChanged',
+  'jobs:listWithLatestRun'
 ];
 
 // Expose a safe subset of Electron APIs to the renderer process
@@ -257,6 +258,13 @@ contextBridge.exposeInMainWorld('electron', {
     ipcRenderer.on('app:titleBrandingChanged', handler);
     return () => ipcRenderer.removeListener('app:titleBrandingChanged', handler);
   }
+});
+
+// Expose ombuto domain API for renderer components
+contextBridge.exposeInMainWorld('ombuto', {
+  jobs: {
+    listWithLatestRun: () => ipcRenderer.invoke('jobs:listWithLatestRun'),
+  },
 });
 
 // Expose window control API (used by custom titlebar)

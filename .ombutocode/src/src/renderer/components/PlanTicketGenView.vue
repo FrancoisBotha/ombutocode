@@ -140,7 +140,7 @@ export default {
                   if (sm) status = sm[1].trim();
                 }
                 // Handle "Status: X", "**Status:** X", "- **Status:** X"
-                const bodyStatus = content.match(/status:\*?\*?\s*(.*)/i);
+                const bodyStatus = content.match(/\bStatus:\*?\*?\s*(.+)/im);
                 if (bodyStatus) {
                   const parsed = bodyStatus[1].replace(/\*\*/g, '').trim();
                   if (parsed) status = parsed;

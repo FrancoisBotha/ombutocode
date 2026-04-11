@@ -184,7 +184,7 @@ function parseStructuredEvalOutput(outputText) {
   const hasAcceptanceCriteriaChecks = hasAcceptanceCriteriaChecksHeader && hasAcceptanceCriteriaChecksBody;
 
   const featureCheckMatch = text.match(
-    /\bFEATURE[_\s-]?REFERENCE[_\s-]?CHECK\s*:\s*[*`_~\[(\s-]*(PASS|FAIL)\b/i
+    /\b(?:FEATURE|EPIC)[_\s-]?REFERENCE[_\s-]?CHECK\s*:\s*[*`_~\[(\s-]*(PASS|FAIL)\b/i
   );
   const hasFeatureReferenceCheck = !!featureCheckMatch;
   const epicReferencePass = featureCheckMatch
@@ -348,7 +348,7 @@ function parseAcceptanceCriteriaChecks(sectionBody) {
   return checks;
 }
 
-function buildEvalSummary({ verdict, structured, timestamp, rawOutput }) {
+function buildEvalSummary({ verdict, structured, timestamp, rawOutput, reasons }) {
   const normalizedVerdict = verdict === 'pass' ? 'PASS' : 'FAIL';
   const criteriaChecks = structured && structured.hasAcceptanceCriteriaChecks
     ? structured.criteriaChecks
@@ -358,8 +358,15 @@ function buildEvalSummary({ verdict, structured, timestamp, rawOutput }) {
   const summary = {
     verdict: normalizedVerdict,
     criteria_checks: finalChecks,
+    epic_reference_check: structured?.hasFeatureReferenceCheck
+      ? (structured.epicReferencePass ? 'PASS' : 'FAIL')
+      : 'NOT_FOUND',
     timestamp: timestamp || new Date().toISOString()
   };
+
+  if (reasons && reasons.length > 0) {
+    summary.failure_reasons = reasons;
+  }
 
   // When structured parsing yielded no criteria but raw output exists,
   // preserve a truncated excerpt for debugging / retry context.
@@ -414,14 +421,14 @@ function resolveEvalOutcomeAfterRun({
     ? true
     : lowerOutput.includes(epicRefLower)
       || (epicRefStem && lowerOutput.includes(epicRefStem))
-      || /feature\s*(?:spec(?:ification)?|reference|file)|(?:verified|checked).{0,30}feature/.test(lowerOutput);
+      || /(?:feature|epic)\s*(?:spec(?:ification)?|reference|file)|(?:verified|checked).{0,30}(?:feature|epic)/.test(lowerOutput);
 
   if (epicRefRequired && structured.hasFeatureReferenceCheck) {
     epicRefReferenced = structured.epicReferencePass === true;
   }
 
   if (epicRefRequired && !epicRefReferenced) {
-    reasons.push(`Evaluator output is missing explicit feature spec verification for ${epicRef}.`);
+    reasons.push(`Evaluator output is missing explicit epic spec verification for ${epicRef}. The eval agent must include an EPIC_REFERENCE_CHECK: PASS or FAIL line.`);
   }
 
   if (runState === 'failed') {
@@ -438,7 +445,8 @@ function resolveEvalOutcomeAfterRun({
         verdict: 'fail',
         structured,
         timestamp: finishedAt,
-        rawOutput: combinedOutput
+        rawOutput: combinedOutput,
+        reasons
       })
     };
   }
@@ -480,7 +488,8 @@ function resolveEvalOutcomeAfterRun({
         verdict: 'fail',
         structured,
         timestamp: finishedAt,
-        rawOutput: combinedOutput
+        rawOutput: combinedOutput,
+        reasons
       })
     };
   }
@@ -508,11 +517,12 @@ function resolveEvalOutcomeAfterRun({
     verdict: 'fail',
     reasons,
     evalSummary: buildEvalSummary({
-      verdict: 'fail',
-      structured,
-      timestamp: finishedAt,
-      rawOutput: combinedOutput
-    })
+        verdict: 'fail',
+        structured,
+        timestamp: finishedAt,
+        rawOutput: combinedOutput,
+        reasons
+      })
   };
 }
 

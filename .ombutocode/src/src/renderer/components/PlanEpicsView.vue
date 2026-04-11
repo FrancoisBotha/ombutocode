@@ -312,8 +312,8 @@ export default {
                   const statusMatch = fmMatch[1].match(/^status:\s*(.+)/m);
                   if (statusMatch) status = statusMatch[1].trim();
                 }
-                // Also check "Status:" or "**Status:**" line in markdown body
-                const bodyStatus = content.match(/^\*?\*?Status:?\*?\*?\s*(.+)/m);
+                // Also check "Status: X", "**Status:** X", "- **Status:** X" in markdown body
+                const bodyStatus = content.match(/\bStatus:\*?\*?\s*(.+)/im);
                 if (bodyStatus) {
                   const parsed = bodyStatus[1].replace(/\*\*/g, '').trim();
                   if (parsed) status = parsed;

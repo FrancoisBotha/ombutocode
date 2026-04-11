@@ -167,11 +167,16 @@
             <em>See "Define your Architecture" below.</em>
           </li>
           <li>
-            <strong>Flesh out requirements</strong> — Add use cases, functional requirements,
-            class diagrams, and other planning artifacts using the Plan sidebar tools.
+            <strong>Create epics</strong> — Go to <strong>Plan > Epic Creation</strong> and click
+            <strong>Create Initial Epics</strong>. The AI breaks your PRD into deliverable milestones.
+            <em>See "Create Epics" below.</em>
           </li>
           <li>
-            <strong>Switch to Build mode</strong> — Create backlog tickets, assign them to agents,
+            <strong>Generate tickets</strong> — Go to <strong>Plan > Ticket Generation</strong>,
+            select an epic, and generate implementation tickets for the backlog.
+          </li>
+          <li>
+            <strong>Switch to Build mode</strong> — Assign agents to tickets on the Board,
             and enable <strong>Auto</strong> to let the scheduler drive automated development.
           </li>
         </ol>
@@ -300,6 +305,87 @@
             <strong>Tip:</strong> Create your PRD first, then Architecture. Each subsequent
             document builds on the previous ones. The AI reads related documents automatically,
             so your architecture will be grounded in your product requirements.
+          </p>
+        </div>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-flag-outline"></span> Create Epics</h2>
+        <p>
+          With your PRD and Architecture in place, the next step is to break the requirements
+          down into <strong>epics</strong> — deliverable milestones that can each be independently
+          developed and verified.
+        </p>
+
+        <h3>What is an epic?</h3>
+        <p>
+          An epic represents a significant piece of functionality that typically maps to a
+          milestone or a feature area. Each epic contains its own scope, acceptance criteria,
+          functional requirements, and implementation notes. Epics follow the lifecycle:
+          <strong>NEW → TICKETS → BUILDING → DONE</strong>.
+        </p>
+
+        <h3>Creating epics with AI</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Go to Plan > Epic Creation</strong> — click "Epic Creation" in the Plan sidebar.
+          </li>
+          <li>
+            <strong>Select context documents</strong> — choose your PRD, Architecture, Data Model,
+            and Style Guide. The AI agent reads all of these to understand the full project scope.
+          </li>
+          <li>
+            <strong>Click "Create Initial Epics"</strong> — the agent analyses your PRD and proposes
+            a breakdown into epics, each with a one-line summary. You confirm before the files are created.
+          </li>
+          <li>
+            <strong>Review the epics</strong> — each epic is saved as a Markdown file in
+            <code>docs/Epics/</code> with a 13-section structure (Purpose, User Story, Scope,
+            Functional Requirements, NFRs, UI/UX Notes, Data Model Impact, etc.).
+          </li>
+          <li>
+            <strong>Functional requirements are cross-referenced</strong> — when an epic contains
+            FRs or NFRs, they are automatically added to the requirements tables in
+            <code>docs/Functional Requirements/</code> and <code>docs/Non-Functional Requirements/</code>
+            with a link back to the epic.
+          </li>
+        </ol>
+
+        <h3>After creating epics</h3>
+        <p>
+          Once epics are created, you can:
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <span class="mdi mdi-ticket-outline"></span>
+            <div>
+              <strong>Generate tickets</strong>
+              <p>Go to <strong>Plan > Ticket Generation</strong> to break each epic into concrete
+              implementation tickets that agents can pick up in Build mode.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-pencil-outline"></span>
+            <div>
+              <strong>Refine with AI</strong>
+              <p>Click on an epic in the file tree and use "Refine with AI" to improve specific sections.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-plus"></span>
+            <div>
+              <strong>Create manually</strong>
+              <p>Use "New Epic (manual)" on the Epic Creation page to create a blank epic from the template.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Coming soon:</strong> Epics can be extended with linked UI mockups from the
+            Mockups page. When mockups are linked to an epic, they are automatically included as
+            references in the generated tickets so coding agents can see the target visual design.
           </p>
         </div>
       </section>

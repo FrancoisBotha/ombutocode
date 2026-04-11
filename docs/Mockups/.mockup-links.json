@@ -1,4 +1,5 @@
 {
   "AppScaffoldClaude.svg": "docs/Epics/epic_APP_SCAFFOLD.md",
-  "Epic_BackupJob_Claude.png": "docs/Epics/epic_BACKUP_JOB_MANAGEMENT.md"
+  "Epic_BackupJob_Claude.png": "docs/Epics/epic_BACKUP_JOB_MANAGEMENT.md",
+  "Epic_JobsDashboardClaude.svg": "docs/Epics/epic_BACKUP_JOBS_DASHBOARD.md"
 }

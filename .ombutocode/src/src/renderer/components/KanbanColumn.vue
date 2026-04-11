@@ -118,6 +118,16 @@
                 </p>
               </li>
             </ul>
+            <div v-if="selectedTask.eval_summary?.epic_reference_check" class="eval-epic-ref-check">
+              <span class="mdi" :class="selectedTask.eval_summary.epic_reference_check === 'PASS' ? 'mdi-check-circle eval-pass-icon' : (selectedTask.eval_summary.epic_reference_check === 'FAIL' ? 'mdi-close-circle eval-fail-icon' : 'mdi-help-circle eval-unknown-icon')"></span>
+              <span>Epic Reference Check: <strong>{{ selectedTask.eval_summary.epic_reference_check }}</strong></span>
+            </div>
+            <div v-if="selectedTask.eval_summary?.failure_reasons?.length" class="eval-failure-reasons">
+              <span class="detail-label">Failure Reasons:</span>
+              <ul class="eval-failure-list">
+                <li v-for="(reason, idx) in selectedTask.eval_summary.failure_reasons" :key="idx">{{ reason }}</li>
+              </ul>
+            </div>
           </div>
           <div class="detail-row" v-if="hasFailureCounts(selectedTask)">
             <span class="detail-label">Failure Counts:</span>
@@ -833,7 +843,7 @@ export default {
         return model ? `${cap(tool)}/${cap(model)}` : cap(tool);
       }
       const value = String(assignee || '').trim();
-      if (!value) return '';
+      if (!value || value.toLowerCase() === 'none' || value === 'null') return 'Unassigned';
       return value.charAt(0).toUpperCase() + value.slice(1);
     };
 
@@ -1413,6 +1423,7 @@ export default {
   cursor: default;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   align-items: stretch;
   gap: 0.5rem;
   position: relative;
@@ -1484,6 +1495,9 @@ export default {
   padding: 0.1rem 0.3rem;
   background-color: #fff;
   color: #172b4d;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .task-actions {
@@ -2528,6 +2542,39 @@ export default {
 .eval-check-suggestion {
   font-style: italic;
   color: #0f766e;
+}
+
+.eval-epic-ref-check {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-color, #2c3e50);
+}
+
+.eval-pass-icon { color: #2fa96a; }
+.eval-fail-icon { color: #d14545; }
+.eval-unknown-icon { color: #9ca3af; }
+
+.eval-failure-reasons {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(209, 69, 69, 0.08);
+  border-radius: 4px;
+  border-left: 3px solid #d14545;
+}
+
+.eval-failure-list {
+  margin: 0.25rem 0 0;
+  padding: 0 0 0 1.25rem;
+  font-size: 0.8rem;
+  color: #d14545;
+  line-height: 1.5;
+}
+
+.eval-failure-list li {
+  margin-bottom: 0.2rem;
 }
 
 .failure-counts-container {

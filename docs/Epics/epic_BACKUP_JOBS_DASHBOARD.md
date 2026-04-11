@@ -1,6 +1,6 @@
 # Epic: Backup Jobs Dashboard
 
-- **Status:** NEW
+- **Status:** TICKETS
 - **Owner:** human
 - **Created:** 2026-04-11
 - **Last Updated:** 2026-04-11
@@ -96,6 +96,7 @@ As a **DropSync user**, I want **a dashboard listing all my backup jobs with the
 - **architecture:** docs/Architecture/Architecture.md
 - **data_model:** docs/Data Model/Schema.ddl
 - **style_guide:** docs/Style Guide/StyleGuide.md
+- mockup: docs/Mockups/Epic_JobsDashboardClaude.svg
 
 ## 13. Implementation Notes
 

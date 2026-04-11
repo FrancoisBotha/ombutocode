@@ -383,9 +383,185 @@
         <div class="help-tip">
           <span class="mdi mdi-lightbulb-outline"></span>
           <p>
-            <strong>Coming soon:</strong> Epics can be extended with linked UI mockups from the
+            <strong>Tip:</strong> Epics can be extended with linked UI mockups from the
             Mockups page. When mockups are linked to an epic, they are automatically included as
             references in the generated tickets so coding agents can see the target visual design.
+            See the <strong>Mockups</strong> section below for details.
+          </p>
+        </div>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-ticket-outline"></span> Generate Tickets</h2>
+        <p>
+          With your epics defined, the final planning step is to break each epic into concrete
+          <strong>implementation tickets</strong> that AI coding agents can pick up and execute
+          autonomously in Build mode.
+        </p>
+
+        <h3>What is a ticket?</h3>
+        <p>
+          A ticket is a single, well-scoped unit of work — typically one file change, one component,
+          or one feature slice. Each ticket includes a title, description, acceptance criteria,
+          dependencies, and references to the relevant epic, architecture, and mockups. Tickets
+          are created in the backlog with status <code>backlog</code> and move through the Kanban
+          workflow: <strong>backlog → todo → in-progress → review → done</strong>.
+        </p>
+
+        <h3>Generating tickets with AI</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Go to Plan > Ticket Generation</strong> — this page shows all epics with
+            status <strong>NEW</strong>, ready for ticket generation. Click on an epic to enter
+            the ticket generation workflow.
+          </li>
+          <li>
+            <strong>Select a skill</strong> — the <em>Ticket Generation</em> skill is auto-selected.
+            It instructs the AI on ticket structure, dependency ordering, and cross-referencing
+            conventions.
+          </li>
+          <li>
+            <strong>Click "Generate Tickets"</strong> — this launches your default coding agent
+            in an interactive terminal. The agent reads the epic specification, PRD, architecture,
+            and any linked mockups to understand the full context.
+          </li>
+          <li>
+            <strong>Review the AI's plan</strong> — the agent proposes a list of tickets with
+            titles and descriptions. It waits for your confirmation before writing them to the
+            database.
+          </li>
+          <li>
+            <strong>Tickets are written to the backlog</strong> — the agent uses the
+            <code>ticket-write</code> tool to insert tickets directly into the Ombuto Code
+            database. Each ticket includes the epic reference, dependency chain, and relevant
+            context files.
+          </li>
+        </ol>
+
+        <h3>What happens next</h3>
+        <p>
+          Once tickets are generated, the epic's status automatically changes to
+          <strong>TICKETS</strong>. You can then:
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <span class="mdi mdi-format-list-bulleted"></span>
+            <div>
+              <strong>Review in the Backlog</strong>
+              <p>Click the "Backlog" button next to any TICKETS-status epic to switch to Build
+              mode and review the generated tickets on the Kanban board.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-account-arrow-right"></span>
+            <div>
+              <strong>Assign agents</strong>
+              <p>Assign a coding agent to each ticket (or leave them unassigned for manual work).
+              Move tickets from <code>backlog</code> to <code>todo</code> when ready.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-play-circle-outline"></span>
+            <div>
+              <strong>Enable the scheduler</strong>
+              <p>Toggle <strong>Auto</strong> in the sidebar to let the scheduler automatically
+              pick up <code>todo</code> tickets and assign them to available agents.</p>
+            </div>
+          </div>
+        </div>
+
+        <h3>Context passed to agents</h3>
+        <p>
+          The ticket generation prompt automatically includes:
+        </p>
+        <ul class="help-list">
+          <li><strong>Epic specification</strong> — the full epic Markdown file with scope, acceptance criteria, and requirements</li>
+          <li><strong>PRD</strong> — product requirements for broader context</li>
+          <li><strong>Architecture</strong> — technology stack and component design</li>
+          <li><strong>Style Guide</strong> — UI conventions and design tokens (if it exists)</li>
+          <li><strong>Linked mockups</strong> — any mockups linked to the epic via the Mockups page are referenced in UI tickets</li>
+          <li><strong>Engineering Guide</strong> — the <code>OMBUTOCODE_ENGINEERING_GUIDE.md</code> workflow rules</li>
+        </ul>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> Generate tickets for one epic at a time. This keeps the scope
+            focused and gives you a chance to review and adjust before moving on. If an epic
+            needs more tickets later, you can always create them manually on the Board page or
+            re-run ticket generation.
+          </p>
+        </div>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-image-multiple"></span> Mockups</h2>
+        <p>
+          Mockups are visual references for your application's UI. They help AI coding agents
+          understand the target design when implementing UI tickets, and serve as communication
+          tools between designers and developers.
+        </p>
+
+        <h3>Viewing mockups</h3>
+        <p>
+          Go to <strong>Plan > Mockups</strong> to see a gallery of all images in
+          <code>docs/Mockups/</code>. Click any image to open it in a full-screen lightbox.
+          You can rename or delete mockups using the action buttons on each card.
+        </p>
+
+        <h3>Generating mockups with AI</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Click "Generate Mockup"</strong> — this opens a panel with fields for
+            Skill, Agent, Epic, Description, and filename.
+          </li>
+          <li>
+            <strong>Select a skill</strong> — the <em>Mockup Generator</em> skill is auto-selected.
+            It instructs the agent to create SVG mockups and convert them to PNG using the
+            <code>svg-to-png</code> tool.
+          </li>
+          <li>
+            <strong>Choose an epic</strong> — optionally select an epic so the agent understands
+            the UI context. You can also check the <strong>Style Guide</strong> checkbox to include
+            your design tokens and conventions.
+          </li>
+          <li>
+            <strong>Describe the mockup</strong> — provide a clear description of what the mockup
+            should show (e.g. "Dashboard page with sidebar navigation, header bar, and analytics cards").
+          </li>
+          <li>
+            <strong>Click "Generate"</strong> — the agent creates the mockup in an interactive
+            terminal session. It generates SVG markup, converts it to PNG, and saves it to
+            <code>docs/Mockups/</code>.
+          </li>
+        </ol>
+
+        <h3>Linking mockups to epics</h3>
+        <p>
+          Linking a mockup to an epic ensures that coding agents see the visual design when
+          implementing tickets for that epic.
+        </p>
+        <ol class="help-steps">
+          <li>
+            <strong>Click the link icon</strong> (<span class="mdi mdi-link-variant" style="font-size: 1em;"></span>)
+            on a mockup card.
+          </li>
+          <li>
+            <strong>Select an epic</strong> — choose the epic this mockup belongs to from the dropdown.
+          </li>
+          <li>
+            <strong>Save</strong> — the link is stored in <code>docs/Mockups/.mockup-links.json</code>.
+            When tickets are generated for that epic, linked mockups are automatically referenced
+            in UI-related tickets.
+          </li>
+        </ol>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> Create mockups before generating tickets. When the AI generates
+            tickets for an epic with linked mockups, it includes explicit references to the mockup
+            files so that coding agents can match the visual design during implementation.
           </p>
         </div>
       </section>
@@ -397,6 +573,104 @@
           implement backlog tickets. Go to <strong>Settings > Coding Agents</strong> to test
           connectivity and see the full setup guide.
         </p>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-wrench-outline"></span> Agent Tools</h2>
+        <p>
+          Ombuto Code ships with built-in CLI tools that AI coding agents can use during
+          ticket execution. These tools are Node.js scripts in <code>.ombutocode/tools/</code>,
+          documented in <code>.ombutocode/tools/tools.json</code>. Agents read this manifest
+          to discover available tools before falling back to external dependencies.
+        </p>
+
+        <h3>db-query — read the backlog database</h3>
+        <p>
+          A read-only query tool for the Ombuto Code SQLite database. Agents use this to
+          inspect tickets, check dependencies, and understand the current backlog state.
+          It replaces the need for Python or <code>sqlite3</code> on the host machine.
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <span class="mdi mdi-table"></span>
+            <div>
+              <strong>tables / schema</strong>
+              <p>List all tables or show the CREATE TABLE statement for a specific table.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-magnify"></span>
+            <div>
+              <strong>query</strong>
+              <p>Run arbitrary SELECT queries. Ticket fields are stored as JSON — use
+              <code>json_extract(data, '$.field')</code> to access them.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-format-list-bulleted"></span>
+            <div>
+              <strong>tickets / ticket / epics / stats</strong>
+              <p>Convenience commands to list tickets (with optional status filter), show a
+              single ticket's full JSON, list epics from the filesystem, or show status counts.</p>
+            </div>
+          </div>
+        </div>
+        <div class="help-code">
+          <code>node .ombutocode/tools/db-query.js tickets --status todo</code>
+          <code>node .ombutocode/tools/db-query.js ticket AUTH-001</code>
+          <code>node .ombutocode/tools/db-query.js query "SELECT id, json_extract(data, '$.title') FROM backlog_tickets"</code>
+        </div>
+
+        <h3>ticket-write — insert tickets into the backlog</h3>
+        <p>
+          The canonical way to write tickets to the database. Agents create a JSON file
+          containing an array of ticket objects, then run this tool to insert them in a
+          single transaction. It validates required fields, checks for ID collisions,
+          and creates a backup before writing.
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <span class="mdi mdi-file-document-plus-outline"></span>
+            <div>
+              <strong>insert</strong>
+              <p>Insert tickets from a JSON array file. Supports <code>--dry-run</code> to
+              validate without writing, <code>--no-backup</code> to skip the backup, and
+              <code>--force</code> to overwrite existing IDs.</p>
+            </div>
+          </div>
+        </div>
+        <div class="help-code">
+          <code>node .ombutocode/tools/ticket-write.js insert tickets.json --dry-run</code>
+          <code>node .ombutocode/tools/ticket-write.js insert tickets.json</code>
+        </div>
+        <p>
+          Each ticket in the JSON file must have at minimum: <code>id</code>, <code>title</code>,
+          <code>status</code>, and <code>epic_ref</code>. Other common fields include
+          <code>assignee</code>, <code>acceptance_criteria</code>, <code>dependencies</code>,
+          <code>references</code>, and <code>notes</code>.
+        </p>
+
+        <h3>svg-to-png — convert mockups to images</h3>
+        <p>
+          Converts SVG files to PNG images using the <code>sharp</code> package. This is the
+          recommended workflow for mockup generation — agents write SVG markup (reliable as
+          it's text/XML), then convert to PNG. No Python, PIL, or native build tools required.
+        </p>
+        <div class="help-code">
+          <code>node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg</code>
+          <code>node .ombutocode/tools/svg-to-png.js docs/Mockups/Login.svg --scale 2</code>
+          <code>node .ombutocode/tools/svg-to-png.js docs/Mockups/Card.svg --width 1920 --height 1080</code>
+        </div>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> Agents automatically discover these tools by reading
+            <code>.ombutocode/tools/tools.json</code>. The manifest contains full usage
+            documentation, examples, and database schema notes so agents can use the tools
+            without additional guidance.
+          </p>
+        </div>
       </section>
 
       <section class="help-section">
@@ -655,5 +929,27 @@ kbd {
   color: rgba(255, 255, 255, 0.7);
   min-width: 1.5rem;
   text-align: center;
+}
+
+/* Code blocks */
+.help-code {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.help-code code {
+  display: block;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 </style>

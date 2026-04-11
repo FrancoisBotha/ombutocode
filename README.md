@@ -15,6 +15,10 @@
 </p>
 
 <p align="center">
+  <a href="https://ombutocode.com"><strong>ombutocode.com</strong></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Electron-25-47848F?logo=electron&logoColor=white" alt="Electron" />
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
   <img src="https://img.shields.io/badge/Pinia-State-ffd859?logo=pinia&logoColor=black" alt="Pinia" />

@@ -34,7 +34,7 @@
                 <td class="col-status"><span class="tg-status-badge status-new">{{ epic.status }}</span></td>
                 <td class="col-path">{{ epic.path }}</td>
                 <td class="col-action">
-                  <button class="tg-btn tg-btn-primary tg-btn-sm" :disabled="!defaultAgent" @click="startSession(epic)">
+                  <button class="tg-btn tg-btn-primary tg-btn-sm" @click="startSession(epic)">
                     <span class="mdi mdi-robot-outline"></span> Generate Tickets
                   </button>
                 </td>
@@ -42,10 +42,6 @@
             </tbody>
           </table>
         </div>
-        <div v-if="!defaultAgent" class="tg-agent-warning" style="margin-top: 0.75rem;">
-          <span class="mdi mdi-alert-outline"></span> No agent configured. Go to Settings &gt; Coding Agents.
-        </div>
-
         <!-- Epics with TICKETS status -->
         <div v-if="ticketedEpics.length" class="tg-table-section" style="margin-top: 1.5rem;">
           <h2>Epics with Tickets Generated</h2>
@@ -80,7 +76,7 @@
       <div class="tg-session-header">
         <span class="mdi mdi-robot-outline"></span>
         <span>Ticket Generation</span>
-        <span class="tg-agent-badge">{{ defaultAgent }}</span>
+        <span class="tg-agent-badge">{{ selectedSessionAgent }}</span>
         <span class="tg-epic-count">{{ currentEpic?.displayName }}</span>
         <div class="tg-spacer"></div>
         <button class="tg-btn tg-btn-sm tg-btn-secondary" @click="stopSession">
@@ -93,13 +89,24 @@
             <label class="tg-panel-label">Skill</label>
           </div>
           <div class="tg-panel-body">
-            <select class="tg-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent">
+            <select class="tg-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent" :disabled="agentRunning">
               <option value="">-- None --</option>
               <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
             </select>
+            <div class="tg-field-group" style="margin-top: 0.75rem;">
+              <label class="tg-panel-label">Agent</label>
+              <select class="tg-skill-select" v-model="selectedSessionAgent" :disabled="agentRunning">
+                <option v-for="a in availableAgents" :key="a" :value="a">{{ a }}</option>
+              </select>
+            </div>
             <div class="tg-ctx-item" style="margin-top: 0.75rem;">
               <span class="mdi mdi-flag-outline tg-ctx-icon"></span>
               <span>{{ currentEpic?.path }}</span>
+            </div>
+            <div v-if="!agentRunning" style="margin-top: 1rem;">
+              <button class="tg-btn tg-btn-primary" @click="launchAgent" :disabled="!selectedSessionAgent">
+                <span class="mdi mdi-robot-outline"></span> Generate Tickets
+              </button>
             </div>
             <div class="tg-prompt-section">
               <div class="tg-panel-label" style="margin-top: 0.75rem;">System Prompt</div>
@@ -131,8 +138,11 @@ export default {
   emits: ['change-view'],
   setup(props, { emit }) {
     const sessionActive = ref(false);
+    const agentRunning = ref(false);
     const terminalContainer = ref(null);
     const defaultAgent = ref('');
+    const selectedSessionAgent = ref('');
+    const availableAgents = ref([]);
     const currentShellId = ref('');
     const sessionPrompt = ref('');
     const panelWidth = ref(300);
@@ -230,20 +240,26 @@ export default {
       try {
         const results = await window.electron.ipcRenderer.invoke('agent:getStartupResults');
         const settings = await window.electron.ipcRenderer.invoke('settings:read');
+        const connected = [];
+        for (const id of ['claude', 'codex', 'kimi']) {
+          if (results?.[id]?.status === 'pass') connected.push(id);
+        }
+        availableAgents.value = connected;
         const preferred = settings?.eval_default_agent;
         if (preferred && results?.[preferred]?.status === 'pass') {
           defaultAgent.value = preferred;
-        } else {
-          for (const id of ['claude', 'codex', 'kimi']) {
-            if (results?.[id]?.status === 'pass') { defaultAgent.value = id; break; }
-          }
+        } else if (connected.length > 0) {
+          defaultAgent.value = connected[0];
         }
+        selectedSessionAgent.value = defaultAgent.value;
       } catch (_) {}
     }
 
     async function startSession(epic) {
-      if (!defaultAgent.value || !epic) return;
+      if (!epic) return;
       currentEpic.value = epic;
+      selectedSessionAgent.value = defaultAgent.value;
+      agentRunning.value = false;
       sessionActive.value = true;
 
       await nextTick();
@@ -264,12 +280,17 @@ export default {
       fitAddon.fit();
       termInstance = term;
 
-      const shellId = 'ticketgen-' + (++sessionCounter);
-      currentShellId.value = shellId;
+      buildPrompt();
 
+      term.write('\x1b[36mSelect a skill and agent, then click "Generate Tickets" to start.\x1b[0m\r\n');
+    }
+
+    function buildPrompt() {
+      const epic = currentEpic.value;
+      if (!epic) return;
       const skillPrefix = selectedSkillContent.value ? selectedSkillContent.value + '\n\n' : '';
 
-      const prompt = `${skillPrefix}Read the epic specification at "docs/${epic.path}". Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the ticket conventions and workflow.
+      sessionPrompt.value = `${skillPrefix}Read the epic specification at "docs/${epic.path}". Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the ticket conventions and workflow.
 
 Generate implementation tickets that break this epic into concrete development tasks. Each ticket should be added to the backlog in ".ombutocode/planning/backlog.yml" with the following fields:
 - id: OMBUTO-NNN (sequential)
@@ -288,15 +309,28 @@ Guidelines:
 - After generating tickets, update the epic status from NEW to TICKETS
 
 Start by reading the epic. Then propose the tickets with a summary table and ask me to confirm before writing to the backlog.`;
+    }
 
-      sessionPrompt.value = prompt;
+    async function launchAgent() {
+      if (!selectedSessionAgent.value || !currentEpic.value) return;
+      agentRunning.value = true;
 
-      const agentCmd = defaultAgent.value;
+      buildPrompt();
+
+      const shellId = 'ticketgen-' + (++sessionCounter);
+      currentShellId.value = shellId;
+
+      const prompt = sessionPrompt.value;
+      const agentCmd = selectedSessionAgent.value;
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
       } else {
         args = [];
+      }
+
+      if (termInstance) {
+        termInstance.write('\r\n\x1b[33mStarting ' + agentCmd + '...\x1b[0m\r\n');
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
@@ -308,7 +342,7 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
       }
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
 
-      term.onData((data) => {
+      termInstance.onData((data) => {
         window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, data);
       });
 
@@ -364,10 +398,11 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
     });
 
     return {
-      sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth, loading,
+      sessionActive, agentRunning, terminalContainer, defaultAgent, selectedSessionAgent, availableAgents,
+      sessionPrompt, panelWidth, loading,
       allEpics, newEpics, ticketedEpics, currentEpic, goToBacklog,
       skillFiles, selectedSkill, loadSelectedSkillContent,
-      startSession, stopSession, startResize,
+      startSession, stopSession, launchAgent, startResize,
     };
   }
 };
@@ -432,6 +467,8 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
   background: #0A1220; color: var(--text-color, #d4d8dd); font-size: 0.82rem; cursor: pointer; outline: none; margin-bottom: 0.5rem;
 }
 .tg-skill-select:focus { border-color: #6dd4a0; }
+.tg-skill-select:disabled { opacity: 0.5; cursor: not-allowed; }
+.tg-field-group .tg-panel-label { display: block; margin-bottom: 0.3rem; }
 .tg-ctx-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: rgba(255,255,255,0.55); margin-bottom: 0.3rem; }
 .tg-ctx-icon { font-size: 1rem; color: #6dd4a0; }
 .tg-prompt-text { font-size: 0.75rem; line-height: 1.55; color: rgba(255,255,255,0.35); font-weight: 300; margin: 0.3rem 0 0; white-space: pre-wrap; }

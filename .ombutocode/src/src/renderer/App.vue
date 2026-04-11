@@ -36,6 +36,7 @@
       <PlanArchitectureView v-else-if="activeView === 'plan-architecture'" @change-view="handleChangeView" />
       <PlanDataModelView v-else-if="activeView === 'plan-data-model'" @change-view="handleChangeView" />
       <PlanEpicsView v-else-if="activeView === 'plan-epics'" @change-view="handleChangeView" />
+      <PlanTicketGenView v-else-if="activeView === 'plan-ticket-gen'" @change-view="handleChangeView" />
       <PlanArtifactsView v-else-if="activeView === 'plan-artifacts'" />
       <PlanTreeView v-else-if="activeView === 'plan-tree'" />
       <PlanMockupsView v-else-if="activeView === 'plan-mockups'" />
@@ -159,6 +160,7 @@ import PlanPrdView from '@/components/PlanPrdView.vue';
 import PlanArchitectureView from '@/components/PlanArchitectureView.vue';
 import PlanDataModelView from '@/components/PlanDataModelView.vue';
 import PlanEpicsView from '@/components/PlanEpicsView.vue';
+import PlanTicketGenView from '@/components/PlanTicketGenView.vue';
 import PlanArtifactsView from '@/views/ArtifactListView.vue';
 import PlanTreeView from '@/views/TreeView.vue';
 import PlanMockupsView from '@/views/MockupsView.vue';
@@ -202,6 +204,7 @@ export default {
     PlanArchitectureView,
     PlanDataModelView,
     PlanEpicsView,
+    PlanTicketGenView,
     PlanArtifactsView,
     PlanTreeView,
     PlanMockupsView,

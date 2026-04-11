@@ -542,7 +542,7 @@ export default {
           { view: 'plan-prd', label: 'PRD' },
           { view: 'plan-architecture', label: 'Architecture' },
           { view: 'plan-epics', label: 'Epic Creation' },
-          { view: 'plan-dashboard', label: 'Ticket Generation' },
+          { view: 'plan-ticket-gen', label: 'Ticket Generation' },
         ]
       },
       {

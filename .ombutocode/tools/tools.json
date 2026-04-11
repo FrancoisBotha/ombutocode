@@ -1,0 +1,119 @@
+{
+  "$schema": "Ombuto Code Tools Manifest — describes available CLI tools for AI coding agents",
+  "version": 1,
+  "tools": [
+    {
+      "name": "db-query",
+      "description": "Query the Ombuto Code SQLite database. Read-only — no modifications allowed. Use this instead of Python/sqlite3.",
+      "path": ".ombutocode/tools/db-query.js",
+      "runtime": "node",
+      "invocation": "node .ombutocode/tools/db-query.js <command> [options]",
+      "commands": [
+        {
+          "name": "tables",
+          "description": "List all tables in the database",
+          "usage": "node .ombutocode/tools/db-query.js tables",
+          "input": "none",
+          "output": "Formatted table: Name | Type"
+        },
+        {
+          "name": "schema",
+          "description": "Show the CREATE TABLE statement for a specific table",
+          "usage": "node .ombutocode/tools/db-query.js schema <table_name>",
+          "input": "table_name (string) — name of the table",
+          "output": "SQL CREATE TABLE statement"
+        },
+        {
+          "name": "query",
+          "description": "Run an arbitrary read-only SELECT query against the database",
+          "usage": "node .ombutocode/tools/db-query.js query \"<SQL>\"",
+          "input": "SQL SELECT statement (string, must start with SELECT)",
+          "output": "Formatted table with column headers and rows",
+          "notes": "Only SELECT queries are allowed. The database uses json_extract() for accessing ticket fields stored as JSON in the 'data' column.",
+          "examples": [
+            "node .ombutocode/tools/db-query.js query \"SELECT id, json_extract(data, '$.title') as title FROM backlog_tickets LIMIT 10\"",
+            "node .ombutocode/tools/db-query.js query \"SELECT id, json_extract(data, '$.status') as status, json_extract(data, '$.epic_ref') as epic FROM backlog_tickets WHERE json_extract(data, '$.status') = 'todo'\""
+          ]
+        },
+        {
+          "name": "tickets",
+          "description": "List all backlog tickets with key fields. Optionally filter by status.",
+          "usage": "node .ombutocode/tools/db-query.js tickets [--status <status>]",
+          "input": "--status (optional) — filter by ticket status (e.g. backlog, todo, in_progress, review, done)",
+          "output": "Formatted table: id | title | status | assignee | epic_ref",
+          "examples": [
+            "node .ombutocode/tools/db-query.js tickets",
+            "node .ombutocode/tools/db-query.js tickets --status todo",
+            "node .ombutocode/tools/db-query.js tickets --status backlog"
+          ]
+        },
+        {
+          "name": "ticket",
+          "description": "Show full JSON details of a single ticket by ID",
+          "usage": "node .ombutocode/tools/db-query.js ticket <id>",
+          "input": "id (string) — ticket ID (e.g. AUTH-001, SCAFF-003)",
+          "output": "Full ticket JSON including all fields: title, status, assignee, epic_ref, references, acceptance_criteria, dependencies, notes"
+        },
+        {
+          "name": "epics",
+          "description": "List all epic files from docs/Epics/ with their title and status (reads from filesystem, not database)",
+          "usage": "node .ombutocode/tools/db-query.js epics",
+          "input": "none",
+          "output": "Formatted table: File | Title | Status"
+        },
+        {
+          "name": "stats",
+          "description": "Show ticket counts grouped by status",
+          "usage": "node .ombutocode/tools/db-query.js stats",
+          "input": "none",
+          "output": "Formatted table: status | count"
+        }
+      ],
+      "database_schema_notes": {
+        "backlog_tickets": "Each row has 'id' (TEXT PK), 'sort_order' (INTEGER), and 'data' (TEXT — JSON blob). Use json_extract(data, '$.field') to access fields.",
+        "common_fields_in_data": [
+          "$.title — ticket title",
+          "$.status — backlog | todo | in_progress | review | done",
+          "$.assignee — agent name or null",
+          "$.epic_ref — path to epic file (e.g. docs/Epics/epic_APP_SCAFFOLD.md)",
+          "$.acceptance_criteria — JSON array of criteria strings",
+          "$.dependencies — JSON array of ticket ID strings",
+          "$.description — optional description",
+          "$.notes — optional implementation notes",
+          "$.references — optional object with prd, architecture, style_guide, mockups paths"
+        ]
+      }
+    },
+    {
+      "name": "svg-to-png",
+      "description": "Convert SVG files to PNG images. Use this for generating UI mockups: write SVG markup (text-based, agents can do this reliably), then convert to PNG. No Python or native build tools required.",
+      "path": ".ombutocode/tools/svg-to-png.js",
+      "runtime": "node",
+      "invocation": "node .ombutocode/tools/svg-to-png.js <input.svg> [output.png] [options]",
+      "workflow": "1. Write an SVG file to docs/Mockups/Name.svg  2. Convert to PNG: node .ombutocode/tools/svg-to-png.js docs/Mockups/Name.svg  3. PNG is saved alongside the SVG",
+      "options": [
+        { "flag": "--width N", "description": "Output width in pixels (default: from SVG or 1200)" },
+        { "flag": "--height N", "description": "Output height in pixels (default: from SVG or 800)" },
+        { "flag": "--scale N", "description": "Scale factor for higher resolution (e.g. 2 for retina)" }
+      ],
+      "examples": [
+        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg",
+        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg docs/Mockups/Dashboard.png",
+        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg --scale 2",
+        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Login.svg --width 1920 --height 1080"
+      ],
+      "notes": {
+        "svg_tips": "Write standard SVG with inline styles. Use viewBox for dimensions. Use web-safe fonts (Segoe UI, system-ui, sans-serif). The SVG source is kept alongside the PNG for future editing.",
+        "why_svg_first": "Agents can reliably write SVG (it's text/XML). Python may not be available on all machines. This tool bridges SVG to PNG using the sharp package (prebuilt binaries, no build tools needed).",
+        "accepted_input": "Any valid SVG file. Can include embedded images, gradients, filters, text, shapes.",
+        "output": "PNG file with transparency support. Reports dimensions and file size on success."
+      }
+    }
+  ],
+  "usage_notes": {
+    "for_agents": "Before using Python, PIL, sqlite3, or any external tool, check this manifest for Node.js alternatives that are guaranteed to work. If Python is not available, use these Node.js tools as a fallback.",
+    "tool_discovery": "Read .ombutocode/tools/tools.json to discover all available tools, their commands, and usage examples.",
+    "database_location": ".ombutocode/data/ombutocode.db",
+    "mockup_workflow": "For UI mockups: write SVG file → convert with svg-to-png tool → PNG saved to docs/Mockups/"
+  }
+}

@@ -35,11 +35,31 @@ Priority order:
 │   └── codingagents.yml       # Agent tool config
 ├── logs/                      # Run audit logs (gitignored)
 ├── run-output/                # stdout/stderr logs (gitignored)
+├── tools/                     # CLI tools for agents
+│   ├── tools.json             # Tool manifest (read this first)
+│   ├── db-query.js            # Database query tool (Node.js)
+│   └── svg-to-png.js          # SVG to PNG converter (Node.js + sharp)
 └── OMBUTOCODE_ENGINEERING_GUIDE.md  # This file
 
 docs/
 └── architecture/
     └── architecture.md        # System architecture document
+```
+
+### Agent Tools
+
+CLI tools are available at `.ombutocode/tools/`. Read `.ombutocode/tools/tools.json` for the full manifest.
+
+**Database queries:** Use `node .ombutocode/tools/db-query.js` instead of Python or sqlite3. This tool uses the bundled sql.js package and requires no additional dependencies.
+
+Common commands:
+```bash
+node .ombutocode/tools/db-query.js tickets              # List all tickets
+node .ombutocode/tools/db-query.js tickets --status todo # Filter by status
+node .ombutocode/tools/db-query.js ticket AUTH-001       # Single ticket detail
+node .ombutocode/tools/db-query.js stats                 # Ticket counts by status
+node .ombutocode/tools/db-query.js epics                 # List epics
+node .ombutocode/tools/db-query.js tables                # List DB tables
 ```
 
 Agents MUST NOT invent epics that are not present in the backlog.

@@ -543,17 +543,25 @@ export default {
       const skillPath = selectedSkill.value ? `docs/${selectedSkill.value}` : '';
       const skillSection = skillPrefix ? `\n\nUse the following skill (located at "${skillPath}") as your guide for structuring the mockup:\n\n${skillPrefix}` : '';
 
-      const prompt = `YOUR TASK: Generate a UI mockup IMAGE file based on this description: "${mockupDescription.value.trim()}"
+      const svgFilename = filename.replace(/\.(png|jpg|jpeg)$/i, '.svg');
 
-Save the generated image to "docs/Mockups/${filename}".
+      const prompt = `YOUR TASK: Generate a UI mockup for: "${mockupDescription.value.trim()}"
+
+WORKFLOW — read ".ombutocode/tools/tools.json" for available tools:
+1. Write an SVG file to "docs/Mockups/${svgFilename}" — use viewBox="0 0 1200 800", inline CSS styles, web-safe fonts
+2. Convert to PNG: node .ombutocode/tools/svg-to-png.js docs/Mockups/${svgFilename}
+3. Verify the PNG was created
+
+If Python/PIL is not available, use the SVG-to-PNG tool: node .ombutocode/tools/svg-to-png.js
 ${contextNote ? '\n' + contextNote : ''}
 Before saving, confirm the file path with me and let me modify it if needed.
 
 Guidelines:
-- Create a clean, professional UI mockup IMAGE (not code, not a tool — an actual image file)
-- If a Style Guide is provided, follow it for all visual decisions (theme, colours, fonts, spacing)
-- Include realistic placeholder content
-- Show the layout clearly with proper spacing and hierarchy
+- Write clean SVG with inline <style> for colours and typography
+- If a Style Guide is provided, use its colour tokens in the SVG styles
+- Include realistic placeholder content (real names, real numbers, real dates)
+- Show the layout clearly with proper spacing aligned to 8px grid
+- Use <g transform="translate(x,y)"> to group and position components
 - Do not invent design conventions — use what is documented${extraInstructions}${skillSection}`;
 
       sessionPrompt.value = prompt;

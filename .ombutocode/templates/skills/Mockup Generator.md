@@ -8,8 +8,6 @@ system: true
 
 This skill guides AI coding agents in generating UI mockup images from feature descriptions. It provides a structured approach to specifying what a mockup should contain, ensuring the generated images are useful for development and stakeholder review.
 
-**Important:** This skill does not prescribe visual styles, colours, typography, or component designs. If a Style Guide exists for the project, always defer to it for all design decisions. This skill focuses only on *what* to include in a mockup and *how* to describe it.
-
 ## How to Use
 
 When creating a mockup, provide the following information to the agent. The more detail you give, the better the result.
@@ -28,14 +26,14 @@ A brief description of what the screen/page does and its purpose.
 
 ### 3. UI Layout Description
 Describe the layout in spatial terms:
-- **Top area**: navigation, selectors, breadcrumbs
-- **Left area**: sidebar, filters, lists
-- **Main area**: primary content
-- **Right area**: detail panes, properties
-- **Bottom area**: status bars, pagination, actions
+- **Top bar**: navigation, selectors, breadcrumbs
+- **Left panel**: sidebar, filters, lists
+- **Main panel**: primary content area
+- **Right panel**: detail panes, properties
+- **Bottom**: status bars, pagination, actions
 
 ### 4. Key Components
-List the UI components needed, without specifying their visual style:
+List the specific UI components needed:
 - Dropdowns, inputs, buttons
 - Tables with column definitions
 - Charts with data types
@@ -44,74 +42,99 @@ List the UI components needed, without specifying their visual style:
 
 ### 5. Interaction Behaviour
 Describe key interactions:
-- Click and selection actions
+- Click actions
 - Hover effects
 - Filtering behaviour
 - Real-time updates
 - Navigation flows
 
-### 6. Data & Content
-Describe what data is shown:
-- What fields appear in tables/lists
-- What values appear in charts/KPIs
-- Use realistic placeholder content
-- Specify units, formats, and labels
+### 6. Design Style Guidance
+Specify visual requirements:
+- Light or dark theme
+- Color scheme or brand guidelines
+- Typography preferences
+- Industry-specific styling (e.g. SCADA, medical, financial)
+- Accessibility requirements
 
 ### 7. Image Generation Prompt
-Provide a concise, descriptive prompt optimised for image generation. Focus on layout and content, not specific colours or fonts — those should come from the Style Guide.
+Provide a concise, descriptive prompt optimised for image generation. This should be a single paragraph that captures the essence of the mockup.
 
 ## Example: Personal Finance Dashboard
 
 ### Feature Summary
-A dashboard for users to track personal finances — income, expenses, savings goals, and budget categories.
+A dashboard for users to track their personal finances — income, expenses, savings goals, and budget categories — with a monthly overview and spending trends.
 
 ### User Context
 - Individual managing personal finances
 - Wants a quick snapshot of financial health
-- Primarily desktop use
+- Accesses primarily on desktop, occasionally on tablet
 
 ### UI Layout Description
-- Top: month/year selector + account switcher
-- Left: navigation sidebar
-- Main area:
+- Top bar: month/year selector + account switcher
+- Left panel: navigation (Dashboard, Transactions, Budgets, Goals, Settings)
+- Main panel:
   - Top: KPI cards (Net Worth, Monthly Income, Monthly Expenses, Savings Rate)
-  - Middle: spending breakdown chart + income vs expenses trend
-  - Bottom: recent transactions table
+  - Middle: donut chart (spending by category) + bar chart (income vs expenses by month)
+  - Bottom: recent transactions table with category tags
 
 ### Key Components
-- Account selector dropdown
-- Date picker
-- KPI cards with trend indicators
-- Category breakdown chart
-- Comparison bar chart (6 months)
-- Transactions table (Date, Description, Category, Amount, Account)
-- Category badges
-- Savings goal progress indicators
+- Dropdown: Account selection (Checking, Savings, Credit Card)
+- Date picker: Month/year range
+- KPI cards: large number with trend arrow (up/down) and percentage change
+- Donut chart: spending categories (Housing, Food, Transport, Entertainment, etc.)
+- Bar chart: 6-month income vs expenses comparison
+- Table: sortable columns (Date, Description, Category, Amount, Account)
+- Category badges: color-coded pills (green for income, red for expense)
+- Progress bars: savings goals with percentage complete
 
 ### Interaction Behaviour
-- Clicking a category filters the transactions table
+- Clicking a category in the donut chart filters the transactions table
 - Hovering on chart segments shows amount and percentage
-- Clicking a transaction opens a detail view
-- Month selector updates all widgets
+- Clicking a transaction row opens a detail drawer on the right
+- Month selector updates all widgets simultaneously
 
-### Data & Content
-- KPI values: Net Worth ($45,230), Monthly Income ($8,500), Monthly Expenses ($5,120), Savings Rate (39.8%)
-- Categories: Housing, Food, Transport, Entertainment, Utilities, Health
-- Transactions: 10-15 recent entries with realistic descriptions
+### Design Style Guidance
+- Clean, modern fintech aesthetic
+- Dark theme with accent colors for categories
+- Green for positive amounts, red for negative
+- Rounded corners, subtle shadows, generous whitespace
+- Inter or SF Pro font family
 
 ### Image Generation Prompt
-"A personal finance dashboard web app, left sidebar navigation, top KPI cards with trend indicators, spending category chart, income vs expenses comparison over 6 months, recent transactions table with category badges, clean professional layout"
+"A modern personal finance dashboard web app, dark theme, clean minimal design, left sidebar navigation, top KPI cards showing net worth and monthly totals with trend indicators, donut chart for spending categories, bar chart comparing income vs expenses over 6 months, recent transactions table with color-coded category badges, fintech aesthetic with green and red accent colors, professional and polished UI"
+
+## How to Generate Mockup Images
+
+**Read the tools manifest at `.ombutocode/tools/tools.json` for available tools.**
+
+The recommended workflow for generating mockup images:
+
+1. **Write an SVG file** — Create the mockup as an SVG file at `docs/Mockups/<Name>.svg`. SVG is text-based XML, so you can write it directly. Use inline `<style>` for colours and fonts, standard shapes, and `<text>` elements.
+
+2. **Convert to PNG** — Use the SVG-to-PNG tool to produce a PNG image:
+   ```bash
+   node .ombutocode/tools/svg-to-png.js docs/Mockups/<Name>.svg
+   ```
+   This creates `docs/Mockups/<Name>.png` alongside the SVG source.
+
+3. **Verify** — Check the output file exists and has reasonable dimensions.
+
+**Why SVG first?** SVG is text-based, so agents can write it reliably. If Python/PIL is available you may use it directly, but if not, the SVG-to-PNG tool provides a guaranteed fallback using the bundled `sharp` package (no build tools needed).
+
+**SVG Tips:**
+- Use `viewBox="0 0 1200 800"` for standard dashboard mockups
+- Use web-safe fonts: `'Segoe UI', system-ui, sans-serif`
+- Use inline `<style>` blocks for consistent colour tokens
+- Group related elements with `<g transform="translate(x,y)">`
+- Align coordinates to an 8px grid for clean layout
 
 ## Guidelines for AI Agents
 
 When generating mockups:
-- If a **Style Guide** is provided as context, follow it for all visual decisions (colours, fonts, spacing, component styles)
-- If no Style Guide is provided, use sensible defaults but keep the design neutral and professional
+- **Read `.ombutocode/tools/tools.json`** first to understand available tools
+- If a **Style Guide** is provided, use its colour tokens in the SVG styles
 - Ask the user to fill in the template sections if not provided
-- Use the Image Generation Prompt as the primary input for image creation
-- Save images to `docs/Mockups/` with descriptive filenames
+- Use realistic placeholder content (real names, real numbers)
+- Save SVG source to `docs/Mockups/` then convert to PNG using the tool
 - Confirm the save path with the user before writing
-- Generate images suitable for review and iteration
-- If an **epic** or **functional requirements** document is provided, extract UI requirements from it to inform the mockup content
-- Focus on layout accuracy and realistic content over artistic style
-- Do not invent design conventions — use what is documented or ask
+- If the user provides an epic or FR document, extract UI requirements from it to inform the mockup

@@ -103,13 +103,38 @@ A dashboard for users to track their personal finances — income, expenses, sav
 ### Image Generation Prompt
 "A modern personal finance dashboard web app, dark theme, clean minimal design, left sidebar navigation, top KPI cards showing net worth and monthly totals with trend indicators, donut chart for spending categories, bar chart comparing income vs expenses over 6 months, recent transactions table with color-coded category badges, fintech aesthetic with green and red accent colors, professional and polished UI"
 
+## How to Generate Mockup Images
+
+**Read the tools manifest at `.ombutocode/tools/tools.json` for available tools.**
+
+The recommended workflow for generating mockup images:
+
+1. **Write an SVG file** — Create the mockup as an SVG file at `docs/Mockups/<Name>.svg`. SVG is text-based XML, so you can write it directly. Use inline `<style>` for colours and fonts, standard shapes, and `<text>` elements.
+
+2. **Convert to PNG** — Use the SVG-to-PNG tool to produce a PNG image:
+   ```bash
+   node .ombutocode/tools/svg-to-png.js docs/Mockups/<Name>.svg
+   ```
+   This creates `docs/Mockups/<Name>.png` alongside the SVG source.
+
+3. **Verify** — Check the output file exists and has reasonable dimensions.
+
+**Why SVG first?** SVG is text-based, so agents can write it reliably. If Python/PIL is available you may use it directly, but if not, the SVG-to-PNG tool provides a guaranteed fallback using the bundled `sharp` package (no build tools needed).
+
+**SVG Tips:**
+- Use `viewBox="0 0 1200 800"` for standard dashboard mockups
+- Use web-safe fonts: `'Segoe UI', system-ui, sans-serif`
+- Use inline `<style>` blocks for consistent colour tokens
+- Group related elements with `<g transform="translate(x,y)">`
+- Align coordinates to an 8px grid for clean layout
+
 ## Guidelines for AI Agents
 
 When generating mockups:
+- **Read `.ombutocode/tools/tools.json`** first to understand available tools
+- If a **Style Guide** is provided, use its colour tokens in the SVG styles
 - Ask the user to fill in the template sections if not provided
-- Use the Image Generation Prompt as the primary input for image creation
-- Save images to `docs/Mockups/` with descriptive filenames
+- Use realistic placeholder content (real names, real numbers)
+- Save SVG source to `docs/Mockups/` then convert to PNG using the tool
 - Confirm the save path with the user before writing
-- Generate high-resolution images suitable for review
-- Use consistent styling across related mockups
 - If the user provides an epic or FR document, extract UI requirements from it to inform the mockup

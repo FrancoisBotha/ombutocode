@@ -27,6 +27,7 @@
     "marked": "^17.0.3",
     "node-pty": "^1.1.0",
     "pinia": "^3.0.3",
+    "sharp": "^0.34.5",
     "simple-git": "^3.33.0",
     "sql.js": "^1.14.0",
     "tabulator-tables": "^6.3.1",

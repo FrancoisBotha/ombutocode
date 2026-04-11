@@ -12,8 +12,14 @@
             id="job-name"
             v-model="form.name"
             type="text"
-            class="field-input"
+            :class="['field-input', { 'field-input--error': shouldShowError('name') }]"
+            :aria-invalid="shouldShowError('name')"
+            :aria-describedby="shouldShowError('name') ? 'job-name-error' : undefined"
+            @blur="markTouched('name')"
           />
+          <p v-if="shouldShowError('name')" id="job-name-error" class="field-error">
+            {{ errors.name }}
+          </p>
         </div>
 
         <div class="field">
@@ -23,12 +29,22 @@
               id="job-source"
               v-model="form.source_path"
               type="text"
-              class="field-input field-input--grow"
+              :class="[
+                'field-input',
+                'field-input--grow',
+                { 'field-input--error': shouldShowError('source_path') }
+              ]"
+              :aria-invalid="shouldShowError('source_path')"
+              :aria-describedby="shouldShowError('source_path') ? 'job-source-error' : undefined"
+              @blur="markTouched('source_path')"
             />
             <button type="button" class="btn btn--secondary" @click="browseSource">
               Browse…
             </button>
           </div>
+          <p v-if="shouldShowError('source_path')" id="job-source-error" class="field-error">
+            {{ errors.source_path }}
+          </p>
         </div>
 
         <div class="field">
@@ -37,9 +53,15 @@
             id="job-target"
             v-model="form.dropbox_target"
             type="text"
-            class="field-input"
+            :class="['field-input', { 'field-input--error': shouldShowError('dropbox_target') }]"
+            :aria-invalid="shouldShowError('dropbox_target')"
+            :aria-describedby="shouldShowError('dropbox_target') ? 'job-target-error' : undefined"
             @input="targetManuallyEdited = true"
+            @blur="markTouched('dropbox_target')"
           />
+          <p v-if="shouldShowError('dropbox_target')" id="job-target-error" class="field-error">
+            {{ errors.dropbox_target }}
+          </p>
         </div>
       </section>
 
@@ -54,7 +76,15 @@
               v-model.number="intervalValue"
               type="number"
               min="1"
-              class="field-input field-input--narrow"
+              step="1"
+              :class="[
+                'field-input',
+                'field-input--narrow',
+                { 'field-input--error': shouldShowError('intervalValue') }
+              ]"
+              :aria-invalid="shouldShowError('intervalValue')"
+              :aria-describedby="shouldShowError('intervalValue') ? 'job-interval-error' : undefined"
+              @blur="markTouched('intervalValue')"
             />
             <select
               id="job-interval-unit"
@@ -65,6 +95,9 @@
               <option value="hours">hours</option>
             </select>
           </div>
+          <p v-if="shouldShowError('intervalValue')" id="job-interval-error" class="field-error">
+            {{ errors.intervalValue }}
+          </p>
         </div>
 
         <div class="field field--toggle">
@@ -141,7 +174,7 @@
         <button type="button" class="btn btn--secondary" @click="handleCancel">
           Cancel
         </button>
-        <button type="submit" class="btn btn--primary">
+        <button type="submit" class="btn btn--primary" :disabled="!canSave">
           Save
         </button>
       </div>
@@ -159,6 +192,23 @@ export default {
       targetManuallyEdited: false,
       intervalValue: 30,
       intervalUnit: 'minutes',
+      submitAttempted: false,
+      touched: {
+        name: false,
+        source_path: false,
+        dropbox_target: false,
+        intervalValue: false
+      },
+      errors: {
+        name: '',
+        source_path: '',
+        dropbox_target: '',
+        intervalValue: ''
+      },
+      serverNameError: {
+        value: '',
+        name: ''
+      },
       form: {
         name: '',
         source_path: '',
@@ -178,6 +228,29 @@ export default {
         const slug = newName.trim() || ''
         this.form.dropbox_target = slug ? `/DropSync/${slug}` : ''
       }
+    },
+
+    intervalUnit() {
+      if (this.touched.intervalValue || this.submitAttempted) {
+        this.validateField('intervalValue')
+      }
+    }
+  },
+
+  computed: {
+    isClientValid() {
+      return Object.values(this.getClientValidation()).every((message) => !message)
+    },
+
+    hasActiveServerNameError() {
+      return Boolean(
+        this.serverNameError.value &&
+        this.form.name.trim() === this.serverNameError.name
+      )
+    },
+
+    canSave() {
+      return this.isClientValid && !this.hasActiveServerNameError
     }
   },
 
@@ -250,32 +323,99 @@ export default {
       const result = await window.api.jobs.pickSourceFolder()
       if (result && result.ok && result.data) {
         this.form.source_path = result.data
+        if (this.touched.source_path || this.submitAttempted) {
+          this.validateField('source_path')
+        }
       }
     },
 
     async handleSave() {
+      this.submitAttempted = true
+      this.validateForm()
+
+      if (!this.canSave) {
+        return
+      }
+
       const intervalMinutes =
         this.intervalUnit === 'hours'
-          ? this.intervalValue * 60
-          : this.intervalValue
+          ? Number(this.intervalValue) * 60
+          : Number(this.intervalValue)
 
       const payload = {
-        name: this.form.name,
-        source_path: this.form.source_path,
-        dropbox_target: this.form.dropbox_target,
+        name: this.form.name.trim(),
+        source_path: this.form.source_path.trim(),
+        dropbox_target: this.form.dropbox_target.trim(),
         interval_minutes: intervalMinutes,
         strict_checksum: this.form.strict_checksum,
         mirror_deletes: this.form.mirror_deletes,
         exclusion_patterns: [...this.exclusionPatterns]
       }
 
-      if (this.isEditMode) {
-        await window.api.jobs.update(this.$route.params.id, payload)
-      } else {
-        await window.api.jobs.create(payload)
+      const result = this.isEditMode
+        ? await window.api.jobs.update(this.$route.params.id, payload)
+        : await window.api.jobs.create(payload)
+
+      if (!result || !result.ok) {
+        this.setNameServerError(result?.error || 'Unable to save job')
+        return
       }
 
       this.$router.back()
+    },
+
+    getClientValidation() {
+      return {
+        name: this.form.name.trim() ? '' : 'Name is required',
+        source_path: this.form.source_path.trim() ? '' : 'Source path is required',
+        dropbox_target: this.form.dropbox_target.trim() ? '' : 'Dropbox target is required',
+        intervalValue: this.isPositiveInteger(this.intervalValue)
+          ? ''
+          : 'Interval must be a positive integer'
+      }
+    },
+
+    validateField(field) {
+      const validation = this.getClientValidation()
+      this.errors[field] = validation[field] || ''
+    },
+
+    validateForm() {
+      this.errors = {
+        ...this.errors,
+        ...this.getClientValidation()
+      }
+    },
+
+    shouldShowError(field) {
+      if (
+        field === 'name' &&
+        this.hasActiveServerNameError &&
+        this.errors.name === this.serverNameError.value
+      ) {
+        return true
+      }
+
+      return !!this.errors[field] && (this.touched[field] || this.submitAttempted)
+    },
+
+    markTouched(field) {
+      this.touched[field] = true
+      this.validateField(field)
+    },
+
+    setNameServerError(message) {
+      this.serverNameError = {
+        value: message,
+        name: this.form.name.trim()
+      }
+      this.errors.name = message
+      this.touched.name = true
+    },
+
+    isPositiveInteger(value) {
+      const normalized = typeof value === 'string' ? value.trim() : value
+      return normalized !== '' && Number.isInteger(Number(normalized)) && Number(normalized) > 0
     },
 
     handleCancel() {
@@ -331,6 +471,18 @@ export default {
 .field-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+}
+
+.field-input--error,
+.field-input--error:focus {
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 2px rgba(209, 69, 69, 0.15);
+}
+
+.field-error {
+  margin-top: 4px;
+  font-size: var(--font-size-small);
+  color: var(--color-error);
 }
 
 .field-row {
@@ -436,12 +588,17 @@ export default {
   transition: background-color 0.15s ease;
 }
 
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .btn--primary {
   background-color: var(--color-primary);
   color: #ffffff;
 }
 
-.btn--primary:hover {
+.btn--primary:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
 }
 

@@ -63,17 +63,45 @@
         v-for="m in mockups"
         :key="m.path"
         class="mockup-card"
-        @click="openLightbox(m)"
       >
-        <img v-if="m.dataUrl" :src="m.dataUrl" :alt="m.name" class="thumb" />
-        <div class="mockup-name">{{ m.name }}</div>
+        <img v-if="m.dataUrl" :src="m.dataUrl" :alt="m.name" class="thumb" @click="openLightbox(m)" />
+        <div class="mockup-card-footer">
+          <span v-if="renamingPath !== m.path" class="mockup-name" @click="openLightbox(m)">{{ m.name }}</span>
+          <input
+            v-else
+            v-model="renameValue"
+            class="mockup-rename-input"
+            @keyup.enter="confirmRename(m)"
+            @keyup.escape="renamingPath = null"
+            @blur="confirmRename(m)"
+          />
+          <div class="mockup-card-actions">
+            <button class="mockup-action-btn" @click.stop="startRename(m)" title="Rename">
+              <span class="mdi mdi-pencil-outline"></span>
+            </button>
+            <button class="mockup-action-btn mockup-action-delete" @click.stop="deleteMockup(m)" title="Delete">
+              <span class="mdi mdi-delete-outline"></span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Lightbox overlay -->
-    <div v-if="lightbox" class="lightbox" @click="lightbox = null">
+    <div v-if="lightbox" class="lightbox" @click.self="lightbox = null">
       <img :src="lightbox.dataUrl" :alt="lightbox.name" class="lightbox-img" />
-      <div class="lightbox-caption">{{ lightbox.name }}</div>
+      <div class="lightbox-footer">
+        <span class="lightbox-caption">{{ lightbox.name }}</span>
+        <div class="lightbox-actions">
+          <button class="lightbox-btn" @click.stop="startRenameLightbox" title="Rename">
+            <span class="mdi mdi-pencil-outline"></span> Rename
+          </button>
+          <button class="lightbox-btn lightbox-btn-danger" @click.stop="deleteMockupFromLightbox" title="Delete">
+            <span class="mdi mdi-delete-outline"></span> Delete
+          </button>
+          <button class="lightbox-btn" @click="lightbox = null">Close</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -265,8 +293,60 @@ export default {
       } catch (_) {}
     }
 
+    const renamingPath = ref(null);
+    const renameValue = ref('');
+
     function openLightbox(m) {
       lightbox.value = m;
+    }
+
+    function startRename(m) {
+      renamingPath.value = m.path;
+      renameValue.value = m.name;
+    }
+
+    async function confirmRename(m) {
+      if (!renamingPath.value) return;
+      const newName = renameValue.value.trim();
+      renamingPath.value = null;
+      if (!newName || newName === m.name) return;
+      const newPath = 'Mockups/' + newName;
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:renameFile', m.path, newPath);
+        loadMockups();
+      } catch (e) {
+        console.error('Failed to rename mockup:', e);
+      }
+    }
+
+    async function deleteMockup(m) {
+      if (!confirm(`Delete "${m.name}"?`)) return;
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:deleteFile', m.path);
+        mockups.value = mockups.value.filter(x => x.path !== m.path);
+      } catch (e) {
+        console.error('Failed to delete mockup:', e);
+      }
+    }
+
+    function startRenameLightbox() {
+      if (!lightbox.value) return;
+      const name = prompt('Rename mockup:', lightbox.value.name);
+      if (!name || name === lightbox.value.name) return;
+      const newPath = 'Mockups/' + name;
+      window.electron.ipcRenderer.invoke('filetree:renameFile', lightbox.value.path, newPath).then(() => {
+        lightbox.value = null;
+        loadMockups();
+      }).catch(e => console.error('Failed to rename:', e));
+    }
+
+    function deleteMockupFromLightbox() {
+      if (!lightbox.value) return;
+      if (!confirm(`Delete "${lightbox.value.name}"?`)) return;
+      window.electron.ipcRenderer.invoke('filetree:deleteFile', lightbox.value.path).then(() => {
+        lightbox.value = null;
+        loadMockups();
+      }).catch(e => console.error('Failed to delete:', e));
     }
 
     async function startGenSession() {
@@ -405,6 +485,8 @@ Guidelines:
 
     return {
       mockups, loading, lightbox, openLightbox,
+      renamingPath, renameValue, startRename, confirmRename, deleteMockup,
+      startRenameLightbox, deleteMockupFromLightbox,
       showGenPanel, agents, selectedAgent, mockupDescription, mockupFilename,
       epicFiles, frFiles, skillFiles, selectedEpic, selectedFRs, selectedSkill, loadSelectedSkillContent,
       additionalInstructions, styleGuideFile, includeStyleGuide,
@@ -460,13 +542,64 @@ Guidelines:
   background: #1a1a1a;
 }
 
+.mockup-card-footer {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  gap: 0.25rem;
+}
+
 .mockup-name {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8rem;
+  flex: 1;
+  font-size: 0.78rem;
   color: var(--text-color);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.mockup-rename-input {
+  flex: 1;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid #6dd4a0;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.04);
+  color: var(--text-color);
+  font-size: 0.78rem;
+  outline: none;
+}
+
+.mockup-card-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.mockup-card:hover .mockup-card-actions {
+  opacity: 1;
+}
+
+.mockup-action-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.3);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 3px;
+  font-size: 0.85rem;
+  transition: all 0.12s;
+}
+
+.mockup-action-btn:hover {
+  color: rgba(255,255,255,0.7);
+  background: rgba(255,255,255,0.06);
+}
+
+.mockup-action-delete:hover {
+  color: #e06060;
+  background: rgba(224,96,96,0.1);
 }
 
 /* Lightbox */
@@ -488,10 +621,45 @@ Guidelines:
   object-fit: contain;
 }
 
-.lightbox-caption {
+.lightbox-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-top: 0.75rem;
+}
+
+.lightbox-caption {
   color: #ccc;
   font-size: 0.9rem;
+  flex: 1;
+}
+
+.lightbox-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.lightbox-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lightbox-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.lightbox-btn-danger:hover {
+  background: rgba(224,96,96,0.3);
+  color: #e06060;
 }
 
 /* Header with generate button */

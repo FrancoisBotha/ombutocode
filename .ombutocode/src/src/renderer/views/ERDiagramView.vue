@@ -6,6 +6,7 @@
         <h1 class="file-name">{{ fileName }}</h1>
       </div>
       <div class="title-actions">
+        <button class="tool-btn" @click="goBack" title="Back to Data Model"><span class="mdi mdi-arrow-left"></span> Back</button>
         <span class="table-count">{{ tables.length }} tables, {{ relationships.length }} relationships</span>
         <div class="spacer"></div>
         <button class="tool-btn" @click="zoomIn"><span class="mdi mdi-magnify-plus-outline"></span></button>
@@ -263,6 +264,9 @@ export default {
       zoom, zoomPercent, viewBox, zoomIn, zoomOut, zoomReset, onWheel,
       tableWidth, tableHeight, autoLayout, relPath,
       onTableMouseDown, onCanvasMouseDown, onCanvasMouseMove, onCanvasMouseUp,
+      goBack() {
+        if (window.__planNavigate) window.__planNavigate('plan-data-model');
+      },
     };
   },
 };

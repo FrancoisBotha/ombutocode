@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>DropSync — Style Guide Preview</title>
+<style>
+  /* ---------- Tokens (from StyleGuide.md) ---------- */
+  :root {
+    --primary: #4A90E2;
+    --primary-hover: #3A7BC8;
+    --bg: #F7F8FA;
+    --surface: #FFFFFF;
+    --surface-hover: #F0F3F7;
+    --border: #E1E5EB;
+    --text: #1F2430;
+    --muted: #6B7280;
+    --success: #2FA96A;
+    --warning: #D98B1F;
+    --error: #D14545;
+    --info: #4A90E2;
+
+    --radius: 6px;
+    --radius-pill: 12px;
+    --base: 8px;
+    --page-pad: 24px;
+    --card-pad: 16px;
+    --section-gap: 24px;
+
+    --font: Inter, -apple-system, "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.875rem; /* 14px body */
+    line-height: 1.6;
+    font-weight: 400;
+  }
+
+  /* ---------- Layout ---------- */
+  .app {
+    display: flex;
+    min-height: 100vh;
+  }
+  .sidebar {
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-brand {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .sidebar-brand small {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--text);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    text-decoration: none;
+  }
+  .nav-item:hover {
+    background: var(--surface-hover);
+  }
+  .nav-item.active {
+    color: var(--primary);
+    border-left-color: var(--primary);
+    font-weight: 600;
+  }
+  .nav-icon {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    border-radius: 3px;
+    background: currentColor;
+    opacity: 0.7;
+  }
+
+  .content {
+    flex: 1;
+    padding: var(--page-pad);
+    min-width: 0;
+  }
+
+  .page-title {
+    font-size: 1.5rem;     /* H1 24px */
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: var(--text);
+  }
+  .page-subtitle {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin: 0 0 var(--section-gap) 0;
+  }
+
+  .section {
+    margin-bottom: var(--section-gap);
+  }
+  .section-heading {
+    font-size: 1.2rem;     /* H2 19px */
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    color: var(--text);
+  }
+  .section-sub {
+    font-size: 1rem;       /* H3 16px */
+    font-weight: 600;
+    margin: 16px 0 8px 0;
+    color: var(--text);
+  }
+
+  /* ---------- Card ---------- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--card-pad);
+    /* No shadow — DropSync is flat */
+  }
+
+  /* ---------- Colour swatches ---------- */
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .swatch {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .swatch-colour {
+    height: 72px;
+    border-bottom: 1px solid var(--border);
+  }
+  .swatch-meta {
+    padding: 12px 16px;
+  }
+  .swatch-role {
+    font-weight: 600;
+    font-size: 14px;
+    margin: 0;
+  }
+  .swatch-hex {
+    font-family: "Consolas", "Courier New", monospace;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 2px 0 0 0;
+  }
+  .swatch-use {
+    font-size: 12px;
+    color: var(--muted);
+    margin: 4px 0 0 0;
+  }
+
+  /* ---------- Typography samples ---------- */
+  .type-sample {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .type-sample:last-child { border-bottom: none; }
+  .type-meta {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: "Consolas", "Courier New", monospace;
+    margin-bottom: 4px;
+  }
+  .t-h1 { font-size: 1.5rem;   font-weight: 700; line-height: 1.3; margin: 0; }
+  .t-h2 { font-size: 1.2rem;   font-weight: 600; line-height: 1.3; margin: 0; }
+  .t-h3 { font-size: 1rem;     font-weight: 600; line-height: 1.4; margin: 0; }
+  .t-body  { font-size: 0.875rem; font-weight: 400; line-height: 1.6; margin: 0; }
+  .t-small { font-size: 0.75rem;  font-weight: 400; line-height: 1.5; margin: 0; color: var(--muted); }
+
+  /* ---------- Spacing scale ---------- */
+  .spacing-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-end;
+  }
+  .spacing-item { text-align: center; }
+  .spacing-box {
+    background: var(--primary);
+    border-radius: var(--radius);
+  }
+  .spacing-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    font-family: "Consolas", "Courier New", monospace;
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  .btn {
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: pointer;
+    line-height: 1.2;
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--primary-hover); }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--primary);
+    border-color: var(--primary);
+  }
+  .btn-secondary:hover { background: var(--surface-hover); }
+
+  .btn-danger {
+    background: var(--error);
+    color: #fff;
+  }
+  .btn-danger:hover { background: #B83A3A; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--primary);
+    border: none;
+  }
+  .btn-ghost:hover { background: var(--surface-hover); }
+
+  .btn[disabled], .btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn-primary.disabled:hover { background: var(--primary); }
+  .btn-secondary.disabled:hover { background: transparent; }
+  .btn-danger.disabled:hover { background: var(--error); }
+
+  /* explicit "state" previews */
+  .state-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: center;
+    font-family: "Consolas", "Courier New", monospace;
+  }
+  .state-cell { display: flex; flex-direction: column; align-items: center; }
+
+  /* Forced hover renders (for static preview) */
+  .btn-primary.is-hover     { background: var(--primary-hover); }
+  .btn-secondary.is-hover   { background: var(--surface-hover); }
+  .btn-danger.is-hover      { background: #B83A3A; }
+  .btn-ghost.is-hover       { background: var(--surface-hover); }
+
+  /* ---------- Badges ---------- */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.5;
+  }
+  .badge-running   { background: var(--primary); }
+  .badge-completed { background: var(--success); }
+  .badge-failed    { background: var(--error); }
+  .badge-skipped   { background: var(--warning); }
+  .badge-disabled  { background: var(--muted); }
+
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* ---------- Table ---------- */
+  table.data {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  table.data th {
+    background: var(--surface-hover);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: none;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.data td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    color: var(--text);
+  }
+  table.data tr:last-child td { border-bottom: none; }
+  table.data tr:hover td { background: var(--surface-hover); }
+  table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Form inputs ---------- */
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .field { display: flex; flex-direction: column; }
+  .field label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .input, .select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-family: var(--font);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .input:focus, .select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
+  }
+  .input.is-focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.18);
+  }
+  .input[disabled], .select[disabled] {
+    background: var(--surface-hover);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+
+  /* ---------- Sample card ---------- */
+  .job-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .job-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .job-title { font-size: 1rem; font-weight: 600; margin: 0; }
+  .job-meta { font-size: 12px; color: var(--muted); margin: 0; }
+  .job-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  /* ---------- Rendered Markdown below ---------- */
+  .md {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+  }
+  .md h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 8px 0; }
+  .md h2 { font-size: 1.2rem; font-weight: 600; margin: 24px 0 8px 0; }
+  .md h3 { font-size: 1rem; font-weight: 600; margin: 16px 0 6px 0; }
+  .md p  { margin: 8px 0; }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+  .md table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+  .md th {
+    background: var(--surface-hover);
+    color: var(--muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .md td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .md code {
+    font-family: "Consolas", "Courier New", monospace;
+    background: var(--surface-hover);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: var(--text);
+  }
+  .md pre {
+    background: var(--surface-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .md pre code { background: transparent; padding: 0; }
+  .md ul { padding-left: 20px; margin: 8px 0; }
+  .md li { margin: 4px 0; }
+  .md em { color: var(--muted); }
+
+  .cols-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 900px) {
+    .cols-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        DropSync
+        <small>Style Guide Preview</small>
+      </div>
+      <a class="nav-item active" href="#colours"><span class="nav-icon"></span> Colours</a>
+      <a class="nav-item" href="#typography"><span class="nav-icon"></span> Typography</a>
+      <a class="nav-item" href="#spacing"><span class="nav-icon"></span> Spacing</a>
+      <a class="nav-item" href="#components"><span class="nav-icon"></span> Components</a>
+      <a class="nav-item" href="#states"><span class="nav-icon"></span> States</a>
+      <a class="nav-item" href="#guide"><span class="nav-icon"></span> Full Guide</a>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+      <h1 class="page-title">DropSync — Style Guide Preview</h1>
+      <p class="page-subtitle">Visual reference for colours, typography, spacing, and components. Rendered directly from the tokens defined in <code>StyleGuide.md</code>.</p>
+
+      <!-- ============== COLOURS ============== -->
+      <section class="section" id="colours">
+        <h2 class="section-heading">1. Colours</h2>
+        <div class="swatch-grid">
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#4A90E2"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Primary</p>
+              <p class="swatch-hex">#4A90E2</p>
+              <p class="swatch-use">Buttons, links, active states, info</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#3A7BC8"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Primary (hover)</p>
+              <p class="swatch-hex">#3A7BC8</p>
+              <p class="swatch-use">Hover/pressed state on primary</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#F7F8FA; border-bottom:1px solid #E1E5EB"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Background</p>
+              <p class="swatch-hex">#F7F8FA</p>
+              <p class="swatch-use">App background</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#FFFFFF; border-bottom:1px solid #E1E5EB"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Surface</p>
+              <p class="swatch-hex">#FFFFFF</p>
+              <p class="swatch-use">Cards, panels, list rows, inputs</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#F0F3F7"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Surface (hover)</p>
+              <p class="swatch-hex">#F0F3F7</p>
+              <p class="swatch-use">Row/card hover state</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#E1E5EB"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Border</p>
+              <p class="swatch-hex">#E1E5EB</p>
+              <p class="swatch-use">Dividers, input borders, card borders</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#1F2430"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Text</p>
+              <p class="swatch-hex">#1F2430</p>
+              <p class="swatch-use">Primary text</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#6B7280"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Muted text</p>
+              <p class="swatch-hex">#6B7280</p>
+              <p class="swatch-use">Secondary labels, timestamps, captions</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#2FA96A"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Success</p>
+              <p class="swatch-hex">#2FA96A</p>
+              <p class="swatch-use">Completed runs</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#D98B1F"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Warning</p>
+              <p class="swatch-hex">#D98B1F</p>
+              <p class="swatch-use">Quota warnings, skipped files</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#D14545"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Error</p>
+              <p class="swatch-hex">#D14545</p>
+              <p class="swatch-use">Failed runs, auth errors</p>
+            </div>
+          </div>
+
+          <div class="swatch">
+            <div class="swatch-colour" style="background:#4A90E2"></div>
+            <div class="swatch-meta">
+              <p class="swatch-role">Info</p>
+              <p class="swatch-hex">#4A90E2</p>
+              <p class="swatch-use">In-progress state (reuses primary)</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============== TYPOGRAPHY ============== -->
+      <section class="section" id="typography">
+        <h2 class="section-heading">2. Typography</h2>
+        <div class="card">
+          <div class="type-sample">
+            <div class="type-meta">H1 &middot; 1.5rem / 24px &middot; 700 bold</div>
+            <p class="t-h1">Back up your Dropbox with confidence</p>
+          </div>
+          <div class="type-sample">
+            <div class="type-meta">H2 &middot; 1.2rem / 19px &middot; 600 semi-bold</div>
+            <p class="t-h2">Scheduled backup jobs</p>
+          </div>
+          <div class="type-sample">
+            <div class="type-meta">H3 &middot; 1rem / 16px &middot; 600 semi-bold</div>
+            <p class="t-h3">Nightly photos archive</p>
+          </div>
+          <div class="type-sample">
+            <div class="type-meta">Body &middot; 0.875rem / 14px &middot; 400 regular &middot; line-height 1.6</div>
+            <p class="t-body">DropSync keeps a local copy of your Dropbox folders on a schedule you choose. Runs are logged, failures are surfaced clearly, and nothing happens without your consent. The app stays out of the way until it needs your attention.</p>
+          </div>
+          <div class="type-sample">
+            <div class="type-meta">Small &middot; 0.75rem / 12px &middot; 400 regular</div>
+            <p class="t-small">Last run: 2026-04-11 03:14 &middot; 1,248 files &middot; 4.6 GB</p>
+          </div>
+          <div class="type-sample">
+            <div class="type-meta">Font stack</div>
+            <p class="t-body" style="font-family: var(--font)">Inter, -apple-system, "Segoe UI", system-ui, sans-serif</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============== SPACING ============== -->
+      <section class="section" id="spacing">
+        <h2 class="section-heading">3. Spacing scale</h2>
+        <div class="card">
+          <p class="t-body" style="margin-top:0">All spacing is a multiple of the 8px base unit. Border radius is 6px (except status pills at 12px).</p>
+          <div class="spacing-grid" style="margin-top:16px">
+            <div class="spacing-item">
+              <div class="spacing-box" style="width:8px;height:8px"></div>
+              <div class="spacing-label">base · 8px</div>
+            </div>
+            <div class="spacing-item">
+              <div class="spacing-box" style="width:12px;height:12px"></div>
+              <div class="spacing-label">row-y · 12px</div>
+            </div>
+            <div class="spacing-item">
+              <div class="spacing-box" style="width:16px;height:16px"></div>
+              <div class="spacing-label">card-pad · 16px</div>
+            </div>
+            <div class="spacing-item">
+              <div class="spacing-box" style="width:24px;height:24px"></div>
+              <div class="spacing-label">page-pad / gap · 24px</div>
+            </div>
+            <div class="spacing-item">
+              <div class="spacing-box" style="width:32px;height:32px"></div>
+              <div class="spacing-label">4× · 32px</div>
+            </div>
+          </div>
+
+          <h3 class="section-sub">Border radius</h3>
+          <div style="display:flex; gap:16px; align-items:flex-end">
+            <div class="spacing-item">
+              <div style="width:64px;height:64px;background:var(--primary);border-radius:6px"></div>
+              <div class="spacing-label">6px · default</div>
+            </div>
+            <div class="spacing-item">
+              <div style="width:96px;height:32px;background:var(--primary);border-radius:12px"></div>
+              <div class="spacing-label">12px · pills only</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============== COMPONENTS ============== -->
+      <section class="section" id="components">
+        <h2 class="section-heading">4. Components</h2>
+
+        <h3 class="section-sub">Buttons</h3>
+        <div class="card">
+          <div class="btn-row">
+            <button class="btn btn-primary">Create Job</button>
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-danger">Delete Job</button>
+            <button class="btn btn-ghost">Edit</button>
+          </div>
+        </div>
+
+        <h3 class="section-sub">Badges / Status pills</h3>
+        <div class="card">
+          <div class="badge-row">
+            <span class="badge badge-running">Running</span>
+            <span class="badge badge-completed">Completed</span>
+            <span class="badge badge-failed">Failed</span>
+            <span class="badge badge-skipped">Skipped</span>
+            <span class="badge badge-disabled">Disabled</span>
+          </div>
+        </div>
+
+        <h3 class="section-sub">Sample card</h3>
+        <div class="card job-card">
+          <div class="job-card-head">
+            <h3 class="job-title">Nightly photos archive</h3>
+            <span class="badge badge-completed">Completed</span>
+          </div>
+          <p class="job-meta">Source: <code>/Dropbox/Photos</code> &middot; Destination: <code>D:\Backups\Photos</code></p>
+          <p class="job-meta">Last run 2026-04-11 03:14 &middot; 1,248 files &middot; 4.6 GB</p>
+          <div class="job-actions">
+            <button class="btn btn-primary">Run Now</button>
+            <button class="btn btn-secondary">Edit</button>
+            <button class="btn btn-ghost">View log</button>
+          </div>
+        </div>
+
+        <h3 class="section-sub">Table — Backup logs</h3>
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Job</th>
+              <th>Started</th>
+              <th>Status</th>
+              <th class="num">Files</th>
+              <th class="num">Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Nightly photos archive</td>
+              <td>2026-04-11 03:14</td>
+              <td><span class="badge badge-completed">Completed</span></td>
+              <td class="num">1,248</td>
+              <td class="num">4.6 GB</td>
+            </tr>
+            <tr>
+              <td>Work documents</td>
+              <td>2026-04-11 02:00</td>
+              <td><span class="badge badge-failed">Failed</span></td>
+              <td class="num">0</td>
+              <td class="num">—</td>
+            </tr>
+            <tr>
+              <td>Shared team folder</td>
+              <td>2026-04-11 01:30</td>
+              <td><span class="badge badge-running">Running</span></td>
+              <td class="num">312</td>
+              <td class="num">820 MB</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 class="section-sub">Form inputs</h3>
+        <div class="card">
+          <div class="form-grid">
+            <div class="field">
+              <label for="f-name">Job name</label>
+              <input id="f-name" class="input" type="text" value="Nightly photos archive" />
+            </div>
+            <div class="field">
+              <label for="f-src">Source folder</label>
+              <input id="f-src" class="input" type="text" value="/Dropbox/Photos" />
+            </div>
+            <div class="field">
+              <label for="f-dest">Destination (focused)</label>
+              <input id="f-dest" class="input is-focus" type="text" value="D:\Backups\Photos" />
+            </div>
+            <div class="field">
+              <label for="f-sched">Schedule</label>
+              <select id="f-sched" class="select">
+                <option>Daily at 03:00</option>
+                <option>Hourly</option>
+                <option>Weekly on Sunday</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="f-dis">API token (disabled)</label>
+              <input id="f-dis" class="input" type="text" value="••••••••••••" disabled />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============== STATES ============== -->
+      <section class="section" id="states">
+        <h2 class="section-heading">5. Interactive states</h2>
+        <div class="card">
+          <h3 class="section-sub" style="margin-top:0">Buttons — default / hover / disabled</h3>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:720px">
+            <div class="state-cell">
+              <button class="btn btn-primary">Create Job</button>
+              <div class="state-label">primary · default</div>
+            </div>
+            <div class="state-cell">
+              <button class="btn btn-primary is-hover">Create Job</button>
+              <div class="state-label">primary · hover</div>
+            </div>
+            <div class="state-cell">
+              <button class="btn btn-primary disabled" disabled>Create Job</button>
+              <div class="state-label">primary · disabled</div>
+            </div>
+
+            <div class="state-cell">
+              <button class="btn btn-secondary">Cancel</button>
+              <div class="state-label">secondary · default</div>
+            </div>
+            <div class="state-cell">
+              <button class="btn btn-secondary is-hover">Cancel</button>
+              <div class="state-label">secondary · hover</div>
+            </div>
+            <div class="state-cell">
+              <button class="btn btn-secondary disabled" disabled>Cancel</button>
+              <div class="state-label">secondary · disabled</div>
+            </div>
+
+            <div class="state-cell">
+              <button class="btn btn-danger">Delete Job</button>
+              <div class="state-label">danger · default</div>
+            </div>
+            <div class="state-cell">
+              <button class="btn btn-danger is-hover">Delete Job</button>
+              <div class="state-label">danger · hover</div>
+            </div>
+            <div class="state-cell">
+              <button class="btn btn-danger disabled" disabled>Delete Job</button>
+              <div class="state-label">danger · disabled</div>
+            </div>
+          </div>
+
+          <h3 class="section-sub">Table row hover (hover the middle row)</h3>
+          <table class="data">
+            <thead>
+              <tr><th>Job</th><th>Status</th><th class="num">Files</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Work documents</td><td><span class="badge badge-completed">Completed</span></td><td class="num">980</td></tr>
+              <tr style="background:var(--surface-hover)"><td>Nightly photos archive</td><td><span class="badge badge-running">Running</span></td><td class="num">1,248</td></tr>
+              <tr><td>Shared team folder</td><td><span class="badge badge-skipped">Skipped</span></td><td class="num">312</td></tr>
+            </tbody>
+          </table>
+
+          <h3 class="section-sub">Sidebar nav — default / hover / active</h3>
+          <div style="display:flex; gap:24px; flex-wrap:wrap">
+            <div style="width:220px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden">
+              <a class="nav-item" href="#"><span class="nav-icon"></span> Default item</a>
+              <a class="nav-item" href="#" style="background:var(--surface-hover)"><span class="nav-icon"></span> Hover item</a>
+              <a class="nav-item active" href="#"><span class="nav-icon"></span> Active item</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============== FULL GUIDE ============== -->
+      <section class="section" id="guide">
+        <h2 class="section-heading">6. Full style guide</h2>
+        <article class="md">
+          <h1>DropSync — Style Guide</h1>
+          <p>A simple, practical style guide for DropSync, a Windows desktop Dropbox backup utility. This guide defines the essential visual decisions needed to keep the UI consistent across every screen and every PR.</p>
+          <p><strong>Product context.</strong> DropSync is an Electron + Vue 3 desktop app aimed at casual Windows users. The design goals are simplicity, reliability, and unobtrusiveness — the UI should feel native, trustworthy, and never surprising.</p>
+          <p><strong>Theme.</strong> Light.</p>
+          <hr>
+
+          <h2>1. Colours</h2>
+          <table>
+            <thead><tr><th>Role</th><th>Hex</th><th>Used for</th></tr></thead>
+            <tbody>
+              <tr><td>Primary</td><td><code>#4A90E2</code></td><td>Buttons, links, active states, info</td></tr>
+              <tr><td>Primary (hover)</td><td><code>#3A7BC8</code></td><td>Hover/pressed state on primary elements</td></tr>
+              <tr><td>Background</td><td><code>#F7F8FA</code></td><td>App background</td></tr>
+              <tr><td>Surface</td><td><code>#FFFFFF</code></td><td>Cards, panels, list rows, inputs</td></tr>
+              <tr><td>Surface (hover)</td><td><code>#F0F3F7</code></td><td>Row/card hover state</td></tr>
+              <tr><td>Border</td><td><code>#E1E5EB</code></td><td>Dividers, input borders, card borders</td></tr>
+              <tr><td>Text</td><td><code>#1F2430</code></td><td>Primary text</td></tr>
+              <tr><td>Muted text</td><td><code>#6B7280</code></td><td>Secondary labels, timestamps, captions</td></tr>
+              <tr><td>Success</td><td><code>#2FA96A</code></td><td>Completed runs</td></tr>
+              <tr><td>Warning</td><td><code>#D98B1F</code></td><td>Quota warnings, skipped files</td></tr>
+              <tr><td>Error</td><td><code>#D14545</code></td><td>Failed runs, auth errors</td></tr>
+              <tr><td>Info</td><td><code>#4A90E2</code></td><td>In-progress state (reuses primary)</td></tr>
+            </tbody>
+          </table>
+          <p>Status colours always carry the same meaning — a green badge anywhere in the app means "completed," a red badge means "failed."</p>
+          <hr>
+
+          <h2>2. Typography</h2>
+          <p><strong>Font family:</strong> <code>Inter, -apple-system, "Segoe UI", system-ui, sans-serif</code></p>
+          <table>
+            <thead><tr><th>Style</th><th>Size</th><th>Weight</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>H1</td><td>1.5rem (24px)</td><td>700 bold</td><td>View titles</td></tr>
+              <tr><td>H2</td><td>1.2rem (19px)</td><td>600 semi-bold</td><td>Section headings</td></tr>
+              <tr><td>H3</td><td>1rem (16px)</td><td>600 semi-bold</td><td>Card titles, job names</td></tr>
+              <tr><td>Body</td><td>0.875rem (14px)</td><td>400 regular</td><td>Default body text (line-height 1.6)</td></tr>
+              <tr><td>Small</td><td>0.75rem (12px)</td><td>400 regular</td><td>Timestamps, captions, labels</td></tr>
+            </tbody>
+          </table>
+          <p>Use only two weights per screen: regular (400) and semi-bold (600). Reserve bold (700) for H1.</p>
+          <hr>
+
+          <h2>3. Layout</h2>
+          <h3>Spacing</h3>
+          <table>
+            <thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Base unit</td><td>8px</td><td>All spacing is a multiple of this</td></tr>
+              <tr><td>Page padding</td><td>24px</td><td>Outer margin around main content</td></tr>
+              <tr><td>Card padding</td><td>16px</td><td>Internal padding on cards and panels</td></tr>
+              <tr><td>Section gap</td><td>24px</td><td>Between stacked sections</td></tr>
+              <tr><td>Row padding</td><td>12px vertical / 16px horizontal</td><td>List and table rows</td></tr>
+              <tr><td>Border radius</td><td>6px</td><td>Cards, buttons, inputs (uniform)</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Primary layout — Sidebar + Content</h3>
+<pre><code>┌───────────┬───────────────────────────────┐
+│           │  Page title                   │
+│  Sidebar  │                               │
+│  (nav)    │  [ Card / List / Table ]      │
+│   220px   │                               │
+│           │  [ Another section ]          │
+└───────────┴───────────────────────────────┘</code></pre>
+          <ul>
+            <li><strong>Sidebar:</strong> fixed 220px, white background, 1px right border</li>
+            <li><strong>Content:</strong> fills remaining width, 24px page padding</li>
+          </ul>
+
+          <h3>Secondary layouts</h3>
+          <ul>
+            <li><strong>Centered form</strong> — max-width 560px, centered. Used for the Job Config screen.</li>
+            <li><strong>Full-width list/table</strong> — used for the Backup Logs view.</li>
+          </ul>
+          <hr>
+
+          <h2>4. Components</h2>
+
+          <h3>Buttons</h3>
+          <table>
+            <thead><tr><th>Variant</th><th>Style</th><th>Use</th></tr></thead>
+            <tbody>
+              <tr><td>Primary</td><td>Filled <code>#4A90E2</code>, white text, 6px radius, 8×16 padding. Hover <code>#3A7BC8</code>.</td><td>"Create Job", "Run Now", "Save"</td></tr>
+              <tr><td>Secondary</td><td>Outlined, transparent bg, <code>#4A90E2</code> border + text, 6px radius. Hover surface <code>#F0F3F7</code>.</td><td>"Cancel", "Edit"</td></tr>
+              <tr><td>Danger</td><td>Filled <code>#D14545</code>, white text, 6px radius. Hover darker red.</td><td>"Delete Job", "Disconnect"</td></tr>
+              <tr><td>Ghost</td><td>No border, no bg, <code>#4A90E2</code> text. Hover <code>#F0F3F7</code>.</td><td>Inline row actions</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Inputs (text, dropdown, path picker)</h3>
+          <ul>
+            <li>Background <code>#FFFFFF</code>, 1px border <code>#E1E5EB</code>, 6px radius, 8×12 padding</li>
+            <li>Focus: border <code>#4A90E2</code>, subtle blue outline</li>
+            <li>Label: 12px muted text above the input (never use placeholder as a substitute)</li>
+          </ul>
+
+          <h3>Tables</h3>
+          <ul>
+            <li>Header: <code>#F0F3F7</code> background, 12px semi-bold muted text</li>
+            <li>Row: white background, 12px vertical / 16px horizontal padding, 1px bottom border <code>#E1E5EB</code></li>
+            <li>Row hover: <code>#F0F3F7</code></li>
+            <li>Numbers right-aligned; text left-aligned</li>
+          </ul>
+
+          <h3>Cards</h3>
+          <ul>
+            <li>Background <code>#FFFFFF</code>, 1px border <code>#E1E5EB</code>, 6px radius, 16px padding</li>
+            <li><strong>No shadow</strong> — DropSync is flat; borders do the separation</li>
+          </ul>
+
+          <h3>Badges / Status pills</h3>
+          <p>Pill-shaped (12px radius, 2×10 padding, 12px semi-bold text) — the single exception to the 6px radius rule.</p>
+          <table>
+            <thead><tr><th>Status</th><th>Background</th><th>Text</th></tr></thead>
+            <tbody>
+              <tr><td>Running</td><td><code>#4A90E2</code></td><td>white</td></tr>
+              <tr><td>Completed</td><td><code>#2FA96A</code></td><td>white</td></tr>
+              <tr><td>Failed</td><td><code>#D14545</code></td><td>white</td></tr>
+              <tr><td>Skipped</td><td><code>#D98B1F</code></td><td>white</td></tr>
+              <tr><td>Disabled</td><td><code>#6B7280</code></td><td>white</td></tr>
+            </tbody>
+          </table>
+
+          <h3>Sidebar Navigation</h3>
+          <ul>
+            <li>Background <code>#FFFFFF</code>, 1px right border <code>#E1E5EB</code></li>
+            <li>Item: 12×16 padding, 14px text</li>
+            <li>Item hover: <code>#F0F3F7</code> background</li>
+            <li>Item active: <code>#4A90E2</code> text with a 3px <code>#4A90E2</code> left accent bar</li>
+            <li>Icons: 16px, left of label, 12px gap</li>
+          </ul>
+          <hr>
+
+          <h2>5. Do / Don't</h2>
+          <div class="cols-2">
+            <div>
+              <h3>Do</h3>
+              <ul>
+                <li>Use the defined palette colours — never introduce new hex values</li>
+                <li>Keep all spacing as multiples of the 8px unit (8, 16, 24, 32)</li>
+                <li>Use 6px border radius everywhere except status pills (12px)</li>
+                <li>Left-align text by default</li>
+                <li>Right-align numbers in tables (file counts, bytes, durations)</li>
+                <li>Use semi-bold (600) for headings, regular (400) for body text</li>
+                <li>Use muted text (<code>#6B7280</code>) for secondary info like timestamps</li>
+                <li>Use status badges consistently — same colour always means the same thing</li>
+                <li>Use the system tray icon to communicate state (idle, running, error) — don't rely solely on the app window</li>
+                <li>Confirm destructive actions (delete job, disconnect Dropbox) before executing</li>
+              </ul>
+            </div>
+            <div>
+              <h3>Don't</h3>
+              <ul>
+                <li>Introduce new colours without updating this guide first</li>
+                <li>Mix border-radius values on the same screen</li>
+                <li>Use more than two font weights on a single screen (regular + semi-bold)</li>
+                <li>Centre-align body text or form labels</li>
+                <li>Use placeholder text as a substitute for a field label</li>
+                <li>Rely on colour alone to convey status — pair it with text and/or an icon</li>
+                <li>Use shadows for depth — DropSync is flat; use borders instead</li>
+                <li>Add animation beyond simple hover transitions and progress indicators</li>
+                <li>Hide important state changes (e.g. a failed backup) behind subtle visual cues — surface them clearly</li>
+              </ul>
+            </div>
+          </div>
+          <hr>
+          <p><em>Use this guide as a checklist when reviewing mockups and UI code. Update it as the project evolves — but always update the guide first, then the code.</em></p>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

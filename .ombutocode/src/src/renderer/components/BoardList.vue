@@ -472,7 +472,7 @@ export default {
   },
   setup(props, { emit }) {
     const isCollapsed = ref(false);
-    const sidebarMode = ref('build');
+    const sidebarMode = ref('plan');
     const boardToDelete = ref(null);
     const dropbox = useDropbox();
     const boardStore = useBoardStore();

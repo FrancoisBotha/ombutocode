@@ -384,11 +384,22 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
       sessionPrompt.value = prompt;
 
       const agentCmd = defaultAgent.value;
-      const args = agentCmd === 'claude'
-        ? ['--verbose', '--dangerously-skip-permissions', prompt]
-        : [prompt];
+      let args;
+      if (agentCmd === 'claude') {
+        args = ['--verbose', '--dangerously-skip-permissions', prompt];
+      } else if (agentCmd === 'codex') {
+        args = [prompt];
+      } else {
+        args = [];
+      }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
+
+      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+        setTimeout(() => {
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+        }, 2000);
+      }
 
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
 

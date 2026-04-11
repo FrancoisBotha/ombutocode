@@ -340,12 +340,16 @@ export default {
       } else if (agentCmd === 'codex') {
         args = [prompt];
       } else {
-        args = [prompt];
+        args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
-      // Refit after container is visible
+      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+        setTimeout(() => {
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+        }, 2000);
+      }
       setTimeout(() => {
         if (fitAddon) fitAddon.fit();
       }, 300);

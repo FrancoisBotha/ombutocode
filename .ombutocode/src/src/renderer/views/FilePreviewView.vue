@@ -16,6 +16,14 @@
           <h1 class="file-name">{{ fileName }}</h1>
         </div>
         <div v-if="!isImage" class="title-actions">
+          <template v-if="isStyleGuide && !viewingHistorical && !isEditMode">
+            <button class="prd-ai-btn" type="button" @click="createStyleGuide">
+              <span class="mdi mdi-robot-outline"></span> Create Style Guide
+            </button>
+            <button class="prd-ai-btn" type="button" @click="refineStyleGuideWithAi">
+              <span class="mdi mdi-pencil-outline"></span> Refine with AI
+            </button>
+          </template>
           <button v-if="isEpic && !viewingHistorical && !isEditMode" class="back-btn" type="button" @click="backToEpics">
             <span class="mdi mdi-arrow-left"></span> Epics
           </button>
@@ -182,6 +190,7 @@ export default {
     const isSkill = computed(() => activePath.value.startsWith('Skills/') && activePath.value.endsWith('.md'));
     const isArchitecture = computed(() => activePath.value.startsWith('Architecture/') && activePath.value.endsWith('.md'));
     const isEpic = computed(() => activePath.value.startsWith('Epics/') && activePath.value.endsWith('.md'));
+    const isStyleGuide = computed(() => activePath.value.startsWith('Style Guide/') && activePath.value.endsWith('.md'));
 
     function refinePrdWithAi() {
       if (window.__planNavigate) window.__planNavigate('plan-prd');
@@ -197,6 +206,14 @@ export default {
 
     function createNewArch() {
       if (window.__planNavigate) window.__planNavigate('plan-architecture');
+    }
+
+    function createStyleGuide() {
+      if (window.__planNavigate) window.__planNavigate('plan-style-guide');
+    }
+
+    function refineStyleGuideWithAi() {
+      if (window.__planNavigate) window.__planNavigate('plan-style-guide');
     }
 
     function backToSkills() {
@@ -505,6 +522,9 @@ export default {
       isArchitecture,
       isSkill,
       isEpic,
+      isStyleGuide,
+      createStyleGuide,
+      refineStyleGuideWithAi,
       backToEpics,
       refineEpicWithAi,
       refinePrdWithAi,

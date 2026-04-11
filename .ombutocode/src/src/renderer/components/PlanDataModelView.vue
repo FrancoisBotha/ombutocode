@@ -201,7 +201,7 @@ export default {
         const preferred = settings?.eval_default_agent;
         if (preferred && results?.[preferred]?.status === 'pass') {
           defaultAgent.value = preferred;
-        } else {
+        } else if (agentCmd === 'codex') {
           for (const id of ['claude', 'codex', 'kimi']) {
             if (results?.[id]?.status === 'pass') { defaultAgent.value = id; break; }
           }
@@ -217,7 +217,7 @@ export default {
     function confirmCreate() {
       if (existingDoc.value) {
         showOverwriteConfirm.value = true;
-      } else {
+      } else if (agentCmd === 'codex') {
         startSession('create');
       }
     }
@@ -271,7 +271,7 @@ export default {
       let prompt;
       if (isRefine) {
         prompt = `Read the existing data model at "docs/${DOC_PATH}" and help me refine it.${contextNote} Suggest improvements to the schema — missing tables, better constraints, indexing, normalisation issues. After each suggestion, wait for my feedback before making changes.`;
-      } else {
+      } else if (agentCmd === 'codex') {
         prompt = `Create a PostgreSQL DDL data model and save it to "docs/${DOC_PATH}".${contextNote} Based on the requirements and architecture, design a complete database schema with tables, columns, primary keys, foreign keys, indexes, and constraints. Use proper data types and naming conventions. Ask me clarifying questions about the domain before writing the schema.`;
       }
       sessionPrompt.value = prompt;
@@ -281,12 +281,19 @@ export default {
       let args;
       if (agentCmd === 'claude') {
         args = ['--verbose', '--dangerously-skip-permissions', prompt];
-      } else {
+      } else if (agentCmd === 'codex') {
         args = [prompt];
+      } else {
+        args = [];
       }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
 
+      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+        setTimeout(() => {
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+        }, 2000);
+      }
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
 
       term.onData((data) => {

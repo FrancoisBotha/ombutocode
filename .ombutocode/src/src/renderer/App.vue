@@ -34,6 +34,7 @@
       <PlanDashboardView v-else-if="activeView === 'plan-dashboard'" />
       <PlanPrdView v-else-if="activeView === 'plan-prd'" @change-view="handleChangeView" />
       <PlanArchitectureView v-else-if="activeView === 'plan-architecture'" @change-view="handleChangeView" />
+      <PlanStyleGuideView v-else-if="activeView === 'plan-style-guide'" @change-view="handleChangeView" />
       <PlanDataModelView v-else-if="activeView === 'plan-data-model'" @change-view="handleChangeView" />
       <PlanEpicsView v-else-if="activeView === 'plan-epics'" @change-view="handleChangeView" />
       <PlanTicketGenView v-else-if="activeView === 'plan-ticket-gen'" @change-view="handleChangeView" />
@@ -158,6 +159,7 @@ import HelpView from '@/components/HelpView.vue';
 import PlanDashboardView from '@/views/DashboardView.vue';
 import PlanPrdView from '@/components/PlanPrdView.vue';
 import PlanArchitectureView from '@/components/PlanArchitectureView.vue';
+import PlanStyleGuideView from '@/components/PlanStyleGuideView.vue';
 import PlanDataModelView from '@/components/PlanDataModelView.vue';
 import PlanEpicsView from '@/components/PlanEpicsView.vue';
 import PlanTicketGenView from '@/components/PlanTicketGenView.vue';
@@ -202,6 +204,7 @@ export default {
     PlanDashboardView,
     PlanPrdView,
     PlanArchitectureView,
+    PlanStyleGuideView,
     PlanDataModelView,
     PlanEpicsView,
     PlanTicketGenView,

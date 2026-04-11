@@ -5,34 +5,53 @@
         <h1>Mockups</h1>
         <p class="text-muted">UI mockups from docs/Mockups/</p>
       </div>
-      <div class="mockups-header-actions">
-        <button class="mockup-gen-btn" :disabled="agents.length === 0" @click="showGenPanel = !showGenPanel">
-          <span class="mdi mdi-robot-outline"></span> Generate Mockup with AI
-        </button>
-      </div>
+    </div>
+    <div class="mockups-gen-bar">
+      <button class="mockup-gen-btn" :disabled="agents.length === 0" @click="showGenPanel = !showGenPanel">
+        <span class="mdi mdi-robot-outline"></span> Generate Mockup
+      </button>
     </div>
 
     <!-- Generate panel -->
     <div v-if="showGenPanel" class="mockup-gen-panel">
-      <div class="mockup-gen-field">
-        <label>Coding Agent</label>
-        <select v-model="selectedAgent" class="mockup-gen-select">
-          <option v-for="a in agents" :key="a.id" :value="a.id">{{ a.name }}</option>
-        </select>
-      </div>
-      <div class="mockup-gen-field">
-        <label>Description</label>
-        <input v-model="mockupDescription" class="mockup-gen-input" placeholder="e.g. Dashboard page with sidebar, header, and analytics cards" />
-      </div>
-      <div class="mockup-gen-field">
-        <label>Save as</label>
-        <input v-model="mockupFilename" class="mockup-gen-input" placeholder="Mockup_Dashboard.png" />
-      </div>
-      <div class="mockup-gen-actions">
-        <button class="mockup-gen-btn-primary" :disabled="!selectedAgent || !mockupDescription.trim()" @click="startGenSession">
-          <span class="mdi mdi-creation"></span> Generate
-        </button>
-        <button class="mockup-gen-btn-secondary" @click="showGenPanel = false">Cancel</button>
+      <div class="mockup-gen-row">
+        <div class="mockup-gen-field mockup-gen-field-sm">
+          <label>Skill</label>
+          <select v-model="selectedSkill" class="mockup-gen-select" @change="loadSelectedSkillContent">
+            <option value="">-- None --</option>
+            <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+          </select>
+        </div>
+        <div class="mockup-gen-field mockup-gen-field-sm">
+          <label>Agent</label>
+          <select v-model="selectedAgent" class="mockup-gen-select">
+            <option v-for="a in agents" :key="a.id" :value="a.id">{{ a.name }}</option>
+          </select>
+        </div>
+        <div class="mockup-gen-field mockup-gen-field-sm">
+          <label>Epic</label>
+          <select v-model="selectedEpic" class="mockup-gen-select">
+            <option value="">-- None --</option>
+            <option v-for="e in epicFiles" :key="e.path" :value="e.path">{{ e.displayName }}</option>
+          </select>
+        </div>
+        <div class="mockup-gen-field mockup-gen-field-grow">
+          <label>Description</label>
+          <input v-model="mockupDescription" class="mockup-gen-input" placeholder="e.g. Dashboard page with sidebar, header, and analytics cards" />
+        </div>
+        <div class="mockup-gen-field mockup-gen-field-md">
+          <label>Save as</label>
+          <input v-model="mockupFilename" class="mockup-gen-input" placeholder="Mockup_Dashboard.png" />
+        </div>
+        <div class="mockup-gen-field mockup-gen-field-btns">
+          <label>&nbsp;</label>
+          <div class="mockup-gen-actions">
+            <button class="mockup-gen-btn-primary" :disabled="!selectedAgent || !mockupDescription.trim()" @click="startGenSession">
+              <span class="mdi mdi-creation"></span> Generate
+            </button>
+            <button class="mockup-gen-btn-secondary" @click="showGenPanel = false">Cancel</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -83,6 +102,25 @@
             <span class="mockup-detail-label">Save to</span>
             <p class="mockup-detail-value"><code>docs/Mockups/{{ mockupFilename }}</code></p>
           </div>
+          <div class="mockup-detail-item">
+            <span class="mockup-detail-label">Functional Requirements</span>
+            <div class="mockup-fr-list">
+              <label v-for="f in frFiles" :key="f.path" class="mockup-fr-item">
+                <input type="checkbox" :value="f.path" v-model="selectedFRs" />
+                <span>{{ f.name }}</span>
+              </label>
+              <span v-if="frFiles.length === 0" class="mockup-fr-none">No FR documents found</span>
+            </div>
+          </div>
+          <div class="mockup-detail-item">
+            <span class="mockup-detail-label">Additional Instructions</span>
+            <textarea
+              v-model="additionalInstructions"
+              class="mockup-extra-input"
+              placeholder="Any extra guidance for the agent..."
+              rows="3"
+            ></textarea>
+          </div>
           <div class="mockup-detail-item" style="margin-top: 0.75rem;">
             <span class="mockup-panel-label">System Prompt</span>
             <p class="mockup-prompt-text">{{ sessionPrompt }}</p>
@@ -120,6 +158,14 @@ export default {
     const selectedAgent = ref('');
     const mockupDescription = ref('');
     const mockupFilename = ref('');
+    const epicFiles = ref([]);
+    const frFiles = ref([]);
+    const skillFiles = ref([]);
+    const selectedEpic = ref('');
+    const selectedFRs = ref([]);
+    const selectedSkill = ref('');
+    const selectedSkillContent = ref('');
+    const additionalInstructions = ref('');
 
     // Session
     const sessionActive = ref(false);
@@ -143,6 +189,46 @@ export default {
       } finally {
         loading.value = false;
       }
+    }
+
+    async function loadContextFiles() {
+      try {
+        const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
+        if (tree && tree.children) {
+          const epicsFolder = tree.children.find(c => c.name === 'Epics');
+          if (epicsFolder && epicsFolder.children) {
+            epicFiles.value = epicsFolder.children
+              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
+              .map(f => ({ name: f.name, path: f.path, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
+          }
+          const frFolder = tree.children.find(c => c.name === 'Functional Requirements');
+          if (frFolder && frFolder.children) {
+            frFiles.value = frFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+          }
+          const skillsFolder = tree.children.find(c => c.name === 'Skills');
+          if (skillsFolder && skillsFolder.children) {
+            skillFiles.value = skillsFolder.children
+              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
+              .map(f => ({ name: f.name, path: f.path, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
+            // Auto-select mockup skill
+            const mockupSkill = skillFiles.value.find(s =>
+              s.name.toLowerCase().includes('mockup') || s.displayName.toLowerCase().includes('mockup')
+            );
+            if (mockupSkill) {
+              selectedSkill.value = mockupSkill.path;
+              loadSelectedSkillContent();
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function loadSelectedSkillContent() {
+      if (!selectedSkill.value) { selectedSkillContent.value = ''; return; }
+      try {
+        const content = await window.electron.ipcRenderer.invoke('filetree:readFile', selectedSkill.value);
+        selectedSkillContent.value = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '').trim();
+      } catch (_) { selectedSkillContent.value = ''; }
     }
 
     async function loadAgents() {
@@ -195,7 +281,19 @@ export default {
       const shellId = 'mockup-gen-' + (++sessionCounter);
       currentShellId.value = shellId;
 
-      const prompt = `Generate a UI mockup image based on this description: "${mockupDescription.value.trim()}"
+      const skillPrefix = selectedSkillContent.value ? selectedSkillContent.value + '\n\n' : '';
+
+      const contextParts = [];
+      if (selectedEpic.value) contextParts.push(`Read the epic specification at "docs/${selectedEpic.value}" for context on what this screen should accomplish.`);
+      if (selectedFRs.value.length > 0) {
+        const frPaths = selectedFRs.value.map(p => `"docs/${p}"`).join(', ');
+        contextParts.push(`Read the following functional requirements documents for detailed requirements: ${frPaths}.`);
+      }
+      const contextNote = contextParts.length > 0 ? contextParts.join(' ') + '\n\n' : '';
+
+      const extraInstructions = additionalInstructions.value.trim() ? `\n\nAdditional instructions: ${additionalInstructions.value.trim()}` : '';
+
+      const prompt = `${skillPrefix}${contextNote}Generate a UI mockup image based on this description: "${mockupDescription.value.trim()}"
 
 Save the generated image to "docs/Mockups/${filename}".
 
@@ -205,16 +303,30 @@ Guidelines:
 - Create a clean, professional UI mockup
 - Use a dark theme consistent with the application's color palette
 - Include realistic placeholder content
-- Show the layout clearly with proper spacing and hierarchy`;
+- Show the layout clearly with proper spacing and hierarchy${extraInstructions}`;
 
       sessionPrompt.value = prompt;
 
       const agentCmd = selectedAgent.value;
-      const args = agentCmd === 'claude'
-        ? ['--verbose', '--dangerously-skip-permissions', prompt]
-        : [prompt];
+      let args;
+      if (agentCmd === 'claude') {
+        args = ['--verbose', '--dangerously-skip-permissions', prompt];
+      } else if (agentCmd === 'codex') {
+        args = [prompt];
+      } else {
+        // Kimi and others: spawn without prompt, send as input after startup
+        args = [];
+      }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
+
+      // For agents that don't accept prompt as argument, send it as input
+      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+        setTimeout(() => {
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+        }, 2000);
+      }
+
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
 
       term.onData((data) => {
@@ -266,7 +378,7 @@ Guidelines:
       document.addEventListener('mouseup', onUp);
     }
 
-    onMounted(() => { loadMockups(); loadAgents(); });
+    onMounted(() => { loadMockups(); loadAgents(); loadContextFiles(); });
     onBeforeUnmount(() => {
       if (currentShellId.value) window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
       cleanup();
@@ -275,6 +387,8 @@ Guidelines:
     return {
       mockups, loading, lightbox, openLightbox,
       showGenPanel, agents, selectedAgent, mockupDescription, mockupFilename,
+      epicFiles, frFiles, skillFiles, selectedEpic, selectedFRs, selectedSkill, loadSelectedSkillContent,
+      additionalInstructions,
       sessionActive, terminalContainer, sessionPrompt, panelWidth,
       startGenSession, stopSession, startResize,
     };
@@ -362,8 +476,9 @@ Guidelines:
 }
 
 /* Header with generate button */
-.mockups-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.5rem; }
+.mockups-header { margin-bottom: 0.5rem; }
 .mockups-header h1 { margin-bottom: 0.25rem; }
+.mockups-gen-bar { margin-bottom: 1rem; }
 
 .mockup-gen-btn {
   display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border: none;
@@ -374,17 +489,22 @@ Guidelines:
 
 /* Generate panel */
 .mockup-gen-panel {
-  padding: 1rem; margin-bottom: 1rem; border-radius: 8px;
+  padding: 0.75rem; margin-bottom: 1rem; border-radius: 8px;
   background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
 }
-.mockup-gen-field { margin-bottom: 0.6rem; }
-.mockup-gen-field label { display: block; font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.4); margin-bottom: 0.2rem; }
+.mockup-gen-row { display: flex; gap: 0.6rem; align-items: flex-end; }
+.mockup-gen-field { display: flex; flex-direction: column; gap: 0.2rem; }
+.mockup-gen-field label { font-size: 0.68rem; font-weight: 600; color: rgba(255,255,255,0.4); white-space: nowrap; }
+.mockup-gen-field-sm { flex: 0 0 140px; }
+.mockup-gen-field-md { flex: 0 0 200px; }
+.mockup-gen-field-grow { flex: 1; min-width: 0; }
+.mockup-gen-field-btns { flex-shrink: 0; }
 .mockup-gen-select, .mockup-gen-input {
-  width: 100%; max-width: 400px; padding: 0.4rem 0.5rem; border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 5px; background: #0A1220; color: var(--text-color, #d4d8dd); font-size: 0.85rem; outline: none;
+  width: 100%; padding: 0.4rem 0.5rem; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 5px; background: #0A1220; color: var(--text-color, #d4d8dd); font-size: 0.82rem; outline: none;
 }
 .mockup-gen-select:focus, .mockup-gen-input:focus { border-color: #6dd4a0; }
-.mockup-gen-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.mockup-gen-actions { display: flex; gap: 0.4rem; }
 .mockup-gen-btn-primary {
   display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.5rem 1rem; border: none;
   border-radius: 6px; background: #6dd4a0; color: #0A1220; font-size: 0.85rem; font-weight: 500; cursor: pointer;
@@ -415,6 +535,16 @@ Guidelines:
 .mockup-detail-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.35); display: block; margin-bottom: 0.15rem; }
 .mockup-detail-value { margin: 0; font-size: 0.82rem; color: rgba(255,255,255,0.6); font-weight: 300; }
 .mockup-detail-value code { background: rgba(255,255,255,0.06); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.78rem; color: #6dd4a0; }
+.mockup-fr-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.2rem; }
+.mockup-fr-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: rgba(255,255,255,0.55); cursor: pointer; }
+.mockup-fr-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: #6dd4a0; cursor: pointer; }
+.mockup-fr-item:hover { color: rgba(255,255,255,0.8); }
+.mockup-fr-none { font-size: 0.75rem; color: rgba(255,255,255,0.25); font-style: italic; }
+.mockup-extra-input {
+  width: 100%; padding: 0.4rem 0.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px;
+  background: #0A1220; color: var(--text-color, #d4d8dd); font-size: 0.8rem; outline: none; resize: vertical; font-family: inherit; margin-top: 0.2rem;
+}
+.mockup-extra-input:focus { border-color: #6dd4a0; }
 .mockup-prompt-text { font-size: 0.75rem; line-height: 1.55; color: rgba(255,255,255,0.35); font-weight: 300; margin: 0.3rem 0 0; white-space: pre-wrap; }
 .mockup-resize-handle { width: 6px; cursor: col-resize; background: transparent; flex-shrink: 0; position: relative; }
 .mockup-resize-handle::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: rgba(255,255,255,0.06); transition: background 0.15s; }

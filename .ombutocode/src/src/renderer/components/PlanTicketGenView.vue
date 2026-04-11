@@ -236,11 +236,22 @@ Start by reading all the selected epics. Then propose the tickets for the first 
       sessionPrompt.value = prompt;
 
       const agentCmd = defaultAgent.value;
-      const args = agentCmd === 'claude'
-        ? ['--verbose', '--dangerously-skip-permissions', prompt]
-        : [prompt];
+      let args;
+      if (agentCmd === 'claude') {
+        args = ['--verbose', '--dangerously-skip-permissions', prompt];
+      } else if (agentCmd === 'codex') {
+        args = [prompt];
+      } else {
+        args = [];
+      }
 
       await window.electron.ipcRenderer.invoke('agent:spawnInteractive', shellId, agentCmd, args);
+
+      if (agentCmd !== 'claude' && agentCmd !== 'codex') {
+        setTimeout(() => {
+          window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, prompt + '\n');
+        }, 2000);
+      }
       setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
 
       term.onData((data) => {

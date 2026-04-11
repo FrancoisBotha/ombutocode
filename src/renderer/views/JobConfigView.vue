@@ -170,7 +170,34 @@
         </div>
       </section>
 
+      <section v-if="isEditMode" class="form-section">
+        <div class="field field--toggle">
+          <div class="toggle-row">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                :checked="jobEnabled"
+                class="toggle-input"
+                @change="handleToggleEnabled"
+              />
+              <span class="toggle-track"><span class="toggle-knob"></span></span>
+              <span class="toggle-label">Job enabled</span>
+            </label>
+            <p class="field-help">Disabling a job prevents it from running on schedule</p>
+          </div>
+        </div>
+      </section>
+
       <div class="form-actions">
+        <button
+          v-if="isEditMode"
+          type="button"
+          class="btn btn--danger"
+          @click="showDeleteModal = true"
+        >
+          Delete
+        </button>
+        <span class="form-actions-spacer"></span>
         <button type="button" class="btn btn--secondary" @click="handleCancel">
           Cancel
         </button>
@@ -179,6 +206,27 @@
         </button>
       </div>
     </form>
+
+    <div
+      v-if="showDeleteModal"
+      class="modal-overlay"
+      @click.self="closeDeleteModal"
+    >
+      <div class="modal" role="dialog" aria-modal="true">
+        <h2 class="modal-title">Delete Backup Job</h2>
+        <p class="modal-body">
+          Are you sure you want to delete <strong>{{ form.name }}</strong>? This action cannot be undone.
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn--secondary" @click="closeDeleteModal">
+            Cancel
+          </button>
+          <button type="button" class="btn btn--danger" @click="confirmDelete">
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -192,6 +240,8 @@ export default {
       targetManuallyEdited: false,
       intervalValue: 30,
       intervalUnit: 'minutes',
+      jobEnabled: true,
+      showDeleteModal: false,
       submitAttempted: false,
       touched: {
         name: false,
@@ -262,6 +312,16 @@ export default {
     } else {
       await this.loadDefaultPatterns()
     }
+    this._onEscape = (e) => {
+      if (e.key === 'Escape' && this.showDeleteModal) {
+        this.closeDeleteModal()
+      }
+    }
+    window.addEventListener('keydown', this._onEscape)
+  },
+
+  beforeUnmount() {
+    window.removeEventListener('keydown', this._onEscape)
   },
 
   methods: {
@@ -284,6 +344,7 @@ export default {
           this.intervalUnit = 'minutes'
         }
 
+        this.jobEnabled = !!job.enabled
         this.targetManuallyEdited = true
       }
 
@@ -416,6 +477,27 @@ export default {
     isPositiveInteger(value) {
       const normalized = typeof value === 'string' ? value.trim() : value
       return normalized !== '' && Number.isInteger(Number(normalized)) && Number(normalized) > 0
+    },
+
+    async handleToggleEnabled() {
+      const id = this.$route.params.id
+      const result = await window.api.jobs.toggleEnabled(id)
+      if (result && result.ok) {
+        this.jobEnabled = !this.jobEnabled
+      }
+    },
+
+    closeDeleteModal() {
+      this.showDeleteModal = false
+    },
+
+    async confirmDelete() {
+      const id = this.$route.params.id
+      const result = await window.api.jobs.delete(id)
+      if (result && result.ok) {
+        this.showDeleteModal = false
+        this.$router.push('/jobs')
+      }
     },
 
     handleCancel() {
@@ -612,6 +694,19 @@ export default {
   background-color: var(--color-surface-hover);
 }
 
+.btn--danger {
+  background-color: var(--color-error);
+  color: #ffffff;
+}
+
+.btn--danger:hover {
+  background-color: #b93c3c;
+}
+
+.form-actions-spacer {
+  flex: 1;
+}
+
 /* Exclusion rules chips */
 .chips-container {
   display: flex;
@@ -671,5 +766,41 @@ export default {
   gap: var(--space-unit);
   padding-top: var(--space-section);
   border-top: 1px solid var(--color-border);
+}
+
+/* Delete confirmation modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-section);
+  max-width: 420px;
+  width: 100%;
+}
+
+.modal-title {
+  margin-bottom: var(--space-card);
+}
+
+.modal-body {
+  margin-bottom: var(--space-section);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-unit);
 }
 </style>

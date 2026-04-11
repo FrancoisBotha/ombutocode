@@ -5,7 +5,7 @@ const { normalizeStartPayload, renderCommand, AgentRuntime } = require('../src/m
 function buildPayload(overrides = {}) {
   return {
     ticketId: 'ACX-001-TEST',
-    featureRef: '.ombutocode/features/feature_AGENT_CONTEXT.md',
+    epicRef: '.ombutocode/epics/feature_AGENT_CONTEXT.md',
     title: 'Test retry context',
     repoRoot: process.cwd(),
     ...overrides

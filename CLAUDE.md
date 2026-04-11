@@ -13,7 +13,7 @@ The tool treats requirements as first-class citizens of the codebase. Documents 
 All agents MUST follow `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md`. This is a system-level instruction.
 
 Worktree integrity rule:
-- `.ombutocode/` must be present in ticket worktrees because it contains the workflow guide, planning references, feature specs, and agent configuration.
+- `.ombutocode/` must be present in ticket worktrees because it contains the workflow guide, planning references, epic specs, and agent configuration.
 - Do not ignore the top-level `.ombutocode/` directory in `.gitignore`, or scheduler-created worktrees will be missing their source-of-truth files.
 - Ignore only dependency or generated subpaths inside `.ombutocode/`, for example:
 
@@ -33,7 +33,7 @@ Ombuto Code is an Electron/Vue 3 app in `.ombutocode/` that manages the agentic 
 
 ### Source of Truth (priority order)
 1. `.ombutocode/data/ombutocode.db` (backlog_tickets table) — canonical task list
-2. `.ombutocode/features/feature_<NAME>.md` — feature specifications
+2. `.ombutocode/epics/epic_<NAME>.md` — epic specifications
 3. `.ombutocode/src/` — Ombuto Code source
 4 `shared/docs/prd.md` — Product requirements and vision
 5. `frontend/docs/architecture/architecture.md` — architecture spec for front-end application
@@ -41,7 +41,7 @@ Ombuto Code is an Electron/Vue 3 app in `.ombutocode/` that manages the agentic 
 ## Conventions
 
 - Feature spec files use uppercase names: `feature_FEATURE_NAME.md` (e.g., `feature_EMBEDDED_BANK_BROWSER.md`)
-- Feature statuses: `NEW` (spec created, no tickets) → `TICKETS` (tickets created in backlog) → `BUILDING` (tickets being worked on) → `DONE` (manually assigned by owner)
+- Epic statuses: `NEW` (spec created, no tickets) → `TICKETS` (tickets created in backlog) → `BUILDING` (tickets being worked on) → `DONE` (manually assigned by owner)
 - OmbutoCode backlog tickets are always created with `status: backlog`, not `todo`. The scheduler only processes `todo` tickets that have an explicit agent assignee — tickets with `assignee: null` or `NONE` are skipped.
 
 ## Workflow
@@ -62,7 +62,7 @@ Project automation workflow instructions are in `.ombutocode/OMBUTOCODE_ENGINEER
 
 ### Scope Control
 - Never expand a ticket's scope — create a new ticket instead
-- Never invent features not in the backlog
+- Never invent epics not in the backlog
 - Never introduce new frameworks without approval
 - Never perform broad refactors without a refactor ticket
 

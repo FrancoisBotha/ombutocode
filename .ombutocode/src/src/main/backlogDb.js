@@ -109,7 +109,7 @@ function migrateOldSchema() {
   // Re-create indexes on JSON-extracted fields for performance
   db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_status ON backlog_tickets(json_extract(data, '$.status'))`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_sort_order ON backlog_tickets(sort_order)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_feature_ref ON backlog_tickets(json_extract(data, '$.feature_ref'))`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_epic_ref ON backlog_tickets(json_extract(data, '$.epic_ref'))`);
 
   // Insert migrated rows
   for (const row of migrated) {
@@ -149,7 +149,7 @@ function initializeSchema() {
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_status ON backlog_tickets(json_extract(data, '$.status'))`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_sort_order ON backlog_tickets(sort_order)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_feature_ref ON backlog_tickets(json_extract(data, '$.feature_ref'))`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_backlog_epic_ref ON backlog_tickets(json_extract(data, '$.epic_ref'))`);
 
   // Initialize metadata with defaults (prefixed keys)
   const today = new Date().toISOString().split('T')[0];
@@ -188,7 +188,7 @@ function deserializeTicket(row) {
 
   // Ensure string defaults
   if (data.title === undefined) data.title = '';
-  if (data.feature_ref === undefined) data.feature_ref = '';
+  if (data.epic_ref === undefined) data.epic_ref = '';
   if (data.status === undefined) data.status = 'backlog';
   if (data.last_updated === undefined) data.last_updated = '';
   if (data.notes === undefined) data.notes = '';
@@ -478,20 +478,20 @@ function insertTicket(ticket, position) {
 }
 
 /**
- * Get all tickets linked to a specific feature_ref.
- * Uses the idx_backlog_feature_ref index for performance.
+ * Get all tickets linked to a specific epic_ref.
+ * Uses the idx_backlog_epic_ref index for performance.
  * Merges active ticket file overlays (same pattern as readBacklogData).
- * @param {string} featureRef - The feature_ref value to match
+ * @param {string} epicRef - The epic_ref value to match
  * @returns {Object[]} Array of deserialized ticket objects
  */
-function getTicketsByFeatureRef(featureRef) {
+function getTicketsByEpicRef(epicRef) {
   if (!db) throw new Error('backlogDb: not initialized');
-  if (!featureRef) return [];
+  if (!epicRef) return [];
 
   const stmt = db.prepare(
-    "SELECT id, sort_order, data FROM backlog_tickets WHERE json_extract(data, '$.feature_ref') = ? ORDER BY sort_order ASC"
+    "SELECT id, sort_order, data FROM backlog_tickets WHERE json_extract(data, '$.epic_ref') = ? ORDER BY sort_order ASC"
   );
-  stmt.bind([featureRef]);
+  stmt.bind([epicRef]);
 
   const tickets = [];
   while (stmt.step()) {
@@ -693,7 +693,7 @@ module.exports = {
   readBacklogData,
   writeBacklogData,
   getTicketById,
-  getTicketsByFeatureRef,
+  getTicketsByEpicRef,
   updateTicketFields,
   insertTicket,
   deleteTicket,

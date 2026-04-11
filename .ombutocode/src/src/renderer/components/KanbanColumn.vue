@@ -24,9 +24,9 @@
             <span class="detail-label">Description:</span>
             <span class="detail-value">{{ selectedTask.description }}</span>
           </div>
-          <div class="detail-row" v-if="selectedTask.feature_ref">
+          <div class="detail-row" v-if="selectedTask.epic_ref">
             <span class="detail-label">Feature Reference:</span>
-            <span class="detail-value">{{ selectedTask.feature_ref }}</span>
+            <span class="detail-value">{{ selectedTask.epic_ref }}</span>
           </div>
           <div class="detail-row">
             <span class="detail-label">Status:</span>

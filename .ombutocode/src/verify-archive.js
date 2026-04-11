@@ -56,7 +56,7 @@ async function verify() {
       console.log('📝 Sample tickets (first 5):');
       allTickets.tickets.slice(0, 5).forEach((ticket, index) => {
         console.log(`   ${index + 1}. ${ticket.id} - ${ticket.title.substring(0, 60)}`);
-        console.log(`      Status: ${ticket.status}, Feature: ${ticket.feature_ref || 'N/A'}`);
+        console.log(`      Status: ${ticket.status}, Feature: ${ticket.epic_ref || 'N/A'}`);
       });
       console.log();
     }
@@ -74,25 +74,25 @@ async function verify() {
 
     // 7. Get distinct feature refs
     console.log('🏷️  Getting unique feature references...');
-    const featureRefs = archiveDb.getDistinctFeatureRefs();
-    console.log(`   ✅ Found ${featureRefs.length} unique feature references`);
-    if (featureRefs.length > 0) {
+    const epicRefs = archiveDb.getDistinctEpicRefs();
+    console.log(`   ✅ Found ${epicRefs.length} unique feature references`);
+    if (epicRefs.length > 0) {
       console.log('   Sample feature refs:');
-      featureRefs.slice(0, 10).forEach(ref => {
+      epicRefs.slice(0, 10).forEach(ref => {
         console.log(`     - ${ref}`);
       });
-      if (featureRefs.length > 10) {
-        console.log(`     ... and ${featureRefs.length - 10} more`);
+      if (epicRefs.length > 10) {
+        console.log(`     ... and ${epicRefs.length - 10} more`);
       }
     }
     console.log();
 
-    // 8. Test filtering by feature_ref
-    if (featureRefs.length > 0) {
-      const sampleFeature = featureRefs[0];
+    // 8. Test filtering by epic_ref
+    if (epicRefs.length > 0) {
+      const sampleFeature = epicRefs[0];
       console.log(`🔎 Testing feature filter (${sampleFeature})...`);
       const featureResults = archiveDb.searchTickets({
-        feature_ref: sampleFeature,
+        epic_ref: sampleFeature,
         limit: 5
       });
       console.log(`   ✅ Found ${featureResults.total} tickets for this feature`);

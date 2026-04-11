@@ -1346,7 +1346,7 @@ function createScheduler(deps) {
           const enrichedPayload = {
             ticketId: ticket.id,
             title: ticket.title || ticket.id,
-            featureRef: ticket.feature_ref || '.ombutocode/features',
+            epicRef: ticket.epic_ref || '.ombutocode/features',
             repoRoot: projectRoot,
             acceptanceCriteria,
             retryContext,

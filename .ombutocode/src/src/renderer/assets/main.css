@@ -905,7 +905,7 @@ body {
 [data-theme="dark"] .archive-table,
 [data-theme="dark"] .logs-table,
 [data-theme="dark"] .requests-table,
-[data-theme="dark"] .features-table,
+[data-theme="dark"] .epics-table,
 [data-theme="dark"] .agents-tools-view,
 [data-theme="dark"] .automation-view,
 [data-theme="dark"] .prd-view,
@@ -962,7 +962,7 @@ body {
 
 /* ── Shared: view containers ── */
 [data-theme="dark"] .requests-view,
-[data-theme="dark"] .features-view,
+[data-theme="dark"] .epics-view,
 [data-theme="dark"] .backlog-view,
 [data-theme="dark"] .logs-view {
   background-color: var(--bg-color);

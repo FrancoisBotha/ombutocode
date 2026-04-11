@@ -13,7 +13,7 @@
       <dd class="description-text">{{ ticket.description || 'None' }}</dd>
 
       <dt>Feature Ref</dt>
-      <dd>{{ ticket.feature_ref || 'None' }}</dd>
+      <dd>{{ ticket.epic_ref || 'None' }}</dd>
 
       <dt>Dependencies</dt>
       <dd>{{ ticket.dependencies && ticket.dependencies.length ? ticket.dependencies.join(', ') : 'None' }}</dd>

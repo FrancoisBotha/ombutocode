@@ -1,27 +1,27 @@
 <template>
-  <div ref="featuresViewRef" class="features-view" :class="{ 'is-resizing': isResizing }">
-    <div v-if="loading" class="features-loading">
-      Loading features...
+  <div ref="featuresViewRef" class="epics-view" :class="{ 'is-resizing': isResizing }">
+    <div v-if="loading" class="epics-loading">
+      Loading epics...
     </div>
 
-    <div v-else-if="error" class="features-error">
+    <div v-else-if="error" class="epics-error">
       <span class="mdi mdi-alert-circle"></span> {{ error }}
     </div>
 
-    <div v-else-if="features.length === 0" class="features-empty">
+    <div v-else-if="features.length === 0" class="epics-empty">
       <span class="mdi mdi-shape-outline"></span>
-      <p>No feature documents found</p>
+      <p>No epic documents found</p>
     </div>
 
     <template v-else>
-      <div class="features-table-container">
+      <div class="epics-table-container">
         <!-- Search controls -->
-        <div class="features-controls">
+        <div class="epics-controls">
           <div class="search-wrapper">
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Search features..."
+              placeholder="Search epics..."
               class="search-input"
               @input="onSearchInput"
             />
@@ -36,7 +36,7 @@
       </div>
 
       <div
-        v-if="selectedFeature"
+        v-if="selectedEpic"
         class="resize-handle"
         role="separator"
         aria-orientation="vertical"
@@ -45,9 +45,9 @@
         @pointerdown="startResize"
       ></div>
 
-      <div v-if="selectedFeature" class="features-detail-container" :style="detailPanelStyle">
-        <aside class="features-detail">
-          <h3 class="detail-title">{{ selectedFeature.title }}</h3>
+      <div v-if="selectedEpic" class="epics-detail-container" :style="detailPanelStyle">
+        <aside class="epics-detail">
+          <h3 class="detail-title">{{ selectedEpic.title }}</h3>
           <div class="detail-actions">
             <button
               v-if="showStartButton"
@@ -56,10 +56,10 @@
               @click="startSelectedFeature"
             >
               <span class="mdi mdi-play-circle-outline"></span>
-              {{ starting ? 'Starting...' : 'Start Feature' }}
+              {{ starting ? 'Starting...' : 'Start Epic' }}
             </button>
             <button
-              v-if="selectedFeature.status !== 'complete' && selectedFeature.status !== 'implemented'"
+              v-if="selectedEpic.status !== 'complete' && selectedEpic.status !== 'implemented'"
               class="btn-evaluate"
               :disabled="evaluating"
               @click="evaluateSelectedFeature"
@@ -77,11 +77,11 @@
           </div>
           <div v-if="evalState === 'pass'" class="eval-result eval-pass">
             <span class="mdi mdi-check-circle"></span>
-            Feature evaluation passed. Status updated to complete.
+            Epic evaluation passed. Status updated to complete.
           </div>
           <div v-if="evalState === 'fail'" class="eval-result eval-fail">
             <span class="mdi mdi-close-circle"></span>
-            Feature evaluation failed.
+            Epic evaluation failed.
             <details v-if="evalOutput" class="eval-details">
               <summary>View evaluation details</summary>
               <pre class="eval-output">{{ evalOutput }}</pre>
@@ -90,15 +90,15 @@
 
           <dl class="detail-fields">
             <dt>File</dt>
-            <dd>{{ selectedFeature.fileName }}</dd>
+            <dd>{{ selectedEpic.fileName }}</dd>
 
             <dt>Status</dt>
-            <dd>{{ selectedFeature.status || '—' }}</dd>
+            <dd>{{ selectedEpic.status || '—' }}</dd>
 
             <dt>Last Updated</dt>
-            <dd>{{ selectedFeature.lastUpdated || '—' }}</dd>
+            <dd>{{ selectedEpic.lastUpdated || '—' }}</dd>
           </dl>
-          <div class="feature-content markdown-body" v-html="renderedContent"></div>
+          <div class="epic-content markdown-body" v-html="renderedContent"></div>
         </aside>
       </div>
     </template>
@@ -107,7 +107,7 @@
 
 <script>
 import { computed, onMounted, onUnmounted, nextTick, ref, watch } from 'vue';
-import { useFeatureStore } from '@/stores/featureStore';
+import { useEpicStore } from '@/stores/epicStore';
 import { marked } from 'marked';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
@@ -118,9 +118,9 @@ const MIN_DETAIL_WIDTH = 320;
 const MAX_DETAIL_WIDTH = 880;
 
 export default {
-  name: 'FeaturesTable',
+  name: 'EpicsTable',
   setup() {
-    const featureStore = useFeatureStore();
+    const epicStore = useEpicStore();
     const featuresViewRef = ref(null);
     const tabulatorTable = ref(null);
     const tabulatorInstance = ref(null);
@@ -133,25 +133,25 @@ export default {
     const searchQuery = ref('');
     const searchDebounceTimer = ref(null);
 
-    const features = computed(() => featureStore.features);
-    const selectedFeatureId = computed(() => featureStore.selectedFeatureId);
-    const selectedFeature = computed(() => featureStore.selectedFeature);
-    const loading = computed(() => featureStore.loading);
-    const error = computed(() => featureStore.error);
+    const features = computed(() => epicStore.features);
+    const selectedEpicId = computed(() => epicStore.selectedEpicId);
+    const selectedEpic = computed(() => epicStore.selectedEpic);
+    const loading = computed(() => epicStore.loading);
+    const error = computed(() => epicStore.error);
     const detailPanelStyle = computed(() => ({ width: `${detailWidth.value}px` }));
 
     // Start state
     const starting = ref(false);
     const STARTABLE_STATUSES = new Set(['', 'draft', 'planned']);
     const showStartButton = computed(() => {
-      if (!selectedFeature.value) return false;
-      return STARTABLE_STATUSES.has(selectedFeature.value.status || '');
+      if (!selectedEpic.value) return false;
+      return STARTABLE_STATUSES.has(selectedEpic.value.status || '');
     });
 
     // Eval state
-    const evalState = computed(() => featureStore.evalState);
-    const evalError = computed(() => featureStore.evalError);
-    const evalOutput = computed(() => featureStore.evalOutput);
+    const evalState = computed(() => epicStore.evalState);
+    const evalError = computed(() => epicStore.evalError);
+    const evalOutput = computed(() => epicStore.evalOutput);
     const evaluating = computed(() => evalState.value === 'checking' || evalState.value === 'running');
 
     const evaluateButtonText = computed(() => {
@@ -170,8 +170,8 @@ export default {
     });
 
     const renderedContent = computed(() => {
-      if (!selectedFeature.value?.content) return '';
-      return marked(selectedFeature.value.content, { breaks: true, gfm: true });
+      if (!selectedEpic.value?.content) return '';
+      return marked(selectedEpic.value.content, { breaks: true, gfm: true });
     });
 
     // Track currently selected row for manual highlighting
@@ -191,7 +191,7 @@ export default {
         ],
         columns: [
           {
-            title: 'Feature',
+            title: 'Epic',
             field: 'title',
             headerSort: true,
             cssClass: 'col-title'
@@ -233,18 +233,18 @@ export default {
         const row = cell.getRow();
         const feature = row.getData();
         if (feature?.id) {
-          featureStore.selectFeature(feature.id);
+          epicStore.selectEpic(feature.id);
           highlightRow(row);
         }
       });
 
       // Select initial row
-      if (features.value.length > 0 && !selectedFeatureId.value) {
-        featureStore.selectFeature(features.value[0].id);
+      if (features.value.length > 0 && !selectedEpicId.value) {
+        epicStore.selectEpic(features.value[0].id);
       }
       nextTick(() => {
-        if (selectedFeatureId.value) {
-          selectRowById(selectedFeatureId.value);
+        if (selectedEpicId.value) {
+          selectRowById(selectedEpicId.value);
         }
       });
     }
@@ -297,24 +297,24 @@ export default {
     });
 
     // Reset eval state when selected feature changes
-    watch(selectedFeatureId, () => {
-      featureStore.resetEvalState();
+    watch(selectedEpicId, () => {
+      epicStore.resetEvalState();
     });
 
     onMounted(async () => {
-      await featureStore.loadFeatures();
-      if (features.value.length > 0 && !selectedFeatureId.value) {
-        featureStore.selectFeature(features.value[0].id);
+      await epicStore.loadEpics();
+      if (features.value.length > 0 && !selectedEpicId.value) {
+        epicStore.selectEpic(features.value[0].id);
       }
       initTabulator();
       detailWidth.value = clampDetailWidth(detailWidth.value);
       window.addEventListener('resize', handleWindowResize);
 
       // Listen for feature eval completion events
-      evalCompleteCleanup = window.electron.ipcRenderer.on('features:evalComplete', (data) => {
-        featureStore.handleEvalComplete(data);
+      evalCompleteCleanup = window.electron.ipcRenderer.on('epics:evalComplete', (data) => {
+        epicStore.handleEvalComplete(data);
         if (data.verdict === 'PASS') {
-          featureStore.loadFeatures();
+          epicStore.loadEpics();
         }
       });
     });
@@ -332,7 +332,7 @@ export default {
       if (typeof evalCompleteCleanup === 'function') {
         evalCompleteCleanup();
       }
-      featureStore.resetEvalState();
+      epicStore.resetEvalState();
     });
 
     function getContainerWidth() {
@@ -358,7 +358,7 @@ export default {
     }
 
     function startResize(event) {
-      if (!selectedFeature.value) return;
+      if (!selectedEpic.value) return;
       isResizing.value = true;
       dragStartX.value = event.clientX;
       dragStartWidth.value = detailWidth.value;
@@ -383,10 +383,10 @@ export default {
     }
 
     async function startSelectedFeature() {
-      if (!selectedFeature.value || starting.value) return;
+      if (!selectedEpic.value || starting.value) return;
       starting.value = true;
       try {
-        await featureStore.startFeature(selectedFeature.value);
+        await epicStore.startEpic(selectedEpic.value);
       } catch (e) {
         console.error('Failed to start feature:', e);
       } finally {
@@ -395,9 +395,9 @@ export default {
     }
 
     async function evaluateSelectedFeature() {
-      if (!selectedFeature.value || evaluating.value) return;
+      if (!selectedEpic.value || evaluating.value) return;
       try {
-        await featureStore.evaluateFeature(selectedFeature.value);
+        await epicStore.evaluateEpic(selectedEpic.value);
       } catch (e) {
         console.error('Failed to start feature evaluation:', e);
       }
@@ -405,8 +405,8 @@ export default {
 
     return {
       features,
-      selectedFeature,
-      selectedFeatureId,
+      selectedEpic,
+      selectedEpicId,
       loading,
       error,
       evalState,
@@ -423,7 +423,7 @@ export default {
       searchQuery,
       resultCountText,
       renderedContent,
-      selectFeature: (id) => featureStore.selectFeature(id),
+      selectEpic: (id) => epicStore.selectEpic(id),
       startSelectedFeature,
       evaluateSelectedFeature,
       startResize,
@@ -434,22 +434,22 @@ export default {
 </script>
 
 <style scoped>
-.features-view {
+.epics-view {
   display: flex;
   flex: 1;
   overflow: hidden;
   background-color: #f5f7fa;
 }
 
-.features-view.is-resizing,
-.features-view.is-resizing * {
+.epics-view.is-resizing,
+.epics-view.is-resizing * {
   user-select: none;
   cursor: col-resize;
 }
 
-.features-loading,
-.features-error,
-.features-empty {
+.epics-loading,
+.epics-error,
+.epics-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -459,21 +459,21 @@ export default {
   font-size: 0.95rem;
 }
 
-.features-error {
+.epics-error {
   color: #e74c3c;
 }
 
-.features-empty .mdi {
+.epics-empty .mdi {
   font-size: 3rem;
   margin-bottom: 0.75rem;
   color: #c1c7d0;
 }
 
-.features-empty p {
+.epics-empty p {
   margin: 0;
 }
 
-.features-table-container {
+.epics-table-container {
   flex: 1;
   overflow: hidden;
   display: flex;
@@ -482,7 +482,7 @@ export default {
   min-width: 0;
 }
 
-.features-controls {
+.epics-controls {
   display: flex;
   gap: 1rem;
   align-items: center;
@@ -553,14 +553,14 @@ export default {
   background-color: #4a90e2;
 }
 
-.features-detail-container {
+.epics-detail-container {
   flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
   height: 100%;
 }
 
-.features-detail {
+.epics-detail {
   height: 100%;
   background: #fff;
   border-left: 1px solid #e1e4e8;
@@ -707,7 +707,7 @@ export default {
   color: #6b778c;
 }
 
-.feature-content {
+.epic-content {
   margin: 0;
   font-size: 0.875rem;
   line-height: 1.6;

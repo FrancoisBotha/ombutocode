@@ -80,7 +80,7 @@ test('CRUD: insert a ticket', async () => {
     const ticket = {
       id: 'TICKET-001',
       title: 'Test Ticket',
-      feature_ref: 'feature_test.md',
+      epic_ref: 'feature_test.md',
       status: 'archive',
       last_updated: '2026-02-19',
       dependencies: ['DEP-001'],
@@ -97,7 +97,7 @@ test('CRUD: insert a ticket', async () => {
     assert.ok(read, 'ticket should be readable after insert');
     assert.equal(read.id, 'TICKET-001');
     assert.equal(read.title, 'Test Ticket');
-    assert.equal(read.feature_ref, 'feature_test.md');
+    assert.equal(read.epic_ref, 'feature_test.md');
     assert.deepEqual(read.dependencies, ['DEP-001']);
     assert.deepEqual(read.acceptance_criteria, ['AC-1', 'AC-2']);
     assert.deepEqual(read.files_touched, ['file1.js']);
@@ -204,16 +204,16 @@ test('CRUD: update ticket fields', async () => {
       id: 'T1',
       title: 'Original Title',
       notes: 'Original Notes',
-      feature_ref: 'original.md'
+      epic_ref: 'original.md'
     });
 
     const updated = archiveDb.updateTicket('T1', {
       title: 'Updated Title',
-      feature_ref: 'updated.md'
+      epic_ref: 'updated.md'
     });
 
     assert.equal(updated.title, 'Updated Title');
-    assert.equal(updated.feature_ref, 'updated.md');
+    assert.equal(updated.epic_ref, 'updated.md');
     assert.equal(updated.notes, 'Original Notes', 'unchanged fields should remain');
 
     const reread = archiveDb.readTicketById('T1');
@@ -495,21 +495,21 @@ test('Search: case-insensitive search', async () => {
   }
 });
 
-test('Search: feature_ref filter', async () => {
+test('Search: epic_ref filter', async () => {
   const tempDir = createTempDir();
   const dbPath = path.join(tempDir, 'test.db');
 
   try {
     await archiveDb.open(dbPath);
 
-    archiveDb.insertTicket({ id: 'T1', feature_ref: 'feature_auth.md', title: 'Auth' });
-    archiveDb.insertTicket({ id: 'T2', feature_ref: 'feature_db.md', title: 'Database' });
-    archiveDb.insertTicket({ id: 'T3', feature_ref: 'feature_auth.md', title: 'Login' });
-    archiveDb.insertTicket({ id: 'T4', feature_ref: '', title: 'Untagged' });
+    archiveDb.insertTicket({ id: 'T1', epic_ref: 'feature_auth.md', title: 'Auth' });
+    archiveDb.insertTicket({ id: 'T2', epic_ref: 'feature_db.md', title: 'Database' });
+    archiveDb.insertTicket({ id: 'T3', epic_ref: 'feature_auth.md', title: 'Login' });
+    archiveDb.insertTicket({ id: 'T4', epic_ref: '', title: 'Untagged' });
 
     const results = archiveDb.searchTickets('', 'feature_auth.md');
     assert.equal(results.total, 2);
-    assert.ok(results.tickets.every(t => t.feature_ref === 'feature_auth.md'));
+    assert.ok(results.tickets.every(t => t.epic_ref === 'feature_auth.md'));
 
     archiveDb.close();
   } finally {
@@ -517,16 +517,16 @@ test('Search: feature_ref filter', async () => {
   }
 });
 
-test('Search: combined query and feature_ref filter', async () => {
+test('Search: combined query and epic_ref filter', async () => {
   const tempDir = createTempDir();
   const dbPath = path.join(tempDir, 'test.db');
 
   try {
     await archiveDb.open(dbPath);
 
-    archiveDb.insertTicket({ id: 'T1', feature_ref: 'feature_auth.md', title: 'Auth Setup' });
-    archiveDb.insertTicket({ id: 'T2', feature_ref: 'feature_db.md', title: 'Auth Migration' });
-    archiveDb.insertTicket({ id: 'T3', feature_ref: 'feature_auth.md', title: 'Auth Login Form' });
+    archiveDb.insertTicket({ id: 'T1', epic_ref: 'feature_auth.md', title: 'Auth Setup' });
+    archiveDb.insertTicket({ id: 'T2', epic_ref: 'feature_db.md', title: 'Auth Migration' });
+    archiveDb.insertTicket({ id: 'T3', epic_ref: 'feature_auth.md', title: 'Auth Login Form' });
 
     const results = archiveDb.searchTickets('Auth', 'feature_auth.md');
     assert.equal(results.total, 2, 'should find T1 and T3 with feature_auth.md and Auth in title');
@@ -625,7 +625,7 @@ updated_at: "2026-02-19"
 tickets:
   - id: ARCHIVED-001
     title: Old Ticket
-    feature_ref: feature_test.md
+    epic_ref: feature_test.md
     status: archive
     last_updated: "2026-02-19T10:00:00Z"
     dependencies: []
@@ -636,7 +636,7 @@ tickets:
     agent: null
   - id: ARCHIVED-002
     title: Another Old Ticket
-    feature_ref: feature_other.md
+    epic_ref: feature_other.md
     status: archive
     last_updated: "2026-02-19T11:00:00Z"
     dependencies:
@@ -666,7 +666,7 @@ tickets:
 
     const ticket1 = archiveDb.readTicketById('ARCHIVED-001');
     assert.equal(ticket1.title, 'Old Ticket');
-    assert.equal(ticket1.feature_ref, 'feature_test.md');
+    assert.equal(ticket1.epic_ref, 'feature_test.md');
 
     const ticket2 = archiveDb.readTicketById('ARCHIVED-002');
     assert.deepEqual(ticket2.dependencies, ['ARCHIVED-001']);
@@ -692,7 +692,7 @@ updated_at: "2026-02-19"
 tickets:
   - id: T1
     title: Test
-    feature_ref: ""
+    epic_ref: ""
     status: archive
     last_updated: "2026-02-19"
     dependencies: []
@@ -730,7 +730,7 @@ updated_at: "2026-02-19"
 tickets:
   - id: T1
     title: Test
-    feature_ref: ""
+    epic_ref: ""
     status: archive
     last_updated: "2026-02-19"
     dependencies: []
@@ -856,7 +856,7 @@ test('Edge case: special characters in ticket fields', async () => {
       id: 'SPECIAL-001',
       title: 'Test with "quotes" and \'apostrophes\'',
       notes: 'Notes with % and _ and \\ backslash',
-      feature_ref: 'feature_test_2026-02-19.md'
+      epic_ref: 'feature_test_2026-02-19.md'
     };
 
     archiveDb.insertTicket(ticket);
@@ -864,7 +864,7 @@ test('Edge case: special characters in ticket fields', async () => {
 
     assert.equal(read.title, ticket.title);
     assert.equal(read.notes, ticket.notes);
-    assert.equal(read.feature_ref, ticket.feature_ref);
+    assert.equal(read.epic_ref, ticket.epic_ref);
 
     archiveDb.close();
   } finally {
@@ -941,19 +941,19 @@ test('Metadata: readAllMetadata returns all keys', async () => {
 
 // ==================== Feature References ====================
 
-test('Feature references: getDistinctFeatureRefs returns unique feature refs', async () => {
+test('Feature references: getDistinctEpicRefs returns unique feature refs', async () => {
   const tempDir = createTempDir();
   const dbPath = path.join(tempDir, 'test.db');
 
   try {
     await archiveDb.open(dbPath);
 
-    archiveDb.insertTicket({ id: 'T1', feature_ref: 'feature_auth.md' });
-    archiveDb.insertTicket({ id: 'T2', feature_ref: 'feature_db.md' });
-    archiveDb.insertTicket({ id: 'T3', feature_ref: 'feature_auth.md' });
-    archiveDb.insertTicket({ id: 'T4', feature_ref: '' });
+    archiveDb.insertTicket({ id: 'T1', epic_ref: 'feature_auth.md' });
+    archiveDb.insertTicket({ id: 'T2', epic_ref: 'feature_db.md' });
+    archiveDb.insertTicket({ id: 'T3', epic_ref: 'feature_auth.md' });
+    archiveDb.insertTicket({ id: 'T4', epic_ref: '' });
 
-    const refs = archiveDb.getDistinctFeatureRefs();
+    const refs = archiveDb.getDistinctEpicRefs();
     assert.deepEqual(refs, ['feature_auth.md', 'feature_db.md']);
 
     archiveDb.close();
@@ -962,17 +962,17 @@ test('Feature references: getDistinctFeatureRefs returns unique feature refs', a
   }
 });
 
-test('Feature references: empty feature_ref is excluded', async () => {
+test('Feature references: empty epic_ref is excluded', async () => {
   const tempDir = createTempDir();
   const dbPath = path.join(tempDir, 'test.db');
 
   try {
     await archiveDb.open(dbPath);
 
-    archiveDb.insertTicket({ id: 'T1', feature_ref: '' });
-    archiveDb.insertTicket({ id: 'T2', feature_ref: 'feature.md' });
+    archiveDb.insertTicket({ id: 'T1', epic_ref: '' });
+    archiveDb.insertTicket({ id: 'T2', epic_ref: 'feature.md' });
 
-    const refs = archiveDb.getDistinctFeatureRefs();
+    const refs = archiveDb.getDistinctEpicRefs();
     assert.ok(!refs.includes(''));
     assert.equal(refs.length, 1);
 

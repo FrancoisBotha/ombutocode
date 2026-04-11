@@ -17,7 +17,7 @@ function createSampleTicket(id, overrides = {}) {
   return {
     id,
     title: `Test Ticket ${id}`,
-    feature_ref: '.ombutocode/features/test.md',
+    epic_ref: '.ombutocode/epics/test.md',
     status: 'todo',
     last_updated: '2026-02-19T12:00:00.000Z',
     dependencies: ['DEP-001'],
@@ -105,7 +105,7 @@ test('open migrates old 15-column schema to JSON schema', async () => {
     CREATE TABLE backlog_tickets (
       id                  TEXT PRIMARY KEY,
       title               TEXT NOT NULL DEFAULT '',
-      feature_ref         TEXT DEFAULT '',
+      epic_ref         TEXT DEFAULT '',
       status              TEXT NOT NULL DEFAULT 'backlog',
       last_updated        TEXT DEFAULT '',
       dependencies        TEXT DEFAULT '[]',

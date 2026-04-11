@@ -3,8 +3,8 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
 
-const REQUIRED_START_FIELDS = ['ticketId', 'featureRef', 'title', 'repoRoot'];
-const TEMPLATE_TOKENS = ['ticketId', 'featureRef', 'title', 'repoRoot', 'runId', 'acceptanceCriteria', 'modelId', 'retryContext', 'venvPython', 'workingDirectory', 'ticketFilePath'];
+const REQUIRED_START_FIELDS = ['ticketId', 'epicRef', 'title', 'repoRoot'];
+const TEMPLATE_TOKENS = ['ticketId', 'epicRef', 'title', 'repoRoot', 'runId', 'acceptanceCriteria', 'modelId', 'retryContext', 'venvPython', 'workingDirectory', 'ticketFilePath'];
 const MAX_OUTPUT_CAPTURE_CHARS = 262144; // 256KB - increased from 12KB to accommodate verbose eval output with EVAL-007 enhancements
 const OUTPUT_UPDATE_THROTTLE_MS = 1000;
 
@@ -34,7 +34,7 @@ function normalizeStartPayload(payload) {
 
   return {
     ticketId: payload.ticketId.trim(),
-    featureRef: payload.featureRef.trim(),
+    epicRef: payload.epicRef.trim(),
     title: payload.title.trim(),
     repoRoot: path.resolve(payload.repoRoot.trim()),
     acceptanceCriteria: typeof payload.acceptanceCriteria === 'string' ? payload.acceptanceCriteria : '',
@@ -100,7 +100,7 @@ function replaceTemplateTokens(text, payload, runId, workingDir) {
   let out = text;
   const values = {
     ticketId: payload.ticketId,
-    featureRef: payload.featureRef,
+    epicRef: payload.epicRef,
     title: payload.title,
     repoRoot: payload.repoRoot,
     runId,

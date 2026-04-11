@@ -118,9 +118,9 @@ function resolveTicketStatusAfterRun({ runState, currentStatus }) {
   return currentStatus;
 }
 
-function isAdHocFeature(featureRef) {
-  const normalized = String(featureRef || '').trim().toLowerCase();
-  return normalized === '.ombutocode/features/feature_ad_hoc.md';
+function isAdHocEpic(epicRef) {
+  const normalized = String(epicRef || '').trim().toLowerCase();
+  return normalized === '.ombutocode/epics/feature_ad_hoc.md';
 }
 
 function parseEvalVerdict(outputText) {
@@ -168,7 +168,7 @@ function parseStructuredEvalOutput(outputText) {
       hasAcceptanceCriteriaChecksHeader: false,
       hasAcceptanceCriteriaChecks: false,
       hasFeatureReferenceCheck: false,
-      featureReferencePass: null,
+      epicReferencePass: null,
       criteriaChecks: []
     };
   }
@@ -187,7 +187,7 @@ function parseStructuredEvalOutput(outputText) {
     /\bFEATURE[_\s-]?REFERENCE[_\s-]?CHECK\s*:\s*[*`_~\[(\s-]*(PASS|FAIL)\b/i
   );
   const hasFeatureReferenceCheck = !!featureCheckMatch;
-  const featureReferencePass = featureCheckMatch
+  const epicReferencePass = featureCheckMatch
     ? featureCheckMatch[1].toLowerCase() === 'pass'
     : null;
   const criteriaChecks = hasAcceptanceCriteriaChecksBody
@@ -199,7 +199,7 @@ function parseStructuredEvalOutput(outputText) {
     hasAcceptanceCriteriaChecksHeader,
     hasAcceptanceCriteriaChecks,
     hasFeatureReferenceCheck,
-    featureReferencePass,
+    epicReferencePass,
     criteriaChecks
   };
 }
@@ -377,7 +377,7 @@ function resolveEvalOutcomeAfterRun({
   stdout = '',
   stderr = '',
   runError = '',
-  featureRef = '',
+  epicRef = '',
   finishedAt = ''
 }) {
   const nextStatus = resolveTicketStatusAfterRun({ runState, currentStatus });
@@ -407,21 +407,21 @@ function resolveEvalOutcomeAfterRun({
     reasons.push('Evaluator output is missing explicit acceptance-criteria verification.');
   }
 
-  const featureRefRequired = !isAdHocFeature(featureRef);
-  const featureRefLower = String(featureRef || '').trim().toLowerCase();
-  const featureRefStem = featureRefLower.replace(/^.*\//, '').replace(/\.md$/, '');
-  let featureRefReferenced = !featureRefRequired || !featureRefLower
+  const epicRefRequired = !isAdHocEpic(epicRef);
+  const epicRefLower = String(epicRef || '').trim().toLowerCase();
+  const epicRefStem = epicRefLower.replace(/^.*\//, '').replace(/\.md$/, '');
+  let epicRefReferenced = !epicRefRequired || !epicRefLower
     ? true
-    : lowerOutput.includes(featureRefLower)
-      || (featureRefStem && lowerOutput.includes(featureRefStem))
+    : lowerOutput.includes(epicRefLower)
+      || (epicRefStem && lowerOutput.includes(epicRefStem))
       || /feature\s*(?:spec(?:ification)?|reference|file)|(?:verified|checked).{0,30}feature/.test(lowerOutput);
 
-  if (featureRefRequired && structured.hasFeatureReferenceCheck) {
-    featureRefReferenced = structured.featureReferencePass === true;
+  if (epicRefRequired && structured.hasFeatureReferenceCheck) {
+    epicRefReferenced = structured.epicReferencePass === true;
   }
 
-  if (featureRefRequired && !featureRefReferenced) {
-    reasons.push(`Evaluator output is missing explicit feature spec verification for ${featureRef}.`);
+  if (epicRefRequired && !epicRefReferenced) {
+    reasons.push(`Evaluator output is missing explicit feature spec verification for ${epicRef}.`);
   }
 
   if (runState === 'failed') {
@@ -450,8 +450,8 @@ function resolveEvalOutcomeAfterRun({
     const allCriteriaPass = structured.criteriaChecks.length > 0 &&
       structured.criteriaChecks.every((check) => check.result === 'PASS');
 
-    const featureCheckOk = !featureRefRequired || featureRefReferenced ||
-      (structured.hasFeatureReferenceCheck && structured.featureReferencePass === true);
+    const featureCheckOk = !epicRefRequired || epicRefReferenced ||
+      (structured.hasFeatureReferenceCheck && structured.epicReferencePass === true);
 
     if (allCriteriaPass && featureCheckOk) {
       return {

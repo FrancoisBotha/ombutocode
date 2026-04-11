@@ -28,12 +28,12 @@
           </div>
           <div class="filter-wrapper">
             <select
-              v-model="selectedFeatureRef"
+              v-model="selectedEpicRef"
               class="feature-ref-dropdown"
               @change="onFilterChange"
             >
-              <option value="">All Features</option>
-              <option v-for="ref in featureRefs" :key="ref" :value="ref">
+              <option value="">All Epics</option>
+              <option v-for="ref in epicRefs" :key="ref" :value="ref">
                 {{ ref || '(None)' }}
               </option>
             </select>
@@ -74,8 +74,8 @@
             <dt>Status</dt>
             <dd><span class="status-badge status-archive">{{ selectedTicket.status }}</span></dd>
 
-            <dt>Feature Ref</dt>
-            <dd>{{ selectedTicket.feature_ref || 'None' }}</dd>
+            <dt>Epic Ref</dt>
+            <dd>{{ selectedTicket.epic_ref || 'None' }}</dd>
 
             <dt>Archived Date</dt>
             <dd>{{ formatDate(selectedTicket.last_updated) }}</dd>
@@ -162,8 +162,8 @@ export default {
 
     // Search and filter state
     const searchQuery = ref('');
-    const selectedFeatureRef = ref('');
-    const featureRefs = ref([]);
+    const selectedEpicRef = ref('');
+    const epicRefs = ref([]);
     const hasSearched = ref(false);
     const searchDebounceTimer = ref(null);
     const totalResultCount = ref(0);
@@ -272,11 +272,11 @@ export default {
       }
     }
 
-    async function loadFeatureRefs() {
+    async function loadEpicRefs() {
       try {
-        const result = await window.electron.ipcRenderer.invoke('archive:getDistinctFeatureRefs');
+        const result = await window.electron.ipcRenderer.invoke('archive:getDistinctEpicRefs');
         if (result.success && Array.isArray(result.refs)) {
-          featureRefs.value = result.refs.filter(ref => ref && ref.trim()).sort();
+          epicRefs.value = result.refs.filter(ref => ref && ref.trim()).sort();
         }
       } catch (error) {
         console.error('Failed to load feature refs:', error);
@@ -286,11 +286,11 @@ export default {
     async function performSearch() {
       try {
         const query = searchQuery.value.trim();
-        const featureRef = selectedFeatureRef.value.trim() || undefined;
+        const epicRef = selectedEpicRef.value.trim() || undefined;
 
         const result = await window.electron.ipcRenderer.invoke('archive:search', {
           query,
-          featureRef,
+          epicRef,
           limit: 1000,
           offset: 0
         });
@@ -340,7 +340,7 @@ export default {
 
     onMounted(async () => {
       await archiveStore.loadArchive();
-      await loadFeatureRefs();
+      await loadEpicRefs();
 
       // Show all tickets initially
       totalResultCount.value = (archiveStore.archiveTickets || []).length;
@@ -479,8 +479,8 @@ export default {
       tabulatorTable,
       isResizing,
       searchQuery,
-      selectedFeatureRef,
-      featureRefs,
+      selectedEpicRef,
+      epicRefs,
       hasSearched,
       resultCountText,
       formatDate,

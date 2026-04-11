@@ -15,7 +15,7 @@ Failure to follow this workflow is considered a task error.
 Priority order:
 
 1. `.ombutocode/data/ombutocode.db` (backlog_tickets table) ← CANONICAL task list
-2. .ombutocode/features/  ← Feature specifications (one file per feature)
+2. .ombutocode/epics/  ← Epic specifications (one file per feature)
 3. docs/architecture/architecture.md
 4. .ombutocode/src/
 
@@ -28,11 +28,11 @@ Priority order:
 ├── data/
 │   ├── requests.db            # Requests database (gitignored)
 │   └── ombutocode.db            # Consolidated database — backlog lives here (gitignored)
-├── features/
-│   └── feature_<NAME>.md      # Feature specs
+├── epics/
+│   └── epic_<NAME>.md      # Feature specs
 ├── templates/
 │   ├── backlog.yml            # Template for backlog ticket entries
-│   └── feature.md             # Template for feature specifications
+│   └── epic.md             # Template for epic specifications
 ├── codingagents/
 │   └── codingagents.yml       # Agent tool config
 ├── logs/                      # Run audit logs (gitignored)
@@ -44,7 +44,7 @@ docs/
     └── architecture.md        # System architecture document
 ```
 
-Agents MUST NOT invent features that are not present in the backlog.
+Agents MUST NOT invent epics that are not present in the backlog.
 
 If a discrepancy is found:
 → STOP and ask for clarification.
@@ -53,7 +53,7 @@ If a discrepancy is found:
 
 The `.ombutocode/` directory is part of the repository contract for agent execution.
 Worktrees created for ticket execution MUST contain the required `.ombutocode/` files,
-including this guide, planning references, feature specs, and agent configuration.
+including this guide, planning references, epic specs, and agent configuration.
 
 Lesson learned:
 - If `.ombutocode/` is excluded in `.gitignore`, git worktrees will not contain it.
@@ -78,11 +78,11 @@ Rule:
 Agents operate in TWO distinct modes:
 
 ### Planning Mode
-Triggered when the backlog has no tickets or feature specs change.
+Triggered when the backlog has no tickets or epic specs change.
 
 Steps:
 
-1. Read the relevant feature spec in .ombutocode/features/
+1. Read the relevant epic spec in .ombutocode/epics/
 2. Generate atomic tickets (1–4 hours of work)
    - When creating tickets, planners SHOULD separate backend-focused and frontend-focused work into distinct tickets whenever practical.
    - Only combine backend and frontend changes in one ticket when the work is tightly coupled and cannot be validated independently.
@@ -144,7 +144,7 @@ Tickets in `eval` are owned by an evaluation agent workflow.
 The evaluation agent MUST:
 
 1. Re-read the ticket acceptance criteria from the backlog
-2. Re-read the referenced feature spec in `.ombutocode/features/` when `feature_ref` is present
+2. Re-read the referenced epic spec in `.ombutocode/epics/` when `epic_ref` is present
 3. Run relevant validation (tests/build/manual checks as appropriate)
 4. Decide pass/fail against the ticket's stated requirements
 

@@ -87,7 +87,7 @@ function initializeSchema() {
       title       TEXT NOT NULL,
       description TEXT DEFAULT '',
       status      TEXT NOT NULL DEFAULT 'new',
-      feature_ref TEXT DEFAULT NULL,
+      epic_ref TEXT DEFAULT NULL,
       created_at  TEXT NOT NULL,
       updated_at  TEXT NOT NULL
     )
@@ -183,7 +183,7 @@ function deserializeRequest(row) {
     title: row.title,
     description: row.description || '',
     status: row.status,
-    feature_ref: row.feature_ref || null,
+    epic_ref: row.epic_ref || null,
     created_at: row.created_at,
     updated_at: row.updated_at
   };
@@ -202,7 +202,7 @@ function createRequest({ title, description = '' }) {
   const now = new Date().toISOString();
 
   const stmt = db.prepare(`
-    INSERT INTO requests (id, title, description, status, feature_ref, created_at, updated_at)
+    INSERT INTO requests (id, title, description, status, epic_ref, created_at, updated_at)
     VALUES (?, ?, ?, 'new', NULL, ?, ?)
   `);
   stmt.bind([id, title.trim(), description || '', now, now]);
@@ -328,8 +328,8 @@ function deleteRequest(id) {
 }
 
 /**
- * Search requests by query string and/or filter by status or feature_ref
- * @param {Object} params - { query?, status?, feature_ref?, limit?, offset? }
+ * Search requests by query string and/or filter by status or epic_ref
+ * @param {Object} params - { query?, status?, epic_ref?, limit?, offset? }
  * @returns {Object} { requests: [], total: number }
  */
 function searchRequests(params = {}) {
@@ -337,7 +337,7 @@ function searchRequests(params = {}) {
 
   const query = params.query || '';
   const status = params.status || '';
-  const featureRef = params.feature_ref || '';
+  const epicRef = params.epic_ref || '';
   const limit = params.limit || 100;
   const offset = params.offset || 0;
 
@@ -355,9 +355,9 @@ function searchRequests(params = {}) {
     queryParams.push(status);
   }
 
-  if (featureRef) {
-    sql += ' AND feature_ref = ?';
-    queryParams.push(featureRef);
+  if (epicRef) {
+    sql += ' AND epic_ref = ?';
+    queryParams.push(epicRef);
   }
 
   // Get total count
@@ -400,7 +400,7 @@ function linkToFeature(id, featurePath) {
 
   const now = new Date().toISOString();
   const stmt = db.prepare(`
-    UPDATE requests SET status = 'linked', feature_ref = ?, updated_at = ? WHERE id = ?
+    UPDATE requests SET status = 'linked', epic_ref = ?, updated_at = ? WHERE id = ?
   `);
   stmt.bind([featurePath, now, id]);
   stmt.step();

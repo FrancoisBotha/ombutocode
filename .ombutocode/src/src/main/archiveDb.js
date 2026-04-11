@@ -85,7 +85,7 @@ function initializeSchema() {
     CREATE TABLE IF NOT EXISTS tickets (
       id                  TEXT PRIMARY KEY,
       title               TEXT NOT NULL DEFAULT '',
-      feature_ref         TEXT DEFAULT '',
+      epic_ref         TEXT DEFAULT '',
       status              TEXT NOT NULL DEFAULT 'archive',
       last_updated        TEXT DEFAULT '',
       dependencies        TEXT DEFAULT '[]',
@@ -98,7 +98,7 @@ function initializeSchema() {
   `);
 
   // Create indexes
-  db.run(`CREATE INDEX IF NOT EXISTS idx_tickets_feature_ref ON tickets(feature_ref)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_tickets_epic_ref ON tickets(epic_ref)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_tickets_last_updated ON tickets(last_updated)`);
 
   // Initialize metadata with defaults (use prefixed keys)
@@ -214,7 +214,7 @@ function insertTicket(ticket) {
   const {
     id,
     title = '',
-    feature_ref = '',
+    epic_ref = '',
     status = 'archive',
     last_updated = new Date().toISOString(),
     dependencies = [],
@@ -227,7 +227,7 @@ function insertTicket(ticket) {
 
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO tickets (
-      id, title, feature_ref, status, last_updated,
+      id, title, epic_ref, status, last_updated,
       dependencies, acceptance_criteria, files_touched,
       notes, assignee, agent
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -236,7 +236,7 @@ function insertTicket(ticket) {
   stmt.bind([
     id,
     title,
-    feature_ref,
+    epic_ref,
     status,
     last_updated,
     JSON.stringify(dependencies),
@@ -255,7 +255,7 @@ function insertTicket(ticket) {
   return {
     id,
     title,
-    feature_ref,
+    epic_ref,
     status,
     last_updated,
     dependencies,
@@ -385,7 +385,7 @@ function updateTicket(id, updates) {
   const ticket = readTicketById(id);
   if (!ticket) return null;
 
-  const allowedFields = ['title', 'feature_ref', 'status', 'last_updated', 'dependencies', 'acceptance_criteria', 'files_touched', 'notes', 'assignee', 'agent'];
+  const allowedFields = ['title', 'epic_ref', 'status', 'last_updated', 'dependencies', 'acceptance_criteria', 'files_touched', 'notes', 'assignee', 'agent'];
   const setClauses = [];
   const values = [];
 
@@ -434,17 +434,17 @@ function deleteTicket(id) {
 }
 
 /**
- * Search tickets by query and/or feature_ref
- * Accepts either an object { query, featureRef, limit, offset } or individual parameters
+ * Search tickets by query and/or epic_ref
+ * Accepts either an object { query, epicRef, limit, offset } or individual parameters
  */
-function searchTickets(queryOrParams = '', featureRef = '', limit = 100, offset = 0) {
+function searchTickets(queryOrParams = '', epicRef = '', limit = 100, offset = 0) {
   if (!db) throw new Error('Database not initialized');
 
   // Handle both object and individual parameter calls
   let query = '';
   if (typeof queryOrParams === 'object' && queryOrParams !== null) {
     query = queryOrParams.query || '';
-    featureRef = queryOrParams.featureRef || '';
+    epicRef = queryOrParams.epicRef || '';
     limit = queryOrParams.limit || 100;
     offset = queryOrParams.offset || 0;
   } else {
@@ -460,9 +460,9 @@ function searchTickets(queryOrParams = '', featureRef = '', limit = 100, offset 
     params.push(searchTerm, searchTerm, searchTerm);
   }
 
-  if (featureRef) {
-    sql += ' AND feature_ref = ?';
-    params.push(featureRef);
+  if (epicRef) {
+    sql += ' AND epic_ref = ?';
+    params.push(epicRef);
   }
 
   // Get total count
@@ -637,22 +637,22 @@ function isMigrationNeeded(yamlPath, dbPath) {
 }
 
 /**
- * Get distinct feature_ref values from all tickets.
- * @returns {string[]} Array of unique feature_ref values
+ * Get distinct epic_ref values from all tickets.
+ * @returns {string[]} Array of unique epic_ref values
  */
-function getDistinctFeatureRefs() {
+function getDistinctEpicRefs() {
   if (!db) throw new Error('Database not initialized. Call open() first.');
 
-  const stmt = db.prepare("SELECT DISTINCT feature_ref FROM tickets WHERE feature_ref != '' ORDER BY feature_ref");
-  const featureRefs = [];
+  const stmt = db.prepare("SELECT DISTINCT epic_ref FROM tickets WHERE epic_ref != '' ORDER BY epic_ref");
+  const epicRefs = [];
 
   while (stmt.step()) {
     const row = stmt.getAsObject();
-    featureRefs.push(row.feature_ref);
+    epicRefs.push(row.epic_ref);
   }
 
   stmt.free();
-  return featureRefs;
+  return epicRefs;
 }
 
 /**
@@ -727,7 +727,7 @@ module.exports = {
   isMigrationNeeded,
 
   // Data export
-  getDistinctFeatureRefs,
+  getDistinctEpicRefs,
   getArchiveData,
 
   // ID helpers

@@ -70,6 +70,7 @@
       </div>
 
       <!-- Filesystem tree -->
+      <div class="plan-text-group-label plan-tree-label">Document Explorer</div>
       <div class="plan-file-tree">
         <template v-for="node in planFlatNodes" :key="node.path">
           <div
@@ -162,13 +163,13 @@
 
       <div
         class="board-item"
-        :class="{ 'is-active': activeView === 'features' }"
-        @click="$emit('change-view', 'features')"
+        :class="{ 'is-active': activeView === 'epics' }"
+        @click="$emit('change-view', 'epics')"
       >
         <span class="board-icon">
           <span class="mdi mdi-shape-outline"></span>
         </span>
-        <span class="board-name">Features</span>
+        <span class="board-name">Epics</span>
       </div>
 
       <div
@@ -326,9 +327,9 @@
         </div>
         <div
           class="collapsed-board"
-          :class="{ 'is-active': activeView === 'features' }"
-          @click="$emit('change-view', 'features')"
-          title="Features"
+          :class="{ 'is-active': activeView === 'epics' }"
+          @click="$emit('change-view', 'epics')"
+          title="Epics"
         >
           <span class="mdi mdi-shape-outline"></span>
         </div>
@@ -540,7 +541,7 @@ export default {
         items: [
           { view: 'plan-prd', label: 'PRD' },
           { view: 'plan-architecture', label: 'Architecture' },
-          { view: 'plan-epics', label: 'Epics' },
+          { view: 'plan-epics', label: 'Epic Creation' },
           { view: 'plan-dashboard', label: 'Ticket Generation' },
         ]
       },
@@ -1771,6 +1772,10 @@ export default {
 .plan-nav-btn.is-active {
   background: rgba(109, 212, 160, 0.12);
   color: #6dd4a0;
+}
+
+.plan-tree-label {
+  padding: 0.35rem 0.5rem 0.1rem;
 }
 
 /* File tree */

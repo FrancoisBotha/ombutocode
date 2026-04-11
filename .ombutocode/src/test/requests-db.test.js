@@ -164,7 +164,7 @@ test('createRequest creates a request with all fields populated', async () => {
   assert.equal(req.title, 'My Request');
   assert.equal(req.description, 'Some details');
   assert.equal(req.status, 'new');
-  assert.equal(req.feature_ref, null);
+  assert.equal(req.epic_ref, null);
   assert.ok(req.created_at);
   assert.ok(req.updated_at);
 });
@@ -390,7 +390,7 @@ test('searchRequests filters by status', async () => {
   createRequest({ title: 'New One' });
   createRequest({ title: 'Another' });
   // Link the second one to change its status
-  linkToFeature('REQ-002', '.ombutocode/features/test.md');
+  linkToFeature('REQ-002', '.ombutocode/epics/test.md');
 
   const result = searchRequests({ status: 'linked' });
 
@@ -398,14 +398,14 @@ test('searchRequests filters by status', async () => {
   assert.equal(result.requests[0].id, 'REQ-002');
 });
 
-test('searchRequests filters by feature_ref', async () => {
+test('searchRequests filters by epic_ref', async () => {
   await open(testDbPath);
   createRequest({ title: 'Req 1' });
   createRequest({ title: 'Req 2' });
-  linkToFeature('REQ-001', '.ombutocode/features/feature_A.md');
-  linkToFeature('REQ-002', '.ombutocode/features/feature_B.md');
+  linkToFeature('REQ-001', '.ombutocode/epics/feature_A.md');
+  linkToFeature('REQ-002', '.ombutocode/epics/feature_B.md');
 
-  const result = searchRequests({ feature_ref: '.ombutocode/features/feature_A.md' });
+  const result = searchRequests({ epic_ref: '.ombutocode/epics/feature_A.md' });
 
   assert.equal(result.total, 1);
   assert.equal(result.requests[0].id, 'REQ-001');
@@ -415,7 +415,7 @@ test('searchRequests combines query and status filter', async () => {
   await open(testDbPath);
   createRequest({ title: 'Alpha' });
   createRequest({ title: 'Alpha Linked' });
-  linkToFeature('REQ-002', '.ombutocode/features/test.md');
+  linkToFeature('REQ-002', '.ombutocode/epics/test.md');
 
   const result = searchRequests({ query: 'Alpha', status: 'linked' });
 
@@ -451,10 +451,10 @@ test('linkToFeature changes status to linked', async () => {
   await open(testDbPath);
   createRequest({ title: 'To Link' });
 
-  const linked = linkToFeature('REQ-001', '.ombutocode/features/feature_TEST.md');
+  const linked = linkToFeature('REQ-001', '.ombutocode/epics/feature_TEST.md');
 
   assert.equal(linked.status, 'linked');
-  assert.equal(linked.feature_ref, '.ombutocode/features/feature_TEST.md');
+  assert.equal(linked.epic_ref, '.ombutocode/epics/feature_TEST.md');
 });
 
 test('linkToFeature updates updated_at timestamp', async () => {
@@ -462,7 +462,7 @@ test('linkToFeature updates updated_at timestamp', async () => {
   const req = createRequest({ title: 'To Link' });
 
   await new Promise(r => setTimeout(r, 10));
-  const linked = linkToFeature('REQ-001', '.ombutocode/features/test.md');
+  const linked = linkToFeature('REQ-001', '.ombutocode/epics/test.md');
 
   assert.ok(linked.updated_at >= req.updated_at);
 });
@@ -470,7 +470,7 @@ test('linkToFeature updates updated_at timestamp', async () => {
 test('linkToFeature returns null for non-existent ID', async () => {
   await open(testDbPath);
 
-  const result = linkToFeature('REQ-999', '.ombutocode/features/test.md');
+  const result = linkToFeature('REQ-999', '.ombutocode/epics/test.md');
 
   assert.equal(result, null);
 });
@@ -507,12 +507,12 @@ test('markAsDone returns null for non-existent ID', async () => {
 test('markAsDone works on linked requests', async () => {
   await open(testDbPath);
   createRequest({ title: 'Linked then done' });
-  linkToFeature('REQ-001', '.ombutocode/features/test.md');
+  linkToFeature('REQ-001', '.ombutocode/epics/test.md');
 
   const done = markRequestDone('REQ-001');
 
   assert.equal(done.status, 'done');
-  assert.equal(done.feature_ref, '.ombutocode/features/test.md');
+  assert.equal(done.epic_ref, '.ombutocode/epics/test.md');
 });
 
 test('markAsDone persists to database', async () => {
@@ -534,7 +534,7 @@ test('getDistinctStatuses returns unique status values', async () => {
   createRequest({ title: 'New 1' });
   createRequest({ title: 'New 2' });
   createRequest({ title: 'To Link' });
-  linkToFeature('REQ-003', '.ombutocode/features/test.md');
+  linkToFeature('REQ-003', '.ombutocode/epics/test.md');
 
   const statuses = getDistinctStatuses();
 

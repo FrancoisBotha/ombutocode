@@ -76,7 +76,7 @@ test('buildTicketFromDraft and appendTicketToBacklog enforce backlog defaults', 
   });
 
   assert.equal(ticket.id, 'AD_HOC-002');
-  assert.equal(ticket.feature_ref, '.ombutocode/features/feature_AD_HOC.md');
+  assert.equal(ticket.epic_ref, '.ombutocode/epics/feature_AD_HOC.md');
   assert.equal(ticket.status, 'backlog');
   assert.equal(ticket.eval_summary, null);
 

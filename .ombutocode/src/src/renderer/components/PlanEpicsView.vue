@@ -27,6 +27,22 @@
             </select>
           </div>
 
+          <div class="epics-context-field">
+            <label class="epics-context-label">Architecture Document</label>
+            <select class="epics-context-select" v-model="selectedArch">
+              <option value="">-- None --</option>
+              <option v-for="f in archFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+            </select>
+          </div>
+
+          <div class="epics-context-field">
+            <label class="epics-context-label">Data Model</label>
+            <select class="epics-context-select" v-model="selectedDataModel">
+              <option value="">-- None --</option>
+              <option v-for="f in dataModelFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+            </select>
+          </div>
+
           <p class="epics-agent-info" v-if="defaultAgent">
             Using <strong>{{ defaultAgent }}</strong> as the coding agent.
           </p>
@@ -106,6 +122,14 @@
               <span class="mdi mdi-file-document-outline epics-ctx-icon"></span>
               <span>{{ selectedPrd }}</span>
             </div>
+            <div class="epics-ctx-item" v-if="selectedArch">
+              <span class="mdi mdi-layers-outline epics-ctx-icon"></span>
+              <span>{{ selectedArch }}</span>
+            </div>
+            <div class="epics-ctx-item" v-if="selectedDataModel">
+              <span class="mdi mdi-database-outline epics-ctx-icon"></span>
+              <span>{{ selectedDataModel }}</span>
+            </div>
             <div class="epics-prompt-section">
               <div class="epics-panel-label" style="margin-top: 0.75rem;">System Prompt</div>
               <p class="epics-prompt-text">{{ sessionPrompt }}</p>
@@ -173,7 +197,11 @@ export default {
 
     const epics = ref([]);
     const prdFiles = ref([]);
+    const archFiles = ref([]);
+    const dataModelFiles = ref([]);
     const selectedPrd = ref('');
+    const selectedArch = ref('');
+    const selectedDataModel = ref('');
 
     const showNewInput = ref(false);
     const newName = ref('');
@@ -199,14 +227,26 @@ export default {
       } catch (_) {}
     }
 
-    async function loadPrdFiles() {
+    async function loadContextFiles() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
         if (tree && tree.children) {
-          const folder = tree.children.find(c => c.name === 'Product Requirements Document');
-          if (folder && folder.children) {
-            prdFiles.value = folder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+          const prdFolder = tree.children.find(c => c.name === 'Product Requirements Document');
+          if (prdFolder && prdFolder.children) {
+            prdFiles.value = prdFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
             if (prdFiles.value.length === 1) selectedPrd.value = prdFiles.value[0].path;
+          }
+
+          const archFolder = tree.children.find(c => c.name === 'Architecture');
+          if (archFolder && archFolder.children) {
+            archFiles.value = archFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+            if (archFiles.value.length === 1) selectedArch.value = archFiles.value[0].path;
+          }
+
+          const dmFolder = tree.children.find(c => c.name === 'Data Model');
+          if (dmFolder && dmFolder.children) {
+            dataModelFiles.value = dmFolder.children.filter(f => f.type === 'file');
+            if (dataModelFiles.value.length === 1) selectedDataModel.value = dataModelFiles.value[0].path;
           }
         }
       } catch (_) {}
@@ -295,7 +335,30 @@ export default {
       const shellId = 'epics-agent-' + (++sessionCounter);
       currentShellId.value = shellId;
 
-      const prompt = `Read the PRD at "docs/${selectedPrd.value}". Break it down into epics — each epic represents a deliverable milestone. For each epic, create a separate Markdown file in "docs/Epics/" with the naming convention "Epic_Name.md". Each file should contain: a title, overview, scope (in/out), acceptance criteria as a checklist, and dependencies. Start by proposing the list of epics with a one-line summary for each, then ask me to confirm before creating the files.`;
+      const contextParts = [`Read the PRD at "docs/${selectedPrd.value}"`];
+      if (selectedArch.value) contextParts.push(`the Architecture document at "docs/${selectedArch.value}"`);
+      if (selectedDataModel.value) contextParts.push(`the Data Model at "docs/${selectedDataModel.value}"`);
+
+      const prompt = `${contextParts.join(', and ')}. Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the project conventions and ticket workflow.
+
+Break the requirements down into epics. Each epic represents a deliverable milestone that can be independently developed and verified. For each epic:
+
+1. Create a separate Markdown file in ".ombutocode/epics/" with the naming convention "epic_EPIC_NAME.md"
+2. Each epic file must contain:
+   - A title (# Epic: Name)
+   - Status: NEW
+   - Overview — what this epic delivers and why
+   - Scope — what is in scope and out of scope
+   - Functional Requirements — specific requirements this epic addresses
+   - Acceptance Criteria — a checklist of verifiable criteria
+   - Dependencies — other epics or external dependencies
+   - Tickets — a list of implementation tickets (to be created later)
+
+3. Epics should be sized so that each can be broken into 3-8 development tickets
+4. Follow the conventions in the engineering guide for naming and structure
+5. Epic statuses follow: NEW → TICKETS → BUILDING → DONE
+
+Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
 
       sessionPrompt.value = prompt;
 
@@ -359,7 +422,7 @@ export default {
 
     onMounted(() => {
       loadEpics();
-      loadPrdFiles();
+      loadContextFiles();
       loadDefaultAgent();
     });
 
@@ -370,7 +433,7 @@ export default {
 
     return {
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
-      epics, prdFiles, selectedPrd,
+      epics, prdFiles, archFiles, dataModelFiles, selectedPrd, selectedArch, selectedDataModel,
       showNewInput, newName, newNameInput,
       openEpic, deleteEpic, onNewEpic, createManualEpic,
       startSession, stopSession, startResize,

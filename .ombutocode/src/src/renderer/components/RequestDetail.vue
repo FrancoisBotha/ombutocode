@@ -20,10 +20,10 @@
       </div>
     </div>
 
-    <div v-if="request.status === 'linked' && request.feature_ref" class="detail-section">
+    <div v-if="request.status === 'linked' && request.epic_ref" class="detail-section">
       <div class="detail-label">Linked Feature</div>
       <div class="detail-value detail-feature-ref">
-        {{ request.feature_ref }}
+        {{ request.epic_ref }}
       </div>
     </div>
 

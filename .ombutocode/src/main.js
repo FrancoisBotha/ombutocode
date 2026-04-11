@@ -29,7 +29,7 @@ const {
 } = require('./src/main/archiveDb');
 const {
   searchTickets,
-  getDistinctFeatureRefs,
+  getDistinctEpicRefs,
   getArchiveData,
   getMaxTicketNumericId
 } = require('./src/main/archiveDb');
@@ -83,7 +83,7 @@ const ARCHIVE_PATH    = path.join(OMBUTOCODE_DIR, 'planning', 'archive.yml');
 const ARCHIVE_DB_PATH = path.join(OMBUTOCODE_DIR, 'planning', 'archive.db');
 const REQUESTS_DB_PATH = path.join(OMBUTOCODE_DIR, 'data', 'requests.db');
 const OMBUTOCODE_DB_PATH = path.join(OMBUTOCODE_DIR, 'data', 'ombutocode.db');
-const FEATURES_DIR    = path.join(OMBUTOCODE_DIR, 'features');
+const EPICS_DIR    = path.join(OMBUTOCODE_DIR, 'epics');
 const AGENTS_PATH     = path.join(OMBUTOCODE_DIR, 'codingagents', 'codingagents.yml');
 const AGENT_LOG_DIR   = path.join(OMBUTOCODE_DIR, 'logs');
 const AGENT_LOG_PATH  = path.join(AGENT_LOG_DIR, 'codingagent-runs.jsonl');
@@ -369,7 +369,7 @@ function updateTicket(ticketId, updater) {
 }
 
 let agentRuntime;
-const activeFeatureEvals = new Map(); // runId → { fileName, featureRef, tickets }
+const activeFeatureEvals = new Map(); // runId → { fileName, epicRef, tickets }
 const createAdHocFromPrompt = createAdHocTicketCreator({
   projectRoot: PROJECT_ROOT,
   resolveTemplateConfig: resolveAgentTemplateConfig,
@@ -622,7 +622,7 @@ agentRuntime = new AgentRuntime({
         stdout: run.stdout,
         stderr: run.stderr,
         runError: run.error,
-        featureRef: ticket.feature_ref,
+        epicRef: ticket.epic_ref,
         finishedAt: run.finishedAt
       });
       const previousStatus = ticket.status;
@@ -1037,7 +1037,7 @@ agentRuntime = new AgentRuntime({
       if (verdict === 'PASS') {
         // Update feature file status to complete
         try {
-          const featurePath = path.join(FEATURES_DIR, featureEvalInfo.fileName);
+          const featurePath = path.join(EPICS_DIR, featureEvalInfo.fileName);
           const content = fs.readFileSync(featurePath, 'utf-8');
           const fLines = content.split(/\r?\n/);
           const today = new Date().toISOString().split('T')[0];
@@ -1077,7 +1077,7 @@ agentRuntime = new AgentRuntime({
         // Update PRD section 15
         const titleLine = (() => {
           try {
-            const c = fs.readFileSync(path.join(FEATURES_DIR, featureEvalInfo.fileName), 'utf-8');
+            const c = fs.readFileSync(path.join(EPICS_DIR, featureEvalInfo.fileName), 'utf-8');
             const tl = c.split(/\r?\n/).find(l => l.startsWith('# ')) || '';
             return tl.replace(/^#\s*/, '').trim() || featureEvalInfo.fileName;
           } catch { return featureEvalInfo.fileName; }
@@ -1088,7 +1088,7 @@ agentRuntime = new AgentRuntime({
       // Send event to renderer
       BrowserWindow.getAllWindows().forEach((win) => {
         if (!win.isDestroyed()) {
-          win.webContents.send('features:evalComplete', {
+          win.webContents.send('epics:evalComplete', {
             runId: run.runId,
             fileName: featureEvalInfo.fileName,
             verdict,
@@ -2085,7 +2085,7 @@ ipcMain.handle('agent:startKimiForTicket', async (_, payload) => {
     const enrichedPayload = {
       ticketId,
       title: payload?.title || ticket?.title || ticketId,
-      featureRef: payload?.featureRef || ticket?.feature_ref || '.ombutocode/features',
+      epicRef: payload?.epicRef || ticket?.epic_ref || '.ombutocode/epics',
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('kimi', payload?.modelId),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
@@ -2140,7 +2140,7 @@ ipcMain.handle('agent:startCodexForTicket', async (_, payload) => {
     const enrichedPayload = {
       ticketId,
       title: payload?.title || ticket?.title || ticketId,
-      featureRef: payload?.featureRef || ticket?.feature_ref || '.ombutocode/features',
+      epicRef: payload?.epicRef || ticket?.epic_ref || '.ombutocode/epics',
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('codex', payload?.modelId),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
@@ -2195,7 +2195,7 @@ ipcMain.handle('agent:startClaudeForTicket', async (_, payload) => {
     const enrichedPayload = {
       ticketId,
       title: payload?.title || ticket?.title || ticketId,
-      featureRef: payload?.featureRef || ticket?.feature_ref || '.ombutocode/features',
+      epicRef: payload?.epicRef || ticket?.epic_ref || '.ombutocode/epics',
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('claude', payload?.modelId),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
@@ -2552,9 +2552,9 @@ ipcMain.handle('archive:search', async (_, params = {}) => {
   }
 });
 
-ipcMain.handle('archive:getDistinctFeatureRefs', async () => {
+ipcMain.handle('archive:getDistinctEpicRefs', async () => {
   try {
-    const refs = getDistinctFeatureRefs();
+    const refs = getDistinctEpicRefs();
     return { success: true, refs };
   } catch (error) {
     console.error('[Archive] Get feature refs error:', error);
@@ -2628,22 +2628,22 @@ ipcMain.handle('backlog:deleteTicket', async (_, { ticketId }) => {
   return { success: true, ticketId };
 });
 
-ipcMain.handle('features:read', async () => {
+ipcMain.handle('epics:read', async () => {
   let entries = [];
   try {
-    entries = fs.readdirSync(FEATURES_DIR, { withFileTypes: true });
+    entries = fs.readdirSync(EPICS_DIR, { withFileTypes: true });
   } catch (e) {
-    if (e.code === 'ENOENT') return { features: [] };
+    if (e.code === 'ENOENT') return { epics: [] };
     throw e;
   }
 
-  const featureFiles = entries
+  const epicFiles = entries
     .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith('.md'))
     .map((entry) => entry.name)
     .sort((a, b) => a.localeCompare(b));
 
-  const features = featureFiles.map((fileName) => {
-    const fullPath = path.join(FEATURES_DIR, fileName);
+  const epics = epicFiles.map((fileName) => {
+    const fullPath = path.join(EPICS_DIR, fileName);
     const content = fs.readFileSync(fullPath, 'utf-8');
     const lines = content.split(/\r?\n/);
 
@@ -2665,10 +2665,10 @@ ipcMain.handle('features:read', async () => {
     };
   });
 
-  return { features };
+  return { epics };
 });
 
-ipcMain.handle('features:updateStatus', async (_, { fileName, status }) => {
+ipcMain.handle('epics:updateStatus', async (_, { fileName, status }) => {
   if (!fileName || !status) {
     throw new Error('fileName and status are required');
   }
@@ -2678,7 +2678,7 @@ ipcMain.handle('features:updateStatus', async (_, { fileName, status }) => {
     throw new Error('Invalid feature file');
   }
 
-  const fullPath = path.join(FEATURES_DIR, safeName);
+  const fullPath = path.join(EPICS_DIR, safeName);
   const content = fs.readFileSync(fullPath, 'utf-8');
   const lines = content.split(/\r?\n/);
   const today = new Date().toISOString().split('T')[0];
@@ -2715,13 +2715,13 @@ ipcMain.handle('features:updateStatus', async (_, { fileName, status }) => {
 
 // ── Feature Start / Evaluation ───────────────────────────────────────────
 
-ipcMain.handle('features:start', async (_, { fileName }) => {
+ipcMain.handle('epics:start', async (_, { fileName }) => {
   if (!fileName) throw new Error('fileName is required');
 
   const safeName = path.basename(String(fileName));
-  const featureRef = `.ombutocode/features/${safeName}`;
+  const epicRef = `.ombutocode/epics/${safeName}`;
 
-  const tickets = backlogDb.getTicketsByFeatureRef(featureRef);
+  const tickets = backlogDb.getTicketsByEpicRef(epicRef);
   if (tickets.length === 0) {
     throw new Error('No tickets linked to this feature');
   }
@@ -2738,7 +2738,7 @@ ipcMain.handle('features:start', async (_, { fileName }) => {
   }
 
   // Update feature status to in_progress if it isn't already
-  const featurePath = path.join(FEATURES_DIR, safeName);
+  const featurePath = path.join(EPICS_DIR, safeName);
   try {
     const content = fs.readFileSync(featurePath, 'utf-8');
     const lines = content.split(/\r?\n/);
@@ -2769,17 +2769,17 @@ ipcMain.handle('features:start', async (_, { fileName }) => {
   return { promoted, total: tickets.length };
 });
 
-ipcMain.handle('features:checkReadiness', async (_, { fileName }) => {
+ipcMain.handle('epics:checkReadiness', async (_, { fileName }) => {
   if (!fileName) throw new Error('fileName is required');
 
   const safeName = path.basename(String(fileName));
-  const featureRef = `.ombutocode/features/${safeName}`;
+  const epicRef = `.ombutocode/epics/${safeName}`;
 
   // Query backlog + archive for linked tickets
-  const backlogTickets = backlogDb.getTicketsByFeatureRef(featureRef);
+  const backlogTickets = backlogDb.getTicketsByEpicRef(epicRef);
   let archiveTickets = [];
   try {
-    const archiveResult = searchTickets({ featureRef, limit: 500 });
+    const archiveResult = searchTickets({ epicRef, limit: 500 });
     archiveTickets = archiveResult?.tickets || [];
   } catch { /* archive may not exist */ }
 
@@ -2802,7 +2802,7 @@ ipcMain.handle('features:checkReadiness', async (_, { fileName }) => {
   };
 });
 
-ipcMain.handle('features:evaluate', async (_, { fileName }) => {
+ipcMain.handle('epics:evaluate', async (_, { fileName }) => {
   if (!fileName) throw new Error('fileName is required');
 
   // Validate eval agent is configured
@@ -2812,8 +2812,8 @@ ipcMain.handle('features:evaluate', async (_, { fileName }) => {
   }
 
   const safeName = path.basename(String(fileName));
-  const featureRef = `.ombutocode/features/${safeName}`;
-  const fullPath = path.join(FEATURES_DIR, safeName);
+  const epicRef = `.ombutocode/epics/${safeName}`;
+  const fullPath = path.join(EPICS_DIR, safeName);
 
   // Read feature spec
   let featureContent;
@@ -2828,10 +2828,10 @@ ipcMain.handle('features:evaluate', async (_, { fileName }) => {
   const featureTitle = titleLine.replace(/^#\s*/, '').trim() || safeName;
 
   // Check readiness — get all linked tickets
-  const backlogTickets = backlogDb.getTicketsByFeatureRef(featureRef);
+  const backlogTickets = backlogDb.getTicketsByEpicRef(epicRef);
   let archiveTickets = [];
   try {
-    const archiveResult = searchTickets({ featureRef, limit: 500 });
+    const archiveResult = searchTickets({ epicRef, limit: 500 });
     archiveTickets = archiveResult?.tickets || [];
   } catch { /* archive may not exist */ }
 
@@ -2864,7 +2864,7 @@ ipcMain.handle('features:evaluate', async (_, { fileName }) => {
   const syntheticTicketId = `FEAT_EVAL_${Date.now()}`;
   const payload = {
     ticketId: syntheticTicketId,
-    featureRef,
+    epicRef,
     title: featureTitle,
     repoRoot: PROJECT_ROOT,
     acceptanceCriteria: allCriteria,
@@ -2877,14 +2877,14 @@ ipcMain.handle('features:evaluate', async (_, { fileName }) => {
   // Track this run for onRunFinished hook
   activeFeatureEvals.set(run.runId, {
     fileName: safeName,
-    featureRef,
+    epicRef,
     tickets: allTickets.map(t => ({ id: t.id, title: t.title }))
   });
 
   return { runId: run.runId };
 });
 
-ipcMain.handle('features:evalStatus', async (_, { runId }) => {
+ipcMain.handle('epics:evalStatus', async (_, { runId }) => {
   if (!runId) throw new Error('runId is required');
   return agentRuntime.getRunStatus({ runId });
 });

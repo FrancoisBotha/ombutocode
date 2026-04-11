@@ -11,7 +11,7 @@ async function main() {
   const maxSort = db.exec('SELECT MAX(sort_order) FROM backlog_tickets');
   let sortOrder = (maxSort[0].values[0][0] || 0) + 1;
 
-  const feature_ref = '.ombutocode/features/feature_P17_MAC_PORT.md';
+  const epic_ref = '.ombutocode/epics/feature_P17_MAC_PORT.md';
   const today = '2026-03-13';
 
   const tickets = [
@@ -401,7 +401,7 @@ async function main() {
     const data = {
       title: t.title,
       description: t.description,
-      feature_ref: feature_ref,
+      epic_ref: epic_ref,
       status: 'backlog',
       last_updated: today,
       dependencies: t.dependencies,

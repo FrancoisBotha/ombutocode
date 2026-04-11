@@ -16,7 +16,7 @@ const {
   updateTicket,
   deleteTicket,
   searchTickets,
-  getDistinctFeatureRefs,
+  getDistinctEpicRefs,
   getMetadata,
   getArchiveData,
   migrateFromYaml,
@@ -34,7 +34,7 @@ function createSampleTicket(id, overrides = {}) {
   return {
     id,
     title: `Test Ticket ${id}`,
-    feature_ref: '.ombutocode/features/test.md',
+    epic_ref: '.ombutocode/epics/test.md',
     status: 'archive',
     last_updated: '2026-02-19T12:00:00.000Z',
     dependencies: ['ARCH-001', 'ARCH-002'],
@@ -101,7 +101,7 @@ test('initializeSchema creates indexes', async () => {
   const indexesResult = database.exec("SELECT name FROM sqlite_master WHERE type='index'");
   const indexNames = indexesResult[0].values.map(row => row[0]);
   
-  assert.ok(indexNames.includes('idx_tickets_feature_ref'));
+  assert.ok(indexNames.includes('idx_tickets_epic_ref'));
   assert.ok(indexNames.includes('idx_tickets_last_updated'));
 });
 
@@ -258,24 +258,24 @@ test('searchTickets searches by notes', async () => {
   assert.equal(result.tickets[0].id, 'TEST-012');
 });
 
-test('searchTickets filters by feature_ref', async () => {
+test('searchTickets filters by epic_ref', async () => {
   await openDatabase(testDbPath);
-  insertTicket(createSampleTicket('TEST-014', { feature_ref: 'feature-a' }));
-  insertTicket(createSampleTicket('TEST-015', { feature_ref: 'feature-b' }));
+  insertTicket(createSampleTicket('TEST-014', { epic_ref: 'feature-a' }));
+  insertTicket(createSampleTicket('TEST-015', { epic_ref: 'feature-b' }));
   
-  const result = searchTickets({ featureRef: 'feature-a' });
+  const result = searchTickets({ epicRef: 'feature-a' });
   
   assert.equal(result.total, 1);
   assert.equal(result.tickets[0].id, 'TEST-014');
 });
 
-test('searchTickets combines query and feature_ref filter', async () => {
+test('searchTickets combines query and epic_ref filter', async () => {
   await openDatabase(testDbPath);
-  insertTicket(createSampleTicket('TEST-016', { title: 'Alpha', feature_ref: 'feature-a' }));
-  insertTicket(createSampleTicket('TEST-017', { title: 'Beta', feature_ref: 'feature-a' }));
-  insertTicket(createSampleTicket('TEST-018', { title: 'Alpha', feature_ref: 'feature-b' }));
+  insertTicket(createSampleTicket('TEST-016', { title: 'Alpha', epic_ref: 'feature-a' }));
+  insertTicket(createSampleTicket('TEST-017', { title: 'Beta', epic_ref: 'feature-a' }));
+  insertTicket(createSampleTicket('TEST-018', { title: 'Alpha', epic_ref: 'feature-b' }));
   
-  const result = searchTickets({ query: 'Alpha', featureRef: 'feature-a' });
+  const result = searchTickets({ query: 'Alpha', epicRef: 'feature-a' });
   
   assert.equal(result.total, 1);
   assert.equal(result.tickets[0].id, 'TEST-016');
@@ -304,23 +304,23 @@ test('searchTickets returns all tickets when no filters provided', async () => {
 });
 
 // Feature refs tests
-test('getDistinctFeatureRefs returns unique feature refs', async () => {
+test('getDistinctEpicRefs returns unique feature refs', async () => {
   await openDatabase(testDbPath);
-  insertTicket(createSampleTicket('TEST-021', { feature_ref: 'feature-a' }));
-  insertTicket(createSampleTicket('TEST-022', { feature_ref: 'feature-a' }));
-  insertTicket(createSampleTicket('TEST-023', { feature_ref: 'feature-b' }));
+  insertTicket(createSampleTicket('TEST-021', { epic_ref: 'feature-a' }));
+  insertTicket(createSampleTicket('TEST-022', { epic_ref: 'feature-a' }));
+  insertTicket(createSampleTicket('TEST-023', { epic_ref: 'feature-b' }));
   
-  const result = getDistinctFeatureRefs();
+  const result = getDistinctEpicRefs();
   
   assert.deepEqual(result.sort(), ['feature-a', 'feature-b']);
 });
 
-test('getDistinctFeatureRefs excludes empty feature refs', async () => {
+test('getDistinctEpicRefs excludes empty feature refs', async () => {
   await openDatabase(testDbPath);
-  insertTicket(createSampleTicket('TEST-024', { feature_ref: '' }));
-  insertTicket(createSampleTicket('TEST-025', { feature_ref: 'feature-a' }));
+  insertTicket(createSampleTicket('TEST-024', { epic_ref: '' }));
+  insertTicket(createSampleTicket('TEST-025', { epic_ref: 'feature-a' }));
   
-  const result = getDistinctFeatureRefs();
+  const result = getDistinctEpicRefs();
   
   assert.deepEqual(result, ['feature-a']);
 });
@@ -438,7 +438,7 @@ test('rowToTicket handles all field types correctly', () => {
   const row = {
     id: 'ROW-001',
     title: 'Test',
-    feature_ref: 'feature.md',
+    epic_ref: 'feature.md',
     status: 'archive',
     last_updated: '2026-02-19T12:00:00Z',
     dependencies: '["DEP-001"]',

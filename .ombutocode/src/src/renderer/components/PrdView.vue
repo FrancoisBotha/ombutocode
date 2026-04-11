@@ -81,7 +81,7 @@ export default {
   line-height: 1.6;
 }
 
-/* Markdown styling (matches FeaturesTable) */
+/* Markdown styling (matches EpicsTable) */
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3),

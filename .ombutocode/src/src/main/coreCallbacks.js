@@ -322,7 +322,7 @@ function createRuntimeCallbacks(deps) {
         stdout: run.stdout,
         stderr: run.stderr,
         runError: run.error,
-        featureRef: ticket.feature_ref,
+        epicRef: ticket.epic_ref,
         finishedAt: run.finishedAt
       });
 

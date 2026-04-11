@@ -241,7 +241,7 @@ export const useBacklogStore = defineStore('backlog', () => {
       const ipcPayload = {
         ticketId: ticket.id,
         title: ticket.title || '',
-        featureRef: ticket.feature_ref || '',
+        epicRef: ticket.epic_ref || '',
         repoRoot: ''
       };
       if (modelId) ipcPayload.modelId = modelId;
@@ -266,7 +266,7 @@ export const useBacklogStore = defineStore('backlog', () => {
       const ipcPayload = {
         ticketId: ticket.id,
         title: ticket.title || '',
-        featureRef: ticket.feature_ref || '',
+        epicRef: ticket.epic_ref || '',
         repoRoot: ''
       };
       if (modelId) ipcPayload.modelId = modelId;
@@ -291,7 +291,7 @@ export const useBacklogStore = defineStore('backlog', () => {
       const ipcPayload = {
         ticketId: ticket.id,
         title: ticket.title || '',
-        featureRef: ticket.feature_ref || '',
+        epicRef: ticket.epic_ref || '',
         repoRoot: ''
       };
       if (modelId) ipcPayload.modelId = modelId;

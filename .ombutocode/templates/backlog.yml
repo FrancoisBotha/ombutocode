@@ -4,9 +4,9 @@ tickets:
   - id: <PROJ>-000
     title: <Short, action-oriented title>
     description: |-
-      This ticket is part of feature <FEATURE_NAME>, which aims to <feature purpose>.
+      This ticket is part of epic <EPIC_NAME>, which aims to <epic purpose>.
       This ticket focuses on <what this specific ticket delivers>.
-    feature_ref: .ombutocode/features/feature_<REF>.md
+    epic_ref: .ombutocode/epics/epic_<REF>.md
     status: backlog # backlog | todo | in_progress | eval | review | done | blocked
     last_updated: "YYYY-MM-DD" # auto-updated on status change
     dependencies: [] # list of ticket ids, e.g. ["<PROJ>-001", "<PROJ>-002"]
@@ -24,7 +24,7 @@ tickets:
   # Example (copy and adapt)
   - id: BOOTSTRAP-001
     title: Establish AI engineering source-of-truth structure
-    feature_ref: .ombutocode/features/feature_BOOTSTRAP.md
+    epic_ref: .ombutocode/epics/epic_BOOTSTRAP.md
     status: done
     dependencies: []
     acceptance_criteria:

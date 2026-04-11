@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
-export const useFeatureStore = defineStore('feature', () => {
+export const useEpicStore = defineStore('feature', () => {
   const _features = ref([]);
   const _loading = ref(false);
   const _error = ref(null);
-  const selectedFeatureId = ref(null);
+  const selectedEpicId = ref(null);
 
   // Feature evaluation state
   const _evalRunId = ref(null);
@@ -16,19 +16,19 @@ export const useFeatureStore = defineStore('feature', () => {
 
   const features = computed(() => _features.value);
 
-  const selectedFeature = computed(() =>
-    _features.value.find((feature) => feature.id === selectedFeatureId.value) || null
+  const selectedEpic = computed(() =>
+    _features.value.find((feature) => feature.id === selectedEpicId.value) || null
   );
 
   const evalState = computed(() => _evalState.value);
   const evalError = computed(() => _evalError.value);
   const evalOutput = computed(() => _evalOutput.value);
 
-  async function loadFeatures() {
+  async function loadEpics() {
     _loading.value = true;
     _error.value = null;
     try {
-      const data = await window.electron.ipcRenderer.invoke('features:read');
+      const data = await window.electron.ipcRenderer.invoke('epics:read');
       _features.value = Array.isArray(data?.features) ? data.features : [];
     } catch (e) {
       _error.value = e.message;
@@ -37,37 +37,37 @@ export const useFeatureStore = defineStore('feature', () => {
     }
   }
 
-  async function completeFeature(feature) {
+  async function completeEpic(feature) {
     if (!feature?.fileName) {
       throw new Error('Feature file is required');
     }
 
     _error.value = null;
     try {
-      await window.electron.ipcRenderer.invoke('features:updateStatus', {
+      await window.electron.ipcRenderer.invoke('epics:updateStatus', {
         fileName: feature.fileName,
         status: 'implemented'
       });
-      await loadFeatures();
-      selectedFeatureId.value = feature.id;
+      await loadEpics();
+      selectedEpicId.value = feature.id;
     } catch (e) {
       _error.value = e.message;
       throw e;
     }
   }
 
-  async function startFeature(feature) {
+  async function startEpic(feature) {
     if (!feature?.fileName) {
       throw new Error('Feature file is required');
     }
 
     _error.value = null;
     try {
-      const result = await window.electron.ipcRenderer.invoke('features:start', {
+      const result = await window.electron.ipcRenderer.invoke('epics:start', {
         fileName: feature.fileName
       });
-      await loadFeatures();
-      selectedFeatureId.value = feature.id;
+      await loadEpics();
+      selectedEpicId.value = feature.id;
       return result;
     } catch (e) {
       _error.value = e.message;
@@ -75,7 +75,7 @@ export const useFeatureStore = defineStore('feature', () => {
     }
   }
 
-  async function evaluateFeature(feature) {
+  async function evaluateEpic(feature) {
     if (!feature?.fileName) {
       throw new Error('Feature file is required');
     }
@@ -85,7 +85,7 @@ export const useFeatureStore = defineStore('feature', () => {
     _evalError.value = null;
 
     try {
-      const result = await window.electron.ipcRenderer.invoke('features:evaluate', {
+      const result = await window.electron.ipcRenderer.invoke('epics:evaluate', {
         fileName: feature.fileName
       });
 
@@ -108,12 +108,12 @@ export const useFeatureStore = defineStore('feature', () => {
         return;
       }
       try {
-        const status = await window.electron.ipcRenderer.invoke('features:evalStatus', {
+        const status = await window.electron.ipcRenderer.invoke('epics:evalStatus', {
           runId: _evalRunId.value
         });
         if (!status || status.state === 'completed' || status.state === 'failed') {
           _stopPolling();
-          // Final state will be set by the features:evalComplete event
+          // Final state will be set by the epics:evalComplete event
           // If we haven't received it yet and the run is done, check state
           if (status?.state === 'failed' && _evalState.value === 'running') {
             _evalState.value = 'error';
@@ -154,25 +154,25 @@ export const useFeatureStore = defineStore('feature', () => {
     _evalOutput.value = null;
   }
 
-  function selectFeature(featureId) {
-    selectedFeatureId.value = featureId;
+  function selectEpic(featureId) {
+    selectedEpicId.value = featureId;
   }
 
   return {
     features,
-    selectedFeature,
-    selectedFeatureId,
+    selectedEpic,
+    selectedEpicId,
     loading: _loading,
     error: _error,
     evalState,
     evalError,
     evalOutput,
-    loadFeatures,
-    completeFeature,
-    startFeature,
-    evaluateFeature,
+    loadEpics,
+    completeEpic,
+    startEpic,
+    evaluateEpic,
     handleEvalComplete,
     resetEvalState,
-    selectFeature
+    selectEpic
   };
 });

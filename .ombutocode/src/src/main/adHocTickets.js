@@ -1,6 +1,6 @@
 const { spawn } = require('child_process');
 
-const DEFAULT_FEATURE_REF = '.ombutocode/features/feature_AD_HOC.md';
+const DEFAULT_EPIC_REF = '.ombutocode/epics/feature_AD_HOC.md';
 const MAX_PROMPT_CHARS = 12000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 180000;
 
@@ -206,7 +206,7 @@ function buildTicketFromDraft({ draft, existingTickets = [], archivedMax = 0, pr
   return {
     id: generateNextAdHocId(existingTickets, archivedMax),
     title: draft.title,
-    feature_ref: DEFAULT_FEATURE_REF,
+    epic_ref: DEFAULT_EPIC_REF,
     status: 'backlog',
     last_updated: timestamp,
     dependencies: draft.dependencies,
@@ -458,7 +458,7 @@ function createAdHocTicketCreator({
 }
 
 module.exports = {
-  DEFAULT_FEATURE_REF,
+  DEFAULT_EPIC_REF,
   MAX_PROMPT_CHARS,
   normalizePromptPayload,
   buildCodexDraftPrompt,

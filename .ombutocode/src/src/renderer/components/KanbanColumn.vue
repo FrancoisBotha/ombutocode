@@ -408,26 +408,12 @@
               @change.stop="updateAssignedAgent(task.id, $event.target.value)"
             >
               <option value="__none__">None</option>
-              <option value="">-- Select --</option>
               <option value="human">Human</option>
-              <optgroup label="Legacy Agents">
-                <option value="kimi">Kimi</option>
-                <option value="codex">Codex</option>
-                <option value="claude">Claude</option>
-              </optgroup>
-              <optgroup 
-                v-for="tool in agentToolsStore.tools.filter(t => t.enabled)" 
-                :key="tool.id" 
-                :label="tool.name"
-              >
-                <option 
-                  v-for="model in tool.models.filter(m => m.enabled)" 
-                  :key="model.id" 
-                  :value="`${tool.id}:${model.id}`"
-                >
-                  {{ model.name }}
-                </option>
-              </optgroup>
+              <option
+                v-for="tool in agentToolsStore.tools.filter(t => t.enabled)"
+                :key="tool.id"
+                :value="tool.id"
+              >{{ tool.name }}</option>
             </select>
           </div>
           <div v-if="task.agent?.state" class="task-agent-state">
@@ -1360,8 +1346,8 @@ export default {
 <style scoped>
 .kanban-column {
   flex: 1;
-  min-width: 202px;
-  max-width: 216px;
+  min-width: 220px;
+  max-width: 240px;
   background-color: #f1f2f4;
   border-radius: 8px;
   padding: 0.5rem;
@@ -1372,8 +1358,8 @@ export default {
 }
 
 .kanban-column[data-column-id="todo"] {
-  min-width: 212px;
-  max-width: 227px;
+  min-width: 230px;
+  max-width: 250px;
 }
 
 .column-header {

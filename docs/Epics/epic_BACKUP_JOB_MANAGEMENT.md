@@ -1,6 +1,6 @@
 # Epic: Backup Job Management
 
-- **Status:** NEW
+- **Status:** TICKETS
 - **Owner:** human
 - **Created:** 2026-04-11
 - **Last Updated:** 2026-04-11
@@ -104,6 +104,7 @@ As a **DropSync user**, I want **to create, edit, enable/disable, and delete bac
 - **architecture:** docs/Architecture/Architecture.md
 - **data_model:** docs/Data Model/Schema.ddl
 - **style_guide:** docs/Style Guide/StyleGuide.md
+- mockup: docs/Mockups/Epic_BackupJob_Claude.png
 
 ## 13. Implementation Notes
 

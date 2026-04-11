@@ -119,10 +119,10 @@ Example:
 
 Before creating tickets, read the tools manifest at `.ombutocode/tools/tools.json` for available CLI tools.
 
-**Database Query Tool** (`.ombutocode/tools/db-query.js`):
-Use this tool to inspect the database — do NOT use Python or sqlite3. It uses the bundled sql.js package.
+Two CLI tools cover the ticket-generation workflow — do NOT use Python, sqlite3, or hand-written sql.js scripts.
 
-Key commands for ticket generation:
+**Database Query Tool** (`.ombutocode/tools/db-query.js`) — read-only:
+
 ```bash
 # Check existing tickets to avoid ID collisions
 node .ombutocode/tools/db-query.js tickets
@@ -133,15 +133,24 @@ node .ombutocode/tools/db-query.js stats
 # List epics and their statuses
 node .ombutocode/tools/db-query.js epics
 
-# Get the current max sort_order before inserting
-node .ombutocode/tools/db-query.js query "SELECT MAX(sort_order) FROM backlog_tickets"
-
 # Verify inserted tickets after creation
 node .ombutocode/tools/db-query.js tickets --status backlog
 
 # Inspect a specific ticket
 node .ombutocode/tools/db-query.js ticket SCAFF-001
 ```
+
+**Ticket Write Tool** (`.ombutocode/tools/ticket-write.js`) — the canonical writer for new tickets. Accepts a JSON array file, validates it, runs all inserts in one transaction, auto-backs-up the DB, and bumps `backlog:updated_at`. Use `--dry-run` first to preview.
+
+```bash
+# Preview (no writes)
+node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json --dry-run
+
+# Insert for real
+node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json
+```
+
+Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticket-write`.
 
 ## Workflow
 
@@ -152,7 +161,7 @@ node .ombutocode/tools/db-query.js ticket SCAFF-001
 5. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
 6. **Propose** a summary table with: ID, Title, Type, Dependencies — and confirm the chosen epic-derived prefix
 7. **Wait** for user confirmation
-8. **Insert** the tickets directly into the canonical backlog database — `backlog_tickets` table in `.ombutocode/data/ombutocode.db`. Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth").
+8. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.js` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
 9. **Verify** — run `node .ombutocode/tools/db-query.js tickets --status backlog` to confirm the tickets were inserted correctly
 10. **Update** the epic status from `NEW` to `TICKETS`
 
@@ -166,21 +175,37 @@ The `backlog_tickets` table has a 3-column JSON-in-SQLite schema:
 | `sort_order` | INTEGER | Display order; new tickets append after `MAX(sort_order)` |
 | `data` | TEXT | JSON blob containing every other ticket field (`title`, `status`, `epic_ref`, `dependencies`, `acceptance_criteria`, `references`, `notes`, `description`, `assignee`, etc.) — the `id` field is NOT duplicated inside the JSON |
 
-After inserting tickets, also bump the `backlog:updated_at` key in the `metadata` table to today's date so the Ombuto Code UI shows a fresh timestamp.
+The `ticket-write` tool handles bumping the `backlog:updated_at` key in the `metadata` table automatically on each insert, so the Ombuto Code UI shows a fresh timestamp.
 
 ### Insertion approach
 
-Write a small one-shot Node script under `.ombutocode/src/scripts/` that uses `sql.js` (already a dependency in `.ombutocode/src/node_modules`) to:
+Use the `ticket-write` tool. Do NOT write a one-shot sql.js script — that pattern has been replaced by the tool.
 
-1. Open `.ombutocode/data/ombutocode.db`
-2. Read `MAX(sort_order)` from `backlog_tickets`
-3. For each new ticket, `INSERT OR REPLACE INTO backlog_tickets (id, sort_order, data) VALUES (?, ?, ?)` — strip the `id` field out of the JSON before storing
-4. `INSERT OR REPLACE INTO metadata (key, value) VALUES ('backlog:updated_at', '<today>')`
-5. Persist with `fs.writeFileSync(dbPath, Buffer.from(db.export()))`
+**Step 1 — Build a JSON file containing the ticket array.** Write it to a temp path (for example `/tmp/<epic-prefix>-tickets.json`). The file must be a JSON array of ticket objects. Each object needs at minimum: `id`, `title`, `status`, `epic_ref`. Other common fields: `assignee`, `acceptance_criteria`, `dependencies`, `references`, `notes`, `description`, `last_updated`. See the "Example Ticket Object" section below for the full shape.
 
-**Always back up the database first** (`cp ombutocode.db ombutocode.db.before-<change>`) before running the insert script, and remove the backup after verifying the inserts. Delete the one-shot script after a successful run — it is single-use throwaway code, not a reusable utility.
+**Step 2 — Preview with `--dry-run`** to confirm validation passes and the planned sort_order range looks right:
 
-After running the script, verify the inserts using the db-query tool:
+```bash
+node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json --dry-run
+```
+
+**Step 3 — Insert for real:**
+
+```bash
+node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json
+```
+
+The tool will:
+- Validate each ticket (required fields, id format, status, array shapes)
+- Reject id collisions unless `--force` is passed
+- Create a pre-insert backup at `.ombutocode/data/ombutocode.db.before-insert-<timestamp>` (skip with `--no-backup`)
+- Run all inserts inside a single transaction so the batch is all-or-nothing
+- Append new tickets after `MAX(sort_order)`
+- Bump `backlog:updated_at` in the `metadata` table
+- Print a summary of inserted ids
+
+**Step 4 — Verify** the inserts using the db-query tool:
+
 ```bash
 # List all newly created tickets
 node .ombutocode/tools/db-query.js tickets --status backlog
@@ -191,6 +216,9 @@ node .ombutocode/tools/db-query.js ticket <TICKET-ID>
 # Confirm counts
 node .ombutocode/tools/db-query.js stats
 ```
+
+**Step 5 — Clean up.** Once verification passes, delete the temp JSON file and the backup file the tool created (`.ombutocode/data/ombutocode.db.before-insert-<timestamp>`).
+
 Confirm the schema round-trips through `backlogDb.deserializeTicket` (in `.ombutocode/src/src/main/backlogDb.js`) — that file is the canonical reader and defines which fields the UI/scheduler expect.
 
 ### What still goes in source-controlled docs
@@ -213,41 +241,41 @@ Confirm the schema round-trips through `backlogDb.deserializeTicket` (in `.ombut
 
 ### Example Ticket Object
 
-This is the JavaScript object you build in the insert script. Everything except `id` becomes the `data` JSON column; `id` is stored in its own column.
+Each entry in the JSON array you pass to `ticket-write insert` has this shape. The `ticket-write` tool strips the `id` field from the JSON blob before storing it (id lives in its own column).
 
-```js
-const ticket = {
-  id: 'AUTH-002',
-  title: 'Implement authentication service with JWT',
-  status: 'backlog',
-  assignee: null,
-  epic_ref: 'docs/Epics/epic_USER_AUTH.md',
-  references: {
-    prd: 'docs/Product Requirements Document/PRD.md',
-    architecture: 'docs/Architecture/Architecture.md',
-    style_guide: 'docs/Style Guide/StyleGuide.md',
-    mockups: ['docs/Mockups/LoginPage.png'],
+```json
+{
+  "id": "AUTH-002",
+  "title": "Implement authentication service with JWT",
+  "status": "backlog",
+  "assignee": null,
+  "epic_ref": "docs/Epics/epic_USER_AUTH.md",
+  "references": {
+    "prd": "docs/Product Requirements Document/PRD.md",
+    "architecture": "docs/Architecture/Architecture.md",
+    "style_guide": "docs/Style Guide/StyleGuide.md",
+    "mockups": ["docs/Mockups/LoginPage.png"]
   },
-  acceptance_criteria: [
-    '[ ] Accepts email and password, returns signed JWT',
-    '[ ] Validates password against bcrypt hash',
-    '[ ] Token includes user ID and role in payload',
-    '[ ] Token expires after 24 hours',
+  "acceptance_criteria": [
+    "[ ] Accepts email and password, returns signed JWT",
+    "[ ] Validates password against bcrypt hash",
+    "[ ] Token includes user ID and role in payload",
+    "[ ] Token expires after 24 hours"
   ],
-  dependencies: ['AUTH-001'],
-  last_updated: '2026-04-11',
-  notes: 'Use jsonwebtoken package. See Architecture §6 for auth approach.',
-};
-
-// Stored as:
-//   id         = 'AUTH-002'
-//   sort_order = <next>
-//   data       = JSON.stringify({ ...ticket, id: undefined })  // id stripped
+  "dependencies": ["AUTH-001"],
+  "last_updated": "2026-04-11",
+  "notes": "Use jsonwebtoken package. See Architecture §6 for auth approach."
+}
 ```
+
+A full insert payload is simply an array of these objects wrapped in `[ ... ]`.
 
 ## References
 
 - `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md` — ticket workflow and conventions
+- `.ombutocode/tools/ticket-write.js` — canonical ticket insert tool (CLI)
+- `.ombutocode/tools/db-query.js` — canonical read-only query tool (CLI)
+- `.ombutocode/tools/tools.json` — tools manifest; read this first
 - `.ombutocode/data/ombutocode.db` — canonical backlog database (`backlog_tickets` table)
-- `.ombutocode/src/src/main/backlogDb.js` — canonical reader/writer; defines the field shape the UI and scheduler consume
+- `.ombutocode/src/src/main/backlogDb.js` — canonical in-app reader/writer; defines the field shape the UI and scheduler consume
 - `.ombutocode/templates/backlog.yml` — legacy field-name reference; do not write new tickets here

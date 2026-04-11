@@ -48,11 +48,10 @@ docs/
 
 ### Agent Tools
 
-CLI tools are available at `.ombutocode/tools/`. Read `.ombutocode/tools/tools.json` for the full manifest.
+CLI tools are available at `.ombutocode/tools/`. Read `.ombutocode/tools/tools.json` for the full manifest. Do NOT use Python, sqlite3, or hand-rolled sql.js scripts — the tools below cover reads and ticket inserts, and they use the bundled sql.js package with no additional dependencies.
 
-**Database queries:** Use `node .ombutocode/tools/db-query.js` instead of Python or sqlite3. This tool uses the bundled sql.js package and requires no additional dependencies.
+**Database queries (read-only):** `.ombutocode/tools/db-query.js`
 
-Common commands:
 ```bash
 node .ombutocode/tools/db-query.js tickets              # List all tickets
 node .ombutocode/tools/db-query.js tickets --status todo # Filter by status
@@ -61,6 +60,20 @@ node .ombutocode/tools/db-query.js stats                 # Ticket counts by stat
 node .ombutocode/tools/db-query.js epics                 # List epics
 node .ombutocode/tools/db-query.js tables                # List DB tables
 ```
+
+**Ticket inserts (write):** `.ombutocode/tools/ticket-write.js`
+
+This is the canonical way to add new tickets to the backlog. Build a JSON array file containing the ticket objects and pass it to `insert`. The tool validates the payload, checks for id collisions, runs the batch in a single transaction, auto-backs-up the DB, and bumps `backlog:updated_at`.
+
+```bash
+# Preview without writing
+node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json --dry-run
+
+# Insert for real
+node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json
+```
+
+Do NOT write one-shot sql.js scripts for ticket inserts — use `ticket-write` instead.
 
 Agents MUST NOT invent epics that are not present in the backlog.
 

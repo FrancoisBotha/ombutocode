@@ -85,6 +85,59 @@
       }
     },
     {
+      "name": "ticket-write",
+      "description": "Insert new tickets into the ombutocode backlog database from a JSON array file. This is the canonical way to write tickets — do NOT hand-roll sql.js scripts. Use db-query for reads and this tool for writes.",
+      "path": ".ombutocode/tools/ticket-write.js",
+      "runtime": "node",
+      "invocation": "node .ombutocode/tools/ticket-write.js <command> [options]",
+      "commands": [
+        {
+          "name": "insert",
+          "description": "Insert tickets from a JSON array file. Validates required fields, checks for id collisions, appends after MAX(sort_order), bumps the 'backlog:updated_at' metadata key, and creates a pre-insert database backup by default.",
+          "usage": "node .ombutocode/tools/ticket-write.js insert <file.json> [--dry-run] [--no-backup] [--force]",
+          "input": "Path to a JSON file containing an array of ticket objects. Each ticket must have at minimum: id, title, status, epic_ref. Other common fields: assignee, acceptance_criteria, dependencies, references, notes, description, last_updated.",
+          "output": "Summary of planned inserts and, on success, list of inserted ticket ids and verification hint.",
+          "flags": [
+            { "flag": "--dry-run", "description": "Validate the input and print planned inserts without writing to the database" },
+            { "flag": "--no-backup", "description": "Skip creating a pre-insert database backup" },
+            { "flag": "--force", "description": "Overwrite ticket ids that already exist (INSERT OR REPLACE)" }
+          ],
+          "notes": [
+            "The id field is stored in its own column and stripped from the JSON blob written to backlog_tickets.data.",
+            "By default the tool creates a backup at ombutocode.db.before-insert-<timestamp> and leaves it in place; remove it after verifying the inserts.",
+            "Verify inserts with: node .ombutocode/tools/db-query.js tickets --status backlog",
+            "All inserts run inside a single transaction — either every ticket in the batch is written, or none are."
+          ],
+          "examples": [
+            "node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json",
+            "node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json --dry-run",
+            "node .ombutocode/tools/ticket-write.js insert /tmp/fixup.json --force"
+          ]
+        }
+      ],
+      "input_file_format": {
+        "description": "JSON array of ticket objects",
+        "example": [
+          {
+            "id": "AUTH-001",
+            "title": "Create users and sessions database tables",
+            "status": "backlog",
+            "assignee": null,
+            "epic_ref": "docs/Epics/epic_USER_AUTH.md",
+            "acceptance_criteria": ["[ ] users table created", "[ ] sessions table created"],
+            "dependencies": [],
+            "references": {
+              "prd": "docs/Product Requirements Document/PRD.md",
+              "architecture": "docs/Architecture/Architecture.md",
+              "style_guide": "docs/Style Guide/StyleGuide.md"
+            },
+            "notes": "Use snake_case column names.",
+            "last_updated": "2026-04-11"
+          }
+        ]
+      }
+    },
+    {
       "name": "svg-to-png",
       "description": "Convert SVG files to PNG images. Use this for generating UI mockups: write SVG markup (text-based, agents can do this reliably), then convert to PNG. No Python or native build tools required.",
       "path": ".ombutocode/tools/svg-to-png.js",

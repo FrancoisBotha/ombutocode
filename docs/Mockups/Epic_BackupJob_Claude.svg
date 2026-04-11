@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" font-family="Inter, -apple-system, 'Segoe UI', system-ui, sans-serif">
+  <style>
+    .bg { fill: #F7F8FA; }
+    .surface { fill: #FFFFFF; }
+    .border { fill: none; stroke: #E1E5EB; stroke-width: 1; }
+    .text { fill: #1F2430; font-size: 14px; font-weight: 400; }
+    .muted { fill: #6B7280; font-size: 12px; font-weight: 400; }
+    .label { fill: #6B7280; font-size: 12px; font-weight: 400; }
+    .h1 { fill: #1F2430; font-size: 24px; font-weight: 700; }
+    .h2 { fill: #1F2430; font-size: 19px; font-weight: 600; }
+    .h3 { fill: #1F2430; font-size: 16px; font-weight: 600; }
+    .small { fill: #6B7280; font-size: 12px; font-weight: 400; }
+    .nav-item { fill: #1F2430; font-size: 14px; font-weight: 400; }
+    .nav-active { fill: #4A90E2; font-size: 14px; font-weight: 600; }
+    .brand { fill: #1F2430; font-size: 16px; font-weight: 600; }
+    .input-text { fill: #1F2430; font-size: 14px; font-weight: 400; }
+    .placeholder { fill: #6B7280; font-size: 14px; font-weight: 400; }
+    .btn-primary-text { fill: #FFFFFF; font-size: 14px; font-weight: 600; }
+    .btn-secondary-text { fill: #4A90E2; font-size: 14px; font-weight: 600; }
+    .btn-danger-text { fill: #FFFFFF; font-size: 14px; font-weight: 600; }
+    .chip-text { fill: #1F2430; font-size: 12px; font-weight: 400; }
+    .help { fill: #6B7280; font-size: 12px; font-weight: 400; }
+    .warn { fill: #D98B1F; font-size: 12px; font-weight: 600; }
+  </style>
+
+  <!-- App background -->
+  <rect class="bg" width="1200" height="800"/>
+
+  <!-- ============ SIDEBAR (220px) ============ -->
+  <g>
+    <rect class="surface" x="0" y="0" width="220" height="800"/>
+    <line x1="220" y1="0" x2="220" y2="800" stroke="#E1E5EB" stroke-width="1"/>
+
+    <!-- Brand -->
+    <g transform="translate(24,28)">
+      <rect x="0" y="-2" width="24" height="24" rx="6" fill="#4A90E2"/>
+      <text x="9" y="15" fill="#FFFFFF" font-size="14" font-weight="700">D</text>
+      <text x="36" y="16" class="brand">DropSync</text>
+    </g>
+
+    <!-- Nav items -->
+    <g transform="translate(0,80)">
+      <!-- Dashboard -->
+      <g transform="translate(0,0)">
+        <rect x="0" y="0" width="220" height="40" fill="#FFFFFF"/>
+        <rect x="20" y="13" width="14" height="14" fill="none" stroke="#6B7280" stroke-width="1.5" rx="2"/>
+        <line x1="20" y1="20" x2="34" y2="20" stroke="#6B7280" stroke-width="1.5"/>
+        <text x="48" y="25" class="nav-item">Dashboard</text>
+      </g>
+      <!-- Backup Jobs (active) -->
+      <g transform="translate(0,40)">
+        <rect x="0" y="0" width="220" height="40" fill="#F0F3F7"/>
+        <rect x="0" y="0" width="3" height="40" fill="#4A90E2"/>
+        <rect x="20" y="13" width="14" height="14" fill="none" stroke="#4A90E2" stroke-width="1.5" rx="2"/>
+        <circle cx="27" cy="20" r="2" fill="#4A90E2"/>
+        <text x="48" y="25" class="nav-active">Backup Jobs</text>
+      </g>
+      <!-- Logs -->
+      <g transform="translate(0,80)">
+        <rect x="20" y="13" width="14" height="14" fill="none" stroke="#6B7280" stroke-width="1.5" rx="2"/>
+        <line x1="23" y1="18" x2="31" y2="18" stroke="#6B7280" stroke-width="1.5"/>
+        <line x1="23" y1="22" x2="29" y2="22" stroke="#6B7280" stroke-width="1.5"/>
+        <text x="48" y="25" class="nav-item">Backup Logs</text>
+      </g>
+      <!-- Dropbox -->
+      <g transform="translate(0,120)">
+        <rect x="20" y="13" width="14" height="14" fill="none" stroke="#6B7280" stroke-width="1.5" rx="2"/>
+        <text x="48" y="25" class="nav-item">Dropbox Account</text>
+      </g>
+      <!-- Settings -->
+      <g transform="translate(0,160)">
+        <circle cx="27" cy="20" r="7" fill="none" stroke="#6B7280" stroke-width="1.5"/>
+        <circle cx="27" cy="20" r="2" fill="none" stroke="#6B7280" stroke-width="1.5"/>
+        <text x="48" y="25" class="nav-item">Settings</text>
+      </g>
+    </g>
+
+    <!-- Sidebar footer: account -->
+    <g transform="translate(24,740)">
+      <circle cx="12" cy="12" r="12" fill="#4A90E2"/>
+      <text x="12" y="16" fill="#FFFFFF" font-size="11" font-weight="600" text-anchor="middle">FB</text>
+      <text x="36" y="11" class="text">Francois B.</text>
+      <text x="36" y="25" class="small">Connected to Dropbox</text>
+    </g>
+  </g>
+
+  <!-- ============ CONTENT AREA ============ -->
+  <!-- Page padding 24px from sidebar edge (220) -->
+
+  <!-- Breadcrumb / Page Title -->
+  <g transform="translate(244,32)">
+    <text x="0" y="14" class="small">Backup Jobs  ›  Edit Job</text>
+    <text x="0" y="44" class="h1">Edit Backup Job</text>
+  </g>
+
+  <!-- Centered form: max-width 560px. Content area = 220..1200 = 980px wide. center at 220 + 490 = 710. form left = 710 - 280 = 430 -->
+  <g transform="translate(430,104)">
+
+    <!-- Card -->
+    <rect class="surface" x="0" y="0" width="560" height="616" rx="6"/>
+    <rect class="border" x="0" y="0" width="560" height="616" rx="6"/>
+
+    <!-- Inner padding 24 -->
+    <g transform="translate(24,24)">
+
+      <!-- Section: Identity -->
+      <text x="0" y="14" class="h3">Job Details</text>
+
+      <!-- Name -->
+      <g transform="translate(0,32)">
+        <text x="0" y="0" class="label">Job name</text>
+        <rect x="0" y="8" width="512" height="36" rx="6" fill="#FFFFFF" stroke="#4A90E2" stroke-width="1.5"/>
+        <text x="12" y="32" class="input-text">Family Photos 2026</text>
+      </g>
+
+      <!-- Source path + Browse -->
+      <g transform="translate(0,92)">
+        <text x="0" y="0" class="label">Source folder</text>
+        <rect x="0" y="8" width="408" height="36" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="12" y="32" class="input-text">C:\Users\Francois\Pictures\Family</text>
+        <!-- Browse button (secondary) -->
+        <rect x="416" y="8" width="96" height="36" rx="6" fill="#FFFFFF" stroke="#4A90E2"/>
+        <text x="464" y="32" class="btn-secondary-text" text-anchor="middle">Browse…</text>
+      </g>
+
+      <!-- Dropbox target -->
+      <g transform="translate(0,152)">
+        <text x="0" y="0" class="label">Dropbox target path</text>
+        <rect x="0" y="8" width="512" height="36" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="12" y="32" class="input-text">/DropSync/Family Photos 2026</text>
+      </g>
+
+      <!-- Schedule: Interval + unit -->
+      <g transform="translate(0,212)">
+        <text x="0" y="0" class="label">Run every</text>
+        <!-- number -->
+        <rect x="0" y="8" width="120" height="36" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="12" y="32" class="input-text">30</text>
+        <!-- unit dropdown -->
+        <rect x="128" y="8" width="160" height="36" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="140" y="32" class="input-text">minutes</text>
+        <polyline points="270,22 276,28 282,22" fill="none" stroke="#6B7280" stroke-width="1.5"/>
+      </g>
+
+      <!-- Section: Options -->
+      <g transform="translate(0,280)">
+        <line x1="0" y1="0" x2="512" y2="0" stroke="#E1E5EB"/>
+        <text x="0" y="24" class="h3">Options</text>
+      </g>
+
+      <!-- Strict checksum toggle -->
+      <g transform="translate(0,316)">
+        <!-- toggle off -->
+        <rect x="0" y="2" width="32" height="18" rx="9" fill="#E1E5EB"/>
+        <circle cx="11" cy="11" r="7" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="44" y="8" class="text">Strict checksum mode</text>
+        <text x="44" y="26" class="help">Slower but verifies content hash on every file before upload.</text>
+      </g>
+
+      <!-- Mirror deletes toggle -->
+      <g transform="translate(0,360)">
+        <!-- toggle on -->
+        <rect x="0" y="2" width="32" height="18" rx="9" fill="#4A90E2"/>
+        <circle cx="21" cy="11" r="7" fill="#FFFFFF"/>
+        <text x="44" y="8" class="text">Mirror deletes</text>
+        <text x="44" y="26" class="warn">Warning: files removed locally will also be removed from Dropbox.</text>
+      </g>
+
+      <!-- Section: Exclusions -->
+      <g transform="translate(0,408)">
+        <line x1="0" y1="0" x2="512" y2="0" stroke="#E1E5EB"/>
+        <text x="0" y="24" class="h3">Exclusion rules</text>
+        <text x="0" y="42" class="help">Files matching any pattern will be skipped. Pre-populated from defaults.</text>
+      </g>
+
+      <!-- Chips -->
+      <g transform="translate(0,460)">
+        <!-- chip 1 -->
+        <g transform="translate(0,0)">
+          <rect x="0" y="0" width="74" height="24" rx="12" fill="#F0F3F7" stroke="#E1E5EB"/>
+          <text x="10" y="16" class="chip-text">*.tmp</text>
+          <text x="60" y="17" fill="#6B7280" font-size="14" font-weight="400">×</text>
+        </g>
+        <!-- chip 2 -->
+        <g transform="translate(82,0)">
+          <rect x="0" y="0" width="120" height="24" rx="12" fill="#F0F3F7" stroke="#E1E5EB"/>
+          <text x="10" y="16" class="chip-text">node_modules/</text>
+          <text x="105" y="17" fill="#6B7280" font-size="14" font-weight="400">×</text>
+        </g>
+        <!-- chip 3 -->
+        <g transform="translate(210,0)">
+          <rect x="0" y="0" width="62" height="24" rx="12" fill="#F0F3F7" stroke="#E1E5EB"/>
+          <text x="10" y="16" class="chip-text">.git/</text>
+          <text x="48" y="17" fill="#6B7280" font-size="14" font-weight="400">×</text>
+        </g>
+        <!-- chip 4 -->
+        <g transform="translate(280,0)">
+          <rect x="0" y="0" width="92" height="24" rx="12" fill="#F0F3F7" stroke="#E1E5EB"/>
+          <text x="10" y="16" class="chip-text">Thumbs.db</text>
+          <text x="78" y="17" fill="#6B7280" font-size="14" font-weight="400">×</text>
+        </g>
+        <!-- chip 5 -->
+        <g transform="translate(380,0)">
+          <rect x="0" y="0" width="76" height="24" rx="12" fill="#F0F3F7" stroke="#E1E5EB"/>
+          <text x="10" y="16" class="chip-text">*.iso</text>
+          <text x="62" y="17" fill="#6B7280" font-size="14" font-weight="400">×</text>
+        </g>
+      </g>
+
+      <!-- Add pattern input -->
+      <g transform="translate(0,496)">
+        <rect x="0" y="0" width="408" height="32" rx="6" fill="#FFFFFF" stroke="#E1E5EB"/>
+        <text x="12" y="21" class="placeholder">Add a pattern (e.g. *.bak)</text>
+        <rect x="416" y="0" width="96" height="32" rx="6" fill="#FFFFFF" stroke="#4A90E2"/>
+        <text x="464" y="21" class="btn-secondary-text" text-anchor="middle">+ Add</text>
+      </g>
+
+    </g>
+  </g>
+
+  <!-- Action bar: Delete left, Cancel + Save right (aligned to form width) -->
+  <g transform="translate(430,736)">
+    <!-- Delete -->
+    <rect x="0" y="0" width="96" height="36" rx="6" fill="#D14545"/>
+    <text x="48" y="23" class="btn-danger-text" text-anchor="middle">Delete</text>
+
+    <!-- Cancel -->
+    <rect x="368" y="0" width="88" height="36" rx="6" fill="#FFFFFF" stroke="#4A90E2"/>
+    <text x="412" y="23" class="btn-secondary-text" text-anchor="middle">Cancel</text>
+
+    <!-- Save -->
+    <rect x="464" y="0" width="96" height="36" rx="6" fill="#4A90E2"/>
+    <text x="512" y="23" class="btn-primary-text" text-anchor="middle">Save</text>
+  </g>
+
+</svg>

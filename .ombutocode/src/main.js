@@ -3728,6 +3728,42 @@ ipcMain.handle('excel:importRequirements', async (event) => {
   }
 });
 
+// ── StatusBar: Git status ──
+
+ipcMain.handle('workspace:gitBranch', async () => {
+  const { execFile } = require('child_process');
+  return new Promise((resolve) => {
+    execFile('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: PROJECT_ROOT, timeout: 5000 }, (err, stdout) => {
+      resolve(err ? '' : stdout.trim());
+    });
+  });
+});
+
+ipcMain.handle('workspace:gitStatusCounts', async () => {
+  const { execFile } = require('child_process');
+  return new Promise((resolve) => {
+    execFile('git', ['status', '--porcelain'], { cwd: PROJECT_ROOT, timeout: 10000 }, (err, stdout) => {
+      if (err) return resolve({ modified: 0, untracked: 0, ahead: 0, behind: 0 });
+      const lines = stdout.trim().split('\n').filter(Boolean);
+      let modified = 0, untracked = 0;
+      for (const line of lines) {
+        if (line.startsWith('??')) untracked++;
+        else modified++;
+      }
+      // Check ahead/behind
+      execFile('git', ['rev-list', '--left-right', '--count', '@{upstream}...HEAD'], { cwd: PROJECT_ROOT, timeout: 5000 }, (err2, stdout2) => {
+        let ahead = 0, behind = 0;
+        if (!err2 && stdout2.trim()) {
+          const parts = stdout2.trim().split(/\s+/);
+          behind = parseInt(parts[0]) || 0;
+          ahead = parseInt(parts[1]) || 0;
+        }
+        resolve({ modified, untracked, ahead, behind });
+      });
+    });
+  });
+});
+
 // ── Workspace: Git operations ──
 
 ipcMain.handle('workspace:gitStatus', async () => {

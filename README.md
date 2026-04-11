@@ -74,7 +74,31 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
   - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) &mdash; `npm install -g @anthropic-ai/claude-code`
   - [Codex](https://github.com/openai/codex) &mdash; `npm install -g @openai/codex`
 
-### Installation
+### Quick Start (recommended)
+
+The fastest way to create a new project is with the `create-ombutocode` installer:
+
+```bash
+npx create-ombutocode my-project
+cd my-project
+```
+
+This will:
+1. Clone the Ombuto Code repository
+2. Install all dependencies
+3. Create starter documents (PRD, Architecture, Use Cases, etc.)
+4. Initialise a fresh Git repository
+
+Then launch the app:
+
+```bash
+.ombutocode/buildandrun.bat          # Windows
+bash .ombutocode/buildandrun         # macOS / Linux
+```
+
+### Manual Installation
+
+If you prefer to set things up manually:
 
 ```bash
 # Clone the repository
@@ -133,13 +157,16 @@ ombutocode/
     codingagents/              # Agent configuration (YAML)
     codingagent-templates.json # Agent command templates
     data/                      # SQLite database
-    templates/                 # Backlog & mockup templates
+    templates/                 # Backlog, skill & mockup templates
     planning/                  # Backlog YAML
-    features/                  # Feature specifications
+    tools/                     # CLI tools for agents (db-query, svg-to-png)
+    initombuto                 # Project initialisation script
   docs/                        # Requirements documents (Plan mode)
     Product Requirements Document/
     Architecture/
+    Style Guide/
     Structure/
+    Epics/
     Use Cases/
     Use Case Diagrams/
     Class Diagrams/
@@ -147,7 +174,9 @@ ombutocode/
     Non-Functional Requirements/
     Data Model/
     Mockups/
+    Skills/
     ScratchPad/
+  create-ombutocode/           # npx installer package
 ```
 
 ## Tech Stack

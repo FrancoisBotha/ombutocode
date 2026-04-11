@@ -45,6 +45,33 @@
         <div v-if="!defaultAgent" class="tg-agent-warning" style="margin-top: 0.75rem;">
           <span class="mdi mdi-alert-outline"></span> No agent configured. Go to Settings &gt; Coding Agents.
         </div>
+
+        <!-- Epics with TICKETS status -->
+        <div v-if="ticketedEpics.length" class="tg-table-section" style="margin-top: 1.5rem;">
+          <h2>Epics with Tickets Generated</h2>
+          <table class="tg-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>File</th>
+                <th class="col-action"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="epic in ticketedEpics" :key="epic.path" class="tg-row">
+                <td class="col-name">{{ epic.displayName }}</td>
+                <td class="col-status"><span class="tg-status-badge status-tickets">{{ epic.status }}</span></td>
+                <td class="col-path">{{ epic.path }}</td>
+                <td class="col-action">
+                  <button class="tg-btn tg-btn-secondary tg-btn-sm" @click="goToBacklog">
+                    <span class="mdi mdi-format-list-bulleted"></span> Backlog
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -120,6 +147,18 @@ export default {
     const newEpics = computed(() => allEpics.value.filter(e =>
       e.status.toUpperCase() === 'NEW'
     ));
+
+    const ticketedEpics = computed(() => allEpics.value.filter(e =>
+      e.status.toUpperCase() === 'TICKETS'
+    ));
+
+    function goToBacklog() {
+      // Switch to Build mode and navigate to backlog
+      if (window.__planNavigate) {
+        // This only works for plan views, so emit directly
+      }
+      emit('change-view', 'backlog');
+    }
 
     async function loadEpics() {
       loading.value = true;
@@ -326,7 +365,7 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
 
     return {
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth, loading,
-      allEpics, newEpics, currentEpic,
+      allEpics, newEpics, ticketedEpics, currentEpic, goToBacklog,
       skillFiles, selectedSkill, loadSelectedSkillContent,
       startSession, stopSession, startResize,
     };
@@ -360,6 +399,7 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
 .col-status { width: 100px; }
 .tg-status-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
 .status-new { background: rgba(91,155,213,0.15); color: #7bb8e8; }
+.status-tickets { background: rgba(229,168,48,0.15); color: #e5a830; }
 .col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(255,255,255,0.3); }
 
 /* Actions */

@@ -1,0 +1,31 @@
+{
+  "name": "create-ombutocode",
+  "version": "1.0.0",
+  "description": "Create a new Ombuto Code project — Agentic Software Engineering Workbench",
+  "author": "Francois Botha",
+  "license": "Apache-2.0",
+  "bin": {
+    "create-ombutocode": "bin/create-ombutocode.js"
+  },
+  "keywords": [
+    "ombuto",
+    "ombutocode",
+    "agentic",
+    "ai",
+    "coding",
+    "workbench",
+    "electron",
+    "vue"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FrancoisBotha/ombutocode.git"
+  },
+  "files": [
+    "bin/",
+    "template/"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

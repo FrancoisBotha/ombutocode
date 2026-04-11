@@ -82,6 +82,8 @@ const validChannels = [
   'workspace:gitStatus',
   'workspace:gitLog',
   'workspace:gitDiff',
+  'workspace:gitBranch',
+  'workspace:gitStatusCounts',
   'workspace:gitCommit',
   'workspace:gitPush',
   'workspace:spawnShell',

@@ -40,10 +40,28 @@ function toIpcResponse (handler) {
 
 ipcMain.handle('jobs.list', toIpcResponse(() => jobManager.listJobs()))
 ipcMain.handle('jobs.get', toIpcResponse((_event, id) => jobManager.getJob(id)))
-ipcMain.handle('jobs.create', toIpcResponse((_event, job) => jobManager.createJob(job)))
-ipcMain.handle('jobs.update', toIpcResponse((_event, id, fields) => jobManager.updateJob(id, fields)))
+ipcMain.handle('jobs.create', toIpcResponse((_event, job) => {
+  const patterns = job.exclusion_patterns
+  delete job.exclusion_patterns
+  const created = jobManager.createJob(job)
+  if (Array.isArray(patterns)) {
+    jobManager.replaceExclusionRulesForJob(created.id, patterns)
+  }
+  return created
+}))
+ipcMain.handle('jobs.update', toIpcResponse((_event, id, fields) => {
+  const patterns = fields.exclusion_patterns
+  delete fields.exclusion_patterns
+  const updated = jobManager.updateJob(id, fields)
+  if (Array.isArray(patterns)) {
+    jobManager.replaceExclusionRulesForJob(id, patterns)
+  }
+  return updated
+}))
 ipcMain.handle('jobs.delete', toIpcResponse((_event, id) => jobManager.deleteJob(id)))
 ipcMain.handle('jobs.toggleEnabled', toIpcResponse((_event, id) => jobManager.toggleJobEnabled(id)))
+ipcMain.handle('jobs.listExclusionRules', toIpcResponse((_event, jobId) => jobManager.listExclusionRulesForJob(jobId)))
+ipcMain.handle('jobs.listDefaultExclusionPatterns', toIpcResponse(() => jobManager.listDefaultExclusionPatterns()))
 ipcMain.handle('jobs.pickSourceFolder', toIpcResponse(async () => {
   const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
   return result.canceled ? null : result.filePaths[0]

@@ -100,6 +100,43 @@
         </div>
       </section>
 
+      <section class="form-section">
+        <h2>Exclusion rules</h2>
+
+        <div class="chips-container" v-if="exclusionPatterns.length > 0">
+          <span
+            class="chip"
+            v-for="(pattern, index) in exclusionPatterns"
+            :key="pattern"
+          >
+            <span class="chip-text">{{ pattern }}</span>
+            <button
+              type="button"
+              class="chip-remove"
+              @click="removePattern(index)"
+              aria-label="Remove pattern"
+            >&times;</button>
+          </span>
+        </div>
+
+        <div class="field">
+          <div class="field-row">
+            <input
+              id="exclusion-input"
+              v-model="newPattern"
+              type="text"
+              class="field-input field-input--grow"
+              placeholder="Add a pattern, e.g. *.log"
+              @keydown.enter.prevent="addPattern"
+            />
+            <button type="button" class="btn btn--secondary" @click="addPattern">
+              + Add
+            </button>
+          </div>
+          <p v-if="duplicateMessage" class="field-error">{{ duplicateMessage }}</p>
+        </div>
+      </section>
+
       <div class="form-actions">
         <button type="button" class="btn btn--secondary" @click="handleCancel">
           Cancel
@@ -128,7 +165,10 @@ export default {
         dropbox_target: '',
         strict_checksum: false,
         mirror_deletes: false
-      }
+      },
+      exclusionPatterns: [],
+      newPattern: '',
+      duplicateMessage: ''
     }
   },
 
@@ -146,6 +186,8 @@ export default {
     if (id) {
       this.isEditMode = true
       await this.loadJob(id)
+    } else {
+      await this.loadDefaultPatterns()
     }
   },
 
@@ -171,6 +213,37 @@ export default {
 
         this.targetManuallyEdited = true
       }
+
+      const rulesResult = await window.api.jobs.listExclusionRules(id)
+      if (rulesResult && rulesResult.ok && Array.isArray(rulesResult.data)) {
+        this.exclusionPatterns = rulesResult.data.map(r => r.pattern)
+      }
+    },
+
+    async loadDefaultPatterns() {
+      const result = await window.api.jobs.listDefaultExclusionPatterns()
+      if (result && result.ok && Array.isArray(result.data)) {
+        this.exclusionPatterns = result.data.map(r => r.pattern)
+      }
+    },
+
+    addPattern() {
+      const trimmed = this.newPattern.trim()
+      if (!trimmed) return
+
+      if (this.exclusionPatterns.includes(trimmed)) {
+        this.duplicateMessage = `"${trimmed}" is already in the list`
+        return
+      }
+
+      this.exclusionPatterns.push(trimmed)
+      this.newPattern = ''
+      this.duplicateMessage = ''
+    },
+
+    removePattern(index) {
+      this.exclusionPatterns.splice(index, 1)
+      this.duplicateMessage = ''
     },
 
     async browseSource() {
@@ -192,7 +265,8 @@ export default {
         dropbox_target: this.form.dropbox_target,
         interval_minutes: intervalMinutes,
         strict_checksum: this.form.strict_checksum,
-        mirror_deletes: this.form.mirror_deletes
+        mirror_deletes: this.form.mirror_deletes,
+        exclusion_patterns: [...this.exclusionPatterns]
       }
 
       if (this.isEditMode) {
@@ -379,6 +453,59 @@ export default {
 
 .btn--secondary:hover {
   background-color: var(--color-surface-hover);
+}
+
+/* Exclusion rules chips */
+.chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-card);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  background-color: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.chip-text {
+  line-height: 1.4;
+}
+
+.chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.chip-remove:hover {
+  color: var(--color-error);
+  background-color: rgba(209, 69, 69, 0.1);
+}
+
+.field-error {
+  font-size: var(--font-size-small);
+  color: var(--color-error);
+  margin-top: 4px;
 }
 
 .form-actions {

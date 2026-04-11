@@ -507,6 +507,23 @@ function replaceExclusionRulesForJob(jobId, patterns) {
 // Exports
 // ---------------------------------------------------------------------------
 
+/**
+ * List all active default exclusion patterns.
+ * @returns {Object[]}
+ */
+function listDefaultExclusionPatterns() {
+  ensureDb();
+  const stmt = db.prepare(
+    'SELECT * FROM default_exclusion_pattern WHERE is_active = 1 ORDER BY pattern ASC'
+  );
+  const results = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
+}
+
 module.exports = {
   open,
   close,
@@ -519,4 +536,5 @@ module.exports = {
   toggleJobEnabled,
   listExclusionRulesForJob,
   replaceExclusionRulesForJob,
+  listDefaultExclusionPatterns,
 };

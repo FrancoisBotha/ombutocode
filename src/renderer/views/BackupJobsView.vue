@@ -40,12 +40,28 @@
           <td class="cell-muted">{{ formatDate(job.last_run_finished_at) }}</td>
           <td class="col-actions">
             <button class="btn btn-ghost" @click="runNow(job.id)">Run Now</button>
-            <button class="btn btn-ghost">Edit</button>
-            <button class="btn btn-ghost btn-danger-text">Delete</button>
+            <button class="btn btn-ghost" @click="toggleEnabled(job)">
+              {{ job.enabled ? 'Disable' : 'Enable' }}
+            </button>
+            <button class="btn btn-ghost" @click="navigateToEdit(job)">Edit</button>
+            <button class="btn btn-ghost btn-danger-text" @click="openDeleteModal(job)">Delete</button>
           </td>
         </tr>
       </tbody>
     </table>
+
+    <div v-if="jobPendingDelete" class="modal-backdrop" role="presentation" @click.self="cancelDelete">
+      <section class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+        <h2 id="delete-title">Delete backup job?</h2>
+        <p>
+          Delete "{{ jobPendingDelete.name }}" and remove it from the Backup Jobs list.
+        </p>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="cancelDelete">Cancel</button>
+          <button class="btn btn-danger" @click="confirmDelete">Delete</button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -56,6 +72,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 const jobs = ref([])
 const loading = ref(true)
+const jobPendingDelete = ref(null)
 
 let unsubscribeRunEvents = null
 
@@ -105,8 +122,41 @@ function navigateToCreate () {
   router.push('/jobs/new')
 }
 
+function navigateToEdit (job) {
+  router.push(`/jobs/${job.id}/edit`)
+}
+
 async function runNow (jobId) {
   await window.dropsync.runs.runNow(jobId)
+}
+
+async function toggleEnabled (job) {
+  const result = await window.api.jobs.toggleEnabled(job.id)
+  if (result && result.ok) {
+    const idx = jobs.value.findIndex(j => j.id === job.id)
+    if (idx !== -1) {
+      jobs.value[idx] = { ...jobs.value[idx], enabled: !jobs.value[idx].enabled }
+    }
+  }
+}
+
+function openDeleteModal (job) {
+  jobPendingDelete.value = job
+}
+
+function cancelDelete () {
+  jobPendingDelete.value = null
+}
+
+async function confirmDelete () {
+  const job = jobPendingDelete.value
+  if (!job) return
+
+  const result = await window.api.jobs.delete(job.id)
+  if (result && result.ok) {
+    jobs.value = jobs.value.filter(existing => existing.id !== job.id)
+  }
+  jobPendingDelete.value = null
 }
 
 function statusLabel (job) {
@@ -173,6 +223,25 @@ function formatDate (iso) {
 
 .btn-ghost:hover {
   background-color: var(--color-surface-hover);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.btn-danger {
+  background-color: var(--color-error);
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background-color: #b93c3c;
 }
 
 .btn-danger-text {
@@ -256,5 +325,40 @@ function formatDate (iso) {
 .empty-message {
   font-size: var(--font-size-body);
   color: var(--color-muted);
+}
+
+/* Delete confirmation modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-page);
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.confirm-modal {
+  width: min(100%, 420px);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-card);
+}
+
+.confirm-modal h2 {
+  margin-bottom: var(--space-unit);
+}
+
+.confirm-modal p {
+  color: var(--color-muted);
+  margin-bottom: var(--space-section);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-unit);
 }
 </style>

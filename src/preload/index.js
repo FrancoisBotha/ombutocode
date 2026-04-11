@@ -1,10 +1,28 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+const runEventChannels = ['runs:started', 'runs:completed', 'runs:failed']
+
 contextBridge.exposeInMainWorld('dropsync', {
   ping: () => 'pong',
   getAppVersion: () => ipcRenderer.invoke('dropsync:getAppVersion'),
   jobs: {
     listWithLatestRun: () => ipcRenderer.invoke('jobs:listWithLatestRun')
+  },
+  runs: {
+    runNow: (jobId) => ipcRenderer.invoke('runs.runNow', jobId),
+    onRunEvent: (callback) => {
+      const handlers = {}
+      for (const channel of runEventChannels) {
+        const handler = (_event, data) => callback(channel, data)
+        ipcRenderer.on(channel, handler)
+        handlers[channel] = handler
+      }
+      return () => {
+        for (const channel of runEventChannels) {
+          ipcRenderer.removeListener(channel, handlers[channel])
+        }
+      }
+    }
   }
 })
 

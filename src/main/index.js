@@ -49,6 +49,38 @@ ipcMain.handle('jobs.pickSourceFolder', toIpcResponse(async () => {
   return result.canceled ? null : result.filePaths[0]
 }))
 
+function broadcastToAllWindows (channel, data) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) {
+      win.webContents.send(channel, data)
+    }
+  }
+}
+
+// Run-event broadcaster — used by runs.runNow and (future) scheduler pipeline
+function broadcastRunEvent (status, payload) {
+  const channelMap = {
+    running: 'runs:started',
+    completed: 'runs:completed',
+    failed: 'runs:failed'
+  }
+  const channel = channelMap[status]
+  if (channel) {
+    broadcastToAllWindows(channel, payload)
+  }
+}
+
+let nextRunId = 1
+
+ipcMain.handle('runs.runNow', toIpcResponse(async (_event, jobId) => {
+  const runId = nextRunId++
+  const startedAt = new Date().toISOString()
+
+  broadcastRunEvent('running', { runId, jobId, status: 'running', started_at: startedAt })
+
+  return { id: runId, jobId, status: 'running', started_at: startedAt }
+}))
+
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {

@@ -39,7 +39,7 @@
           <td class="cell-muted">{{ job.enabled ? formatDate(job.next_run_at) : '—' }}</td>
           <td class="cell-muted">{{ formatDate(job.last_run_finished_at) }}</td>
           <td class="col-actions">
-            <button class="btn btn-ghost">Run Now</button>
+            <button class="btn btn-ghost" @click="runNow(job.id)">Run Now</button>
             <button class="btn btn-ghost">Edit</button>
             <button class="btn btn-ghost btn-danger-text">Delete</button>
           </td>
@@ -50,12 +50,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const jobs = ref([])
 const loading = ref(true)
+
+let unsubscribeRunEvents = null
 
 onMounted(async () => {
   try {
@@ -66,10 +68,45 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+
+  unsubscribeRunEvents = window.dropsync.runs.onRunEvent((channel, data) => {
+    const jobIndex = jobs.value.findIndex(j => j.id === data.jobId)
+    if (jobIndex === -1) return
+
+    if (channel === 'runs:started') {
+      jobs.value[jobIndex] = {
+        ...jobs.value[jobIndex],
+        last_run_status: 'running'
+      }
+    } else if (channel === 'runs:completed') {
+      jobs.value[jobIndex] = {
+        ...jobs.value[jobIndex],
+        last_run_status: 'completed',
+        last_run_finished_at: data.finished_at || new Date().toISOString()
+      }
+    } else if (channel === 'runs:failed') {
+      jobs.value[jobIndex] = {
+        ...jobs.value[jobIndex],
+        last_run_status: 'failed',
+        last_run_finished_at: data.finished_at || new Date().toISOString()
+      }
+    }
+  })
+})
+
+onUnmounted(() => {
+  if (unsubscribeRunEvents) {
+    unsubscribeRunEvents()
+    unsubscribeRunEvents = null
+  }
 })
 
 function navigateToCreate () {
   router.push('/jobs/new')
+}
+
+async function runNow (jobId) {
+  await window.dropsync.runs.runNow(jobId)
 }
 
 function statusLabel (job) {

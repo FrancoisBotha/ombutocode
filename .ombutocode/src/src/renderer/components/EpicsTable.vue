@@ -154,7 +154,7 @@ export default {
     const evaluateButtonText = computed(() => {
       if (evalState.value === 'checking') return 'Checking readiness...';
       if (evalState.value === 'running') return 'Evaluating...';
-      return 'Feature Evaluation';
+      return 'Epic Evaluation';
     });
 
     const resultCountText = computed(() => {
@@ -543,6 +543,8 @@ export default {
   border-left: 1px solid #e1e4e8;
   padding: 1.25rem;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-title {
@@ -685,7 +687,7 @@ export default {
 }
 
 .epic-content {
-  margin: 0;
+  margin: 0 0 1.5rem;
   font-size: 0.875rem;
   line-height: 1.6;
   color: #2c3e50;
@@ -693,7 +695,7 @@ export default {
   border: 1px solid #e1e4e8;
   border-radius: 6px;
   padding: 1rem;
-  max-height: calc(100vh - 300px);
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -739,6 +741,11 @@ export default {
   border-radius: 3px;
 }
 
+[data-theme="dark"] .markdown-body :deep(code) {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #6dd4a0;
+}
+
 .markdown-body :deep(pre) {
   background-color: #2d333b;
   color: #c9d1d9;
@@ -748,10 +755,19 @@ export default {
   margin: 0.5rem 0;
 }
 
+[data-theme="dark"] .markdown-body :deep(pre) {
+  background-color: #0d1117;
+}
+
 .markdown-body :deep(pre code) {
   background: none;
   padding: 0;
   color: inherit;
+}
+
+[data-theme="dark"] .markdown-body :deep(pre code) {
+  background: transparent;
+  color: #d4d8dd;
 }
 
 .markdown-body :deep(blockquote) {

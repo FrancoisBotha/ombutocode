@@ -76,6 +76,9 @@
             @blur="confirmRename(m)"
           />
           <div class="mockup-card-actions">
+            <button class="mockup-action-btn" @click.stop="openLinkDialog(m)" title="Link to Epic">
+              <span class="mdi mdi-link-variant"></span>
+            </button>
             <button class="mockup-action-btn" @click.stop="startRename(m)" title="Rename">
               <span class="mdi mdi-pencil-outline"></span>
             </button>
@@ -83,9 +86,46 @@
               <span class="mdi mdi-delete-outline"></span>
             </button>
           </div>
+          <div v-if="m.linkedEpic" class="mockup-linked-epic" :title="m.linkedEpic">
+            <span class="mdi mdi-flag-outline"></span> {{ m.linkedEpic.replace('docs/Epics/', '').replace('.md', '').replace(/_/g, ' ') }}
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- Link to Epic dialog -->
+    <Teleport to="body">
+      <div v-if="showLinkDialog" class="mockup-link-overlay" @click.self="showLinkDialog = false">
+        <div class="mockup-link-dialog">
+          <h3>Link Mockup to Epic</h3>
+          <p class="mockup-link-file">{{ linkingMockup?.name }}</p>
+          <div v-if="newEpicsForLink.length === 0" class="mockup-link-empty">
+            No epics with status NEW found.
+          </div>
+          <div v-else class="mockup-link-list">
+            <div
+              v-for="epic in newEpicsForLink"
+              :key="epic.path"
+              class="mockup-link-item"
+              :class="{ 'is-selected': selectedLinkEpic === epic.path }"
+              @click="selectedLinkEpic = epic.path"
+            >
+              <span class="mdi mdi-flag-outline"></span>
+              <span>{{ epic.displayName }}</span>
+            </div>
+          </div>
+          <div class="mockup-link-actions">
+            <button class="mockup-gen-btn-secondary" @click="showLinkDialog = false">Cancel</button>
+            <button class="mockup-gen-btn-primary" :disabled="!selectedLinkEpic" @click="confirmLink">
+              <span class="mdi mdi-link-variant"></span> Link
+            </button>
+            <button v-if="linkingMockup?.linkedEpic" class="mockup-gen-btn-secondary" style="margin-left:auto" @click="unlinkMockup">
+              <span class="mdi mdi-link-variant-off"></span> Unlink
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
 
     <!-- Lightbox overlay -->
     <div v-if="lightbox" class="lightbox" @click.self="lightbox = null">
@@ -129,16 +169,6 @@
           <div class="mockup-detail-item">
             <span class="mockup-detail-label">Save to</span>
             <p class="mockup-detail-value"><code>docs/Mockups/{{ mockupFilename }}</code></p>
-          </div>
-          <div class="mockup-detail-item">
-            <span class="mockup-detail-label">Functional Requirements</span>
-            <div class="mockup-fr-list">
-              <label v-for="f in frFiles" :key="f.path" class="mockup-fr-item">
-                <input type="checkbox" :value="f.path" v-model="selectedFRs" />
-                <span>{{ f.name }}</span>
-              </label>
-              <span v-if="frFiles.length === 0" class="mockup-fr-none">No FR documents found</span>
-            </div>
           </div>
           <div class="mockup-detail-item" v-if="styleGuideFile">
             <span class="mockup-detail-label">Style Guide</span>
@@ -213,11 +243,12 @@ export default {
 
     async function loadMockups() {
       try {
+        await loadMockupLinks();
         const list = await window.electron.ipcRenderer.invoke('filetree:scanMockups');
         const loaded = await Promise.all(
           list.map(async (item) => {
             const dataUrl = await window.electron.ipcRenderer.invoke('filetree:readImage', item.path);
-            return { ...item, dataUrl };
+            return { ...item, dataUrl, linkedEpic: mockupLinks.value[item.name] || '' };
           })
         );
         mockups.value = loaded;
@@ -295,6 +326,126 @@ export default {
 
     const renamingPath = ref(null);
     const renameValue = ref('');
+
+    // Link to Epic
+    const showLinkDialog = ref(false);
+    const linkingMockup = ref(null);
+    const selectedLinkEpic = ref('');
+    const newEpicsForLink = ref([]);
+    const mockupLinks = ref({});
+
+    async function loadMockupLinks() {
+      try {
+        const content = await window.electron.ipcRenderer.invoke('filetree:readFile', 'Mockups/.mockup-links.json');
+        mockupLinks.value = JSON.parse(content);
+      } catch (_) {
+        mockupLinks.value = {};
+      }
+    }
+
+    async function saveMockupLinks() {
+      try {
+        await window.electron.ipcRenderer.invoke('filetree:writeFile', 'Mockups/.mockup-links.json', JSON.stringify(mockupLinks.value, null, 2));
+      } catch (e) {
+        console.error('Failed to save mockup links:', e);
+      }
+    }
+
+    async function loadEpicsForLink() {
+      try {
+        const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
+        if (tree && tree.children) {
+          const folder = tree.children.find(c => c.name === 'Epics');
+          if (folder && folder.children) {
+            const epics = [];
+            for (const f of folder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'))) {
+              let status = 'NEW';
+              try {
+                const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
+                const match = content.match(/status:\*?\*?\s*(.*)/i);
+                if (match) status = match[1].replace(/\*\*/g, '').trim();
+              } catch (_) {}
+              if (status.toUpperCase() === 'NEW') {
+                epics.push({ path: f.path, displayName: f.name.replace('.md', '').replace(/_/g, ' ') });
+              }
+            }
+            newEpicsForLink.value = epics;
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function openLinkDialog(m) {
+      linkingMockup.value = m;
+      selectedLinkEpic.value = m.linkedEpic || '';
+      await loadEpicsForLink();
+      showLinkDialog.value = true;
+    }
+
+    async function confirmLink() {
+      if (!linkingMockup.value || !selectedLinkEpic.value) return;
+      const epicPath = 'docs/' + selectedLinkEpic.value;
+      const mockupPath = 'docs/' + linkingMockup.value.path;
+      mockupLinks.value[linkingMockup.value.name] = epicPath;
+      await saveMockupLinks();
+      await addMockupRefToEpic(selectedLinkEpic.value, mockupPath);
+      const m = mockups.value.find(x => x.path === linkingMockup.value.path);
+      if (m) m.linkedEpic = epicPath;
+      showLinkDialog.value = false;
+    }
+
+    async function unlinkMockup() {
+      if (!linkingMockup.value) return;
+      const epicPath = linkingMockup.value.linkedEpic;
+      const mockupPath = 'docs/' + linkingMockup.value.path;
+      delete mockupLinks.value[linkingMockup.value.name];
+      await saveMockupLinks();
+      if (epicPath) await removeMockupRefFromEpic(epicPath.replace('docs/', ''), mockupPath);
+      const m = mockups.value.find(x => x.path === linkingMockup.value.path);
+      if (m) m.linkedEpic = '';
+      showLinkDialog.value = false;
+    }
+
+    async function addMockupRefToEpic(epicRelPath, mockupPath) {
+      try {
+        let content = await window.electron.ipcRenderer.invoke('filetree:readFile', epicRelPath);
+        // Check if references section exists
+        const refMatch = content.match(/^(## \d+\.\s*References)\s*$/m);
+        if (refMatch) {
+          // Check if mockup already referenced
+          if (content.includes(mockupPath)) return;
+          // Find the references section and append
+          const refIdx = content.indexOf(refMatch[0]);
+          const afterRef = content.substring(refIdx + refMatch[0].length);
+          const nextSection = afterRef.match(/\n## \d+\./);
+          const insertPos = nextSection ? refIdx + refMatch[0].length + nextSection.index : content.length;
+          const before = content.substring(0, insertPos);
+          const after = content.substring(insertPos);
+          // Find the last line before next section or end
+          const trimmedBefore = before.trimEnd();
+          content = trimmedBefore + '\n- mockup: ' + mockupPath + '\n' + after;
+        } else {
+          // No references section — append one
+          content = content.trimEnd() + '\n\n## References\n\n- mockup: ' + mockupPath + '\n';
+        }
+        await window.electron.ipcRenderer.invoke('filetree:writeFile', epicRelPath, content);
+      } catch (e) {
+        console.error('Failed to update epic references:', e);
+      }
+    }
+
+    async function removeMockupRefFromEpic(epicRelPath, mockupPath) {
+      try {
+        let content = await window.electron.ipcRenderer.invoke('filetree:readFile', epicRelPath);
+        // Remove the mockup reference line
+        const lines = content.split('\n');
+        const filtered = lines.filter(line => !line.includes(mockupPath));
+        content = filtered.join('\n');
+        await window.electron.ipcRenderer.invoke('filetree:writeFile', epicRelPath, content);
+      } catch (e) {
+        console.error('Failed to update epic references:', e);
+      }
+    }
 
     function openLightbox(m) {
       lightbox.value = m;
@@ -384,10 +535,6 @@ export default {
       if (selectedEpic.value) contextParts.push(`Read the epic specification at "docs/${selectedEpic.value}" for context on what this screen should accomplish.`);
       if (includeStyleGuide.value && styleGuideFile.value) {
         contextParts.push(`Read the project style guide at "docs/${styleGuideFile.value}" and follow its design conventions, colours, typography, and component standards.`);
-      }
-      if (selectedFRs.value.length > 0) {
-        const frPaths = selectedFRs.value.map(p => `"docs/${p}"`).join(', ');
-        contextParts.push(`Read the following functional requirements documents for detailed requirements: ${frPaths}.`);
       }
       const contextNote = contextParts.length > 0 ? contextParts.join(' ') + '\n\n' : '';
 
@@ -487,6 +634,8 @@ Guidelines:
       mockups, loading, lightbox, openLightbox,
       renamingPath, renameValue, startRename, confirmRename, deleteMockup,
       startRenameLightbox, deleteMockupFromLightbox,
+      showLinkDialog, linkingMockup, selectedLinkEpic, newEpicsForLink,
+      openLinkDialog, confirmLink, unlinkMockup,
       showGenPanel, agents, selectedAgent, mockupDescription, mockupFilename,
       epicFiles, frFiles, skillFiles, selectedEpic, selectedFRs, selectedSkill, loadSelectedSkillContent,
       additionalInstructions, styleGuideFile, includeStyleGuide,
@@ -600,6 +749,64 @@ Guidelines:
 .mockup-action-delete:hover {
   color: #e06060;
   background: rgba(224,96,96,0.1);
+}
+
+.mockup-linked-epic {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  color: #6dd4a0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-top: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Link dialog */
+.mockup-link-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+
+.mockup-link-dialog {
+  background: #1e2535; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+  padding: 1.5rem; width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+.mockup-link-dialog h3 {
+  margin: 0 0 0.25rem; font-size: 1.05rem; color: rgba(255,255,255,0.9);
+}
+
+.mockup-link-file {
+  margin: 0 0 1rem; font-size: 0.78rem; color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mockup-link-empty {
+  padding: 1.5rem; text-align: center; color: rgba(255,255,255,0.25); font-size: 0.85rem;
+}
+
+.mockup-link-list {
+  max-height: 250px; overflow-y: auto; margin-bottom: 1rem;
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 6px;
+}
+
+.mockup-link-item {
+  display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem;
+  font-size: 0.82rem; color: rgba(255,255,255,0.6); cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.03); transition: background 0.1s;
+}
+
+.mockup-link-item:last-child { border-bottom: none; }
+.mockup-link-item:hover { background: rgba(255,255,255,0.04); }
+
+.mockup-link-item.is-selected {
+  background: rgba(109,212,160,0.1); color: #6dd4a0;
+}
+
+.mockup-link-item .mdi { color: #6dd4a0; }
+
+.mockup-link-actions {
+  display: flex; gap: 0.5rem; align-items: center;
 }
 
 /* Lightbox */

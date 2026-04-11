@@ -131,7 +131,7 @@ export default {
             const files = folder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
             const loaded = [];
             for (const f of files) {
-              let status = 'draft';
+              let status = 'NEW';
               try {
                 const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
                 const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
@@ -139,9 +139,11 @@ export default {
                   const sm = fmMatch[1].match(/^status:\s*(.+)/m);
                   if (sm) status = sm[1].trim();
                 }
-                if (status === 'draft') {
-                  const sl = content.match(/^Status:\s*(.+)/m);
-                  if (sl) status = sl[1].trim();
+                // Handle "Status: X", "**Status:** X", "- **Status:** X"
+                const bodyStatus = content.match(/status:\*?\*?\s*(.*)/i);
+                if (bodyStatus) {
+                  const parsed = bodyStatus[1].replace(/\*\*/g, '').trim();
+                  if (parsed) status = parsed;
                 }
               } catch (_) {}
               loaded.push({

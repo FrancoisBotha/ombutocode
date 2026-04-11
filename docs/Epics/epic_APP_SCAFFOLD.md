@@ -89,6 +89,7 @@ None. This epic ships no schema, no tables, and no data access.
 - **architecture:** docs/Architecture/Architecture.md
 - **data_model:** docs/Data Model/Schema.ddl
 - **style_guide:** docs/Style Guide/StyleGuide.md
+- mockup: docs/Mockups/AppScaffoldClaude.svg
 
 ## 13. Implementation Notes
 

@@ -33,12 +33,13 @@
             <th class="col-subsystem">Sub-System</th>
             <th class="col-desc">Description</th>
             <th class="col-status">Status</th>
+            <th class="col-epic">Epic</th>
             <th class="col-actions"></th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="rows.length === 0">
-            <td colspan="5" class="empty-row">No non-functional requirements yet. Click "Add NFR" to create one.</td>
+            <td colspan="6" class="empty-row">No non-functional requirements yet. Click "Add NFR" to create one.</td>
           </tr>
           <tr
             v-for="(row, i) in rows"
@@ -73,6 +74,10 @@
                 </select>
               </template>
               <span v-else class="cell-text status-badge" :class="'status-' + row.status.toLowerCase().replace(/\s+/g, '-')" @dblclick="startEdit(i)">{{ row.status }}</span>
+            </td>
+
+            <td class="col-epic">
+              <span class="cell-text epic-ref">{{ row.epic || '—' }}</span>
             </td>
 
             <td class="col-actions">
@@ -128,6 +133,7 @@ function parseTable(content) {
         subsystem: cells[1],
         description: cells[2],
         status: cells[3] || 'Draft',
+        epic: cells[4] || '',
       });
     }
   }
@@ -137,11 +143,11 @@ function parseTable(content) {
 
 function serializeTable(rows) {
   let md = '# Non-Functional Requirements\n\n';
-  md += '| ID | Sub-System | Description | Status |\n';
-  md += '|----|------------|-------------|--------|\n';
+  md += '| ID | Sub-System | Description | Status | Epic |\n';
+  md += '|----|------------|-------------|--------|------|\n';
 
   for (const r of rows) {
-    md += `| ${r.id} | ${r.subsystem} | ${r.description} | ${r.status} |\n`;
+    md += `| ${r.id} | ${r.subsystem} | ${r.description} | ${r.status} | ${r.epic || ''} |\n`;
   }
 
   return md;

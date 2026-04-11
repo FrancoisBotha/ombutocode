@@ -68,6 +68,20 @@ When breaking down an epic, consider these ticket types:
 - State management integration
 - Form validation
 
+**IMPORTANT:** When creating UI/Frontend tickets, check the epic's References section for any linked mockup images (lines starting with `- mockup:`). If mockup references exist, include them in the ticket's `references` section as `mockups` so the coding agent can see the target visual design when implementing the UI. Example:
+
+```yaml
+references:
+  prd: docs/Product Requirements Document/PRD.md
+  architecture: docs/Architecture/Architecture.md
+  style_guide: docs/Style Guide/StyleGuide.md
+  mockups:
+    - docs/Mockups/AppScaffold.png
+    - docs/Mockups/Dashboard.png
+```
+
+This ensures the agent implements the UI to match the approved mockup designs.
+
 ### 4. Integration
 - Connecting frontend to backend
 - Third-party API integration

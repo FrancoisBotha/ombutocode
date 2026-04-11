@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800" font-family="Inter, -apple-system, 'Segoe UI', system-ui, sans-serif">
+  <title>DropSync — App Scaffold (epic_APP_SCAFFOLD target state)</title>
+
+  <!-- App background (Background token #F7F8FA) -->
+  <rect width="1280" height="800" fill="#F7F8FA"/>
+
+  <!-- ================= Title bar (Electron chrome placeholder) ================= -->
+  <rect x="0" y="0" width="1280" height="36" fill="#FFFFFF"/>
+  <line x1="0" y1="36" x2="1280" y2="36" stroke="#E1E5EB" stroke-width="1"/>
+  <text x="16" y="23" font-size="13" font-weight="600" fill="#1F2430">DropSync</text>
+
+  <!-- Windows-style window controls -->
+  <text x="1208" y="24" font-size="16" fill="#6B7280">−</text>
+  <rect x="1229" y="12" width="11" height="11" fill="none" stroke="#6B7280" stroke-width="1"/>
+  <text x="1256" y="24" font-size="16" fill="#6B7280">×</text>
+
+  <!-- ================= Sidebar (220px, Surface #FFFFFF, right border) ================= -->
+  <rect x="0" y="36" width="220" height="764" fill="#FFFFFF"/>
+  <line x1="220" y1="36" x2="220" y2="800" stroke="#E1E5EB" stroke-width="1"/>
+
+  <!-- Sidebar brand row -->
+  <g transform="translate(16, 60)">
+    <!-- Simple brand mark -->
+    <rect x="0" y="0" width="28" height="28" rx="6" fill="#4A90E2"/>
+    <path d="M7 14 L12 19 L21 9" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="40" y="20" font-size="16" font-weight="600" fill="#1F2430">DropSync</text>
+  </g>
+
+  <!-- Divider under brand -->
+  <line x1="16" y1="112" x2="204" y2="112" stroke="#E1E5EB" stroke-width="1"/>
+
+  <!-- ================= Nav item 1: Backup Jobs (active) ================= -->
+  <!--
+    Row: 40px tall (~12px vertical × 2 + 14px text)
+    Active: 3px #4A90E2 left accent bar + primary text colour
+  -->
+  <g>
+    <rect x="0" y="132" width="220" height="40" fill="#FFFFFF"/>
+    <rect x="0" y="132" width="3" height="40" fill="#4A90E2"/>
+    <!-- Icon: folder glyph -->
+    <path d="M18 146 H24 L26 148 H34 V160 H18 Z" fill="none" stroke="#4A90E2" stroke-width="1.5" stroke-linejoin="round"/>
+    <text x="44" y="158" font-size="14" font-weight="600" fill="#4A90E2">Backup Jobs</text>
+  </g>
+
+  <!-- ================= Nav item 2: Backup Logs (inactive) ================= -->
+  <g>
+    <rect x="0" y="172" width="220" height="40" fill="#FFFFFF"/>
+    <!-- Icon: list glyph -->
+    <rect x="18" y="185" width="16" height="14" rx="2" fill="none" stroke="#6B7280" stroke-width="1.5"/>
+    <line x1="21" y1="190" x2="31" y2="190" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="21" y1="194" x2="29" y2="194" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="21" y1="198" x2="31" y2="198" stroke="#6B7280" stroke-width="1.5" stroke-linecap="round"/>
+    <text x="44" y="198" font-size="14" font-weight="400" fill="#1F2430">Backup Logs</text>
+  </g>
+
+  <!-- ================= Content area ================= -->
+  <!--
+    Content region begins at x=220, y=36.
+    Page padding 24px → inner origin at (244, 60).
+    H1: 24px / 700, view title "Backup Jobs".
+    Per epic scope, placeholder view renders H1 only — no further content.
+  -->
+  <text x="244" y="92" font-size="24" font-weight="700" fill="#1F2430">Backup Jobs</text>
+
+  <!-- ============ Mockup meta annotation (not part of app UI) ============ -->
+  <g>
+    <line x1="244" y1="756" x2="1256" y2="756" stroke="#E1E5EB" stroke-width="1" stroke-dasharray="3 3"/>
+    <text x="244" y="778" font-size="11" font-weight="400" fill="#6B7280">
+      epic_APP_SCAFFOLD — target state: sidebar + content shell, hash-routed placeholder views, Inter typography, style-guide tokens wired as CSS custom properties.
+    </text>
+  </g>
+</svg>

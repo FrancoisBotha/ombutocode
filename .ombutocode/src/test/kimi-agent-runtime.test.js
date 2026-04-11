@@ -8,7 +8,7 @@ const { AgentInvocationError, AgentRuntime } = require('../src/main/codingAgentR
 function buildPayload(ticketId = 'KIMI_PICKUP-TEST') {
   return {
     ticketId,
-    epicRef: '.ombutocode/epics/feature_KIMI_PICKUP.md',
+    epicRef: 'docs/Epics/feature_KIMI_PICKUP.md',
     title: 'Test Kimi runtime',
     repoRoot: process.cwd()
   };

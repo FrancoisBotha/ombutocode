@@ -11,7 +11,7 @@ async function main() {
   const maxSort = db.exec('SELECT MAX(sort_order) FROM backlog_tickets');
   let sortOrder = (maxSort[0].values[0][0] || 0) + 1;
 
-  const epic_ref = '.ombutocode/epics/feature_FRONTEND_BACKEND_INTEGRATION.md';
+  const epic_ref = 'docs/Epics/epic_FRONTEND_BACKEND_INTEGRATION.md';
   const today = '2026-03-18';
 
   const tickets = [

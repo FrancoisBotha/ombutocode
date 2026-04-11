@@ -120,7 +120,7 @@ function resolveTicketStatusAfterRun({ runState, currentStatus }) {
 
 function isAdHocEpic(epicRef) {
   const normalized = String(epicRef || '').trim().toLowerCase();
-  return normalized === '.ombutocode/epics/feature_ad_hoc.md';
+  return normalized === 'docs/Epics/epic_ad_hoc.md';
 }
 
 function parseEvalVerdict(outputText) {

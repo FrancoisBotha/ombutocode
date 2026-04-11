@@ -301,7 +301,7 @@ test('AgentRuntime blocks duplicate active runs for same ticket', async () => {
 
   const payload = {
     ticketId: 'EVAL-005-DUPLICATE-TEST',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     title: 'Duplicate test ticket',
     repoRoot: process.cwd()
   };

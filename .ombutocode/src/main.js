@@ -83,7 +83,7 @@ const ARCHIVE_PATH    = path.join(OMBUTOCODE_DIR, 'planning', 'archive.yml');
 const ARCHIVE_DB_PATH = path.join(OMBUTOCODE_DIR, 'planning', 'archive.db');
 const REQUESTS_DB_PATH = path.join(OMBUTOCODE_DIR, 'data', 'requests.db');
 const OMBUTOCODE_DB_PATH = path.join(OMBUTOCODE_DIR, 'data', 'ombutocode.db');
-const EPICS_DIR    = path.join(OMBUTOCODE_DIR, 'epics');
+const EPICS_DIR    = path.join(PROJECT_ROOT, 'docs', 'Epics');
 const AGENTS_PATH     = path.join(OMBUTOCODE_DIR, 'codingagents', 'codingagents.yml');
 const AGENT_LOG_DIR   = path.join(OMBUTOCODE_DIR, 'logs');
 const AGENT_LOG_PATH  = path.join(AGENT_LOG_DIR, 'codingagent-runs.jsonl');
@@ -2085,7 +2085,7 @@ ipcMain.handle('agent:startKimiForTicket', async (_, payload) => {
     const enrichedPayload = {
       ticketId,
       title: payload?.title || ticket?.title || ticketId,
-      epicRef: payload?.epicRef || ticket?.epic_ref || '.ombutocode/epics',
+      epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('kimi', payload?.modelId),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
@@ -2140,7 +2140,7 @@ ipcMain.handle('agent:startCodexForTicket', async (_, payload) => {
     const enrichedPayload = {
       ticketId,
       title: payload?.title || ticket?.title || ticketId,
-      epicRef: payload?.epicRef || ticket?.epic_ref || '.ombutocode/epics',
+      epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('codex', payload?.modelId),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
@@ -2195,7 +2195,7 @@ ipcMain.handle('agent:startClaudeForTicket', async (_, payload) => {
     const enrichedPayload = {
       ticketId,
       title: payload?.title || ticket?.title || ticketId,
-      epicRef: payload?.epicRef || ticket?.epic_ref || '.ombutocode/epics',
+      epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('claude', payload?.modelId),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
@@ -2719,7 +2719,7 @@ ipcMain.handle('epics:start', async (_, { fileName }) => {
   if (!fileName) throw new Error('fileName is required');
 
   const safeName = path.basename(String(fileName));
-  const epicRef = `.ombutocode/epics/${safeName}`;
+  const epicRef = `docs/Epics/${safeName}`;
 
   const tickets = backlogDb.getTicketsByEpicRef(epicRef);
   if (tickets.length === 0) {
@@ -2773,7 +2773,7 @@ ipcMain.handle('epics:checkReadiness', async (_, { fileName }) => {
   if (!fileName) throw new Error('fileName is required');
 
   const safeName = path.basename(String(fileName));
-  const epicRef = `.ombutocode/epics/${safeName}`;
+  const epicRef = `docs/Epics/${safeName}`;
 
   // Query backlog + archive for linked tickets
   const backlogTickets = backlogDb.getTicketsByEpicRef(epicRef);
@@ -2812,7 +2812,7 @@ ipcMain.handle('epics:evaluate', async (_, { fileName }) => {
   }
 
   const safeName = path.basename(String(fileName));
-  const epicRef = `.ombutocode/epics/${safeName}`;
+  const epicRef = `docs/Epics/${safeName}`;
   const fullPath = path.join(EPICS_DIR, safeName);
 
   // Read feature spec

@@ -56,32 +56,7 @@
         </button>
       </div>
 
-      <!-- Epics table -->
-      <div v-if="epics.length" class="epics-table-section">
-        <h2>Existing Epics</h2>
-        <table class="epics-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>File</th>
-              <th class="col-actions"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="epic in epics" :key="epic.path" @click="openEpic(epic)" class="epics-row">
-              <td class="col-name">{{ epic.displayName }}</td>
-              <td class="col-path">{{ epic.path }}</td>
-              <td class="col-actions">
-                <button class="epics-delete-btn" @click.stop="deleteEpic(epic)" title="Delete epic">
-                  <span class="mdi mdi-delete-outline"></span>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- New epic manual create -->
+      <!-- Manual epic create (top of page) -->
       <div class="epics-manual-create">
         <div v-if="showNewInput" class="epics-new-input-wrap">
           <input
@@ -98,6 +73,33 @@
         <button v-else class="epics-btn epics-btn-secondary" @click="onNewEpic">
           <span class="mdi mdi-plus"></span> New Epic (manual)
         </button>
+      </div>
+
+      <!-- Epics table -->
+      <div v-if="epics.length" class="epics-table-section">
+        <h2>Existing Epics</h2>
+        <table class="epics-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>File</th>
+              <th class="col-actions"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="epic in epics" :key="epic.path" @click="openEpic(epic)" class="epics-row">
+              <td class="col-name">{{ epic.displayName }}</td>
+              <td class="col-status"><span class="epic-status-badge" :class="'status-' + (epic.status || 'draft').toLowerCase()">{{ epic.status || 'draft' }}</span></td>
+              <td class="col-path">{{ epic.path }}</td>
+              <td class="col-actions">
+                <button class="epics-delete-btn" @click.stop="deleteEpic(epic)" title="Delete epic">
+                  <span class="mdi mdi-delete-outline"></span>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -213,13 +215,32 @@ export default {
         if (tree && tree.children) {
           const folder = tree.children.find(c => c.name === 'Epics');
           if (folder && folder.children) {
-            epics.value = folder.children
-              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
-              .map(f => ({
+            const files = folder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
+            const loaded = [];
+            for (const f of files) {
+              let status = 'draft';
+              try {
+                const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
+                // Check frontmatter
+                const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+                if (fmMatch) {
+                  const statusMatch = fmMatch[1].match(/^status:\s*(.+)/m);
+                  if (statusMatch) status = statusMatch[1].trim();
+                }
+                // Also check "Status:" line outside frontmatter
+                if (status === 'draft') {
+                  const statusLine = content.match(/^Status:\s*(.+)/m);
+                  if (statusLine) status = statusLine[1].trim();
+                }
+              } catch (_) {}
+              loaded.push({
                 name: f.name,
                 path: f.path,
                 displayName: f.name.replace('.md', '').replace(/_/g, ' '),
-              }));
+                status,
+              });
+            }
+            epics.value = loaded;
           } else {
             epics.value = [];
           }
@@ -343,7 +364,7 @@ export default {
 
 Break the requirements down into epics. Each epic represents a deliverable milestone that can be independently developed and verified. For each epic:
 
-1. Create a separate Markdown file in ".ombutocode/epics/" with the naming convention "epic_EPIC_NAME.md"
+1. Create a separate Markdown file in "docs/Epics/" with the naming convention "epic_EPIC_NAME.md"
 2. Each epic file must contain:
    - A title (# Epic: Name)
    - Status: NEW
@@ -499,6 +520,16 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-row:hover { background: rgba(255,255,255,0.04); }
 .col-name { font-size: 0.88rem; color: rgba(255,255,255,0.75); font-weight: 400; }
 .col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(255,255,255,0.3); }
+.col-status { width: 100px; }
+.epic-status-badge {
+  display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px;
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+}
+.status-new { background: rgba(91,155,213,0.15); color: #7bb8e8; }
+.status-draft { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+.status-tickets { background: rgba(229,168,48,0.15); color: #e5a830; }
+.status-building { background: rgba(109,212,160,0.15); color: #6dd4a0; }
+.status-done { background: rgba(109,212,160,0.25); color: #3cc77a; }
 .col-actions { width: 40px; text-align: right; }
 .epics-delete-btn {
   background: transparent; border: none; color: rgba(255,255,255,0.15); cursor: pointer;
@@ -508,7 +539,7 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-delete-btn:hover { color: #e06060; background: rgba(224,96,96,0.1); }
 
 /* Manual create */
-.epics-manual-create { max-width: 700px; }
+.epics-manual-create { max-width: 700px; margin-bottom: 1.5rem; }
 .epics-new-input-wrap { display: flex; align-items: center; gap: 0.5rem; }
 .epics-new-input {
   padding: 0.45rem 0.7rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;

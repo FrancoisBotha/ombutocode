@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export const useEpicStore = defineStore('feature', () => {
-  const _features = ref([]);
+  const _epics = ref([]);
   const _loading = ref(false);
   const _error = ref(null);
   const selectedEpicId = ref(null);
@@ -14,10 +14,10 @@ export const useEpicStore = defineStore('feature', () => {
   const _evalOutput = ref(null);
   let _evalPollTimer = null;
 
-  const features = computed(() => _features.value);
+  const epics = computed(() => _epics.value);
 
   const selectedEpic = computed(() =>
-    _features.value.find((feature) => feature.id === selectedEpicId.value) || null
+    _epics.value.find((feature) => feature.id === selectedEpicId.value) || null
   );
 
   const evalState = computed(() => _evalState.value);
@@ -29,7 +29,7 @@ export const useEpicStore = defineStore('feature', () => {
     _error.value = null;
     try {
       const data = await window.electron.ipcRenderer.invoke('epics:read');
-      _features.value = Array.isArray(data?.features) ? data.features : [];
+      _epics.value = Array.isArray(data?.epics) ? data.epics : [];
     } catch (e) {
       _error.value = e.message;
     } finally {
@@ -159,7 +159,7 @@ export const useEpicStore = defineStore('feature', () => {
   }
 
   return {
-    features,
+    epics,
     selectedEpic,
     selectedEpicId,
     loading: _loading,

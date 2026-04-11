@@ -34,7 +34,7 @@ function createSampleTicket(id, overrides = {}) {
   return {
     id,
     title: `Test Ticket ${id}`,
-    epic_ref: '.ombutocode/epics/test.md',
+    epic_ref: 'docs/Epics/test.md',
     status: 'archive',
     last_updated: '2026-02-19T12:00:00.000Z',
     dependencies: ['ARCH-001', 'ARCH-002'],

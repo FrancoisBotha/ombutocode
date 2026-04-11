@@ -33,7 +33,7 @@ Ombuto Code is an Electron/Vue 3 app in `.ombutocode/` that manages the agentic 
 
 ### Source of Truth (priority order)
 1. `.ombutocode/data/ombutocode.db` (backlog_tickets table) — canonical task list
-2. `.ombutocode/epics/epic_<NAME>.md` — epic specifications
+2. `docs/Epics/epic_<NAME>.md` — epic specifications
 3. `.ombutocode/src/` — Ombuto Code source
 4 `shared/docs/prd.md` — Product requirements and vision
 5. `frontend/docs/architecture/architecture.md` — architecture spec for front-end application

@@ -1,6 +1,6 @@
 const { spawn } = require('child_process');
 
-const DEFAULT_EPIC_REF = '.ombutocode/epics/feature_AD_HOC.md';
+const DEFAULT_EPIC_REF = 'docs/Epics/epic_AD_HOC.md';
 const MAX_PROMPT_CHARS = 12000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 180000;
 

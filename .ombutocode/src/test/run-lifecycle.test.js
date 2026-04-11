@@ -42,11 +42,11 @@ test('completed eval run with explicit PASS and references transitions to review
   const outcome = resolveEvalOutcomeAfterRun({
     runState: 'completed',
     currentStatus: 'eval',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'Evaluation result: PASS',
       'Acceptance criteria reviewed and verified.',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_WORKFLOW.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_WORKFLOW.md'
     ].join('\n')
   });
 
@@ -60,7 +60,7 @@ test('completed eval run with structured PASS markers transitions to review', ()
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:00:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -99,7 +99,7 @@ test('completed eval run accepts markdown-style structured markers', () => {
   const outcome = resolveEvalOutcomeAfterRun({
     runState: 'completed',
     currentStatus: 'eval',
-    epicRef: '.ombutocode/epics/feature_RATE_LIMIT_PAUSE.md',
+    epicRef: 'docs/Epics/feature_RATE_LIMIT_PAUSE.md',
     stdout: [
       '## EVALUATION RESULT: **PASS**',
       '## ACCEPTANCE CRITERIA CHECKS:',
@@ -120,11 +120,11 @@ test('completed eval run with explicit FAIL transitions to todo with reasons', (
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:05:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'Evaluation result: FAIL',
       'Acceptance criteria reviewed and verified.',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_WORKFLOW.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_WORKFLOW.md'
     ].join('\n')
   });
 
@@ -146,7 +146,7 @@ test('structured FAIL criteria include failure_reason and suggestion', () => {
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:10:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_SUMMARY.md',
+    epicRef: 'docs/Epics/feature_EVAL_SUMMARY.md',
     stdout: [
       'EVALUATION_RESULT: FAIL',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -183,7 +183,7 @@ test('missing structured criteria falls back to verdict-only eval summary', () =
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:15:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_SUMMARY.md',
+    epicRef: 'docs/Epics/feature_EVAL_SUMMARY.md',
     stdout: [
       'Evaluation result: FAIL',
       'Evaluator could not parse acceptance checklist.'
@@ -206,7 +206,7 @@ test('malformed structured criteria markers still fall back to verdict-only eval
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:16:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_SUMMARY.md',
+    epicRef: 'docs/Epics/feature_EVAL_SUMMARY.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -233,11 +233,11 @@ test('unstructured PASS output can still persist verdict-only eval summary', () 
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:17:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_SUMMARY.md',
+    epicRef: 'docs/Epics/feature_EVAL_SUMMARY.md',
     stdout: [
       'Evaluation result: PASS',
       'Acceptance criteria reviewed and verified.',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_SUMMARY.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_SUMMARY.md'
     ].join('\n')
   });
 
@@ -258,7 +258,7 @@ test('raw_excerpt is NOT included when structured criteria_checks are populated'
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:18:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -279,10 +279,10 @@ test('completed eval run missing acceptance criteria references fails closed', (
   const outcome = resolveEvalOutcomeAfterRun({
     runState: 'completed',
     currentStatus: 'eval',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'Evaluation result: PASS',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_WORKFLOW.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_WORKFLOW.md'
     ].join('\n')
   });
 
@@ -297,7 +297,7 @@ test('structured feature reference FAIL forces eval failure', () => {
   const outcome = resolveEvalOutcomeAfterRun({
     runState: 'completed',
     currentStatus: 'eval',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -317,7 +317,7 @@ test('acceptance criteria header without PASS/FAIL evidence fails closed', () =>
   const outcome = resolveEvalOutcomeAfterRun({
     runState: 'completed',
     currentStatus: 'eval',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -338,7 +338,7 @@ test('failed eval run always returns todo and includes run error', () => {
     runState: 'failed',
     currentStatus: 'eval',
     runError: 'Evaluator process exited with code 1',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md'
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md'
   });
 
   assert.equal(outcome.nextStatus, 'todo');
@@ -352,7 +352,7 @@ test('ad-hoc eval pass does not require feature spec reference', () => {
   const outcome = resolveEvalOutcomeAfterRun({
     runState: 'completed',
     currentStatus: 'eval',
-    epicRef: '.ombutocode/epics/feature_AD_HOC.md',
+    epicRef: 'docs/Epics/feature_AD_HOC.md',
     stdout: [
       'Evaluation result: PASS',
       'Acceptance criteria reviewed and verified.'
@@ -391,12 +391,12 @@ test('narrative "all N criteria confirmed" is recognized as pass verdict', () =>
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:20:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'All 8 acceptance criteria are verified in main.rs:',
       '1. --data-dir via clap derive',
       '2. Tracing JSON to stderr',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_WORKFLOW.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_WORKFLOW.md'
     ].join('\n')
   });
 
@@ -409,10 +409,10 @@ test('narrative "acceptance criteria — all met" is recognized as pass verdict'
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:21:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'Acceptance criteria — all met',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_WORKFLOW.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_WORKFLOW.md'
     ].join('\n')
   });
 
@@ -425,7 +425,7 @@ test('checkmark emoji criteria are parsed as PASS in structured output', () => {
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:22:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -447,7 +447,7 @@ test('markdown table with checkmarks is parsed as criteria checks', () => {
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:23:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -469,7 +469,7 @@ test('numbered list criteria with PASS/FAIL are parsed', () => {
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-02-17T12:24:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT: FAIL',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -491,7 +491,7 @@ test('NOTE: inside criteria section body does NOT terminate parsing', () => {
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:00:00.000Z',
-    epicRef: '.ombutocode/epics/feature_m1_skeleton_protocol_ipc.md',
+    epicRef: 'docs/Epics/feature_m1_skeleton_protocol_ipc.md',
     stdout: [
       'EVALUATION_RESULT: PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -514,7 +514,7 @@ test('feature ref matched by filename stem only (no directory prefix or .md)', (
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:01:00.000Z',
-    epicRef: '.ombutocode/epics/feature_m1_skeleton_protocol_ipc.md',
+    epicRef: 'docs/Epics/feature_m1_skeleton_protocol_ipc.md',
     stdout: [
       'Evaluation result: PASS',
       'Acceptance criteria reviewed and verified.',
@@ -532,7 +532,7 @@ test('feature ref matched by "feature specification" and "verified against featu
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:02:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'Evaluation result: PASS',
       'Acceptance criteria reviewed and verified.',
@@ -548,7 +548,7 @@ test('feature ref matched by "feature specification" and "verified against featu
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:03:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'Evaluation result: PASS',
       'Acceptance criteria reviewed.',
@@ -566,7 +566,7 @@ test('SMART VERDICT INFERENCE fires despite non-empty reasons when all criteria 
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:04:00.000Z',
-    epicRef: '.ombutocode/epics/feature_m1_skeleton_protocol_ipc.md',
+    epicRef: 'docs/Epics/feature_m1_skeleton_protocol_ipc.md',
     stdout: [
       'EVALUATION_RESULT: FAIL',
       'ACCEPTANCE_CRITERIA_CHECKS:',
@@ -586,10 +586,10 @@ test('"all acceptance criteria confirmed" (no number) recognized as pass verdict
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:05:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'All acceptance criteria are confirmed.',
-      'Feature spec checked: .ombutocode/epics/feature_EVAL_WORKFLOW.md'
+      'Feature spec checked: docs/Epics/feature_EVAL_WORKFLOW.md'
     ].join('\n')
   });
 
@@ -602,7 +602,7 @@ test('EVALUATION_RESULT : PASS (space before colon) recognized as structured ver
     runState: 'completed',
     currentStatus: 'eval',
     finishedAt: '2026-03-02T10:06:00.000Z',
-    epicRef: '.ombutocode/epics/feature_EVAL_WORKFLOW.md',
+    epicRef: 'docs/Epics/feature_EVAL_WORKFLOW.md',
     stdout: [
       'EVALUATION_RESULT : PASS',
       'ACCEPTANCE_CRITERIA_CHECKS:',

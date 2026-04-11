@@ -133,7 +133,7 @@ export default {
     const searchQuery = ref('');
     const searchDebounceTimer = ref(null);
 
-    const features = computed(() => epicStore.features);
+    const features = computed(() => epicStore.epics);
     const selectedEpicId = computed(() => epicStore.selectedEpicId);
     const selectedEpic = computed(() => epicStore.selectedEpic);
     const loading = computed(() => epicStore.loading);

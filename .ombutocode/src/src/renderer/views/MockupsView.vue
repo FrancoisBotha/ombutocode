@@ -540,18 +540,21 @@ export default {
 
       const extraInstructions = additionalInstructions.value.trim() ? `\n\nAdditional instructions: ${additionalInstructions.value.trim()}` : '';
 
-      const prompt = `${skillPrefix}${contextNote}Generate a UI mockup image based on this description: "${mockupDescription.value.trim()}"
+      const skillPath = selectedSkill.value ? `docs/${selectedSkill.value}` : '';
+      const skillSection = skillPrefix ? `\n\nUse the following skill (located at "${skillPath}") as your guide for structuring the mockup:\n\n${skillPrefix}` : '';
+
+      const prompt = `YOUR TASK: Generate a UI mockup IMAGE file based on this description: "${mockupDescription.value.trim()}"
 
 Save the generated image to "docs/Mockups/${filename}".
-
+${contextNote ? '\n' + contextNote : ''}
 Before saving, confirm the file path with me and let me modify it if needed.
 
 Guidelines:
-- Create a clean, professional UI mockup
+- Create a clean, professional UI mockup IMAGE (not code, not a tool — an actual image file)
 - If a Style Guide is provided, follow it for all visual decisions (theme, colours, fonts, spacing)
 - Include realistic placeholder content
 - Show the layout clearly with proper spacing and hierarchy
-- Do not invent design conventions — use what is documented${extraInstructions}`;
+- Do not invent design conventions — use what is documented${extraInstructions}${skillSection}`;
 
       sessionPrompt.value = prompt;
 

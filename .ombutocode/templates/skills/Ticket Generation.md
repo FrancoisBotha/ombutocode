@@ -68,6 +68,20 @@ When breaking down an epic, consider these ticket types:
 - State management integration
 - Form validation
 
+**IMPORTANT:** When creating UI/Frontend tickets, check the epic's References section for any linked mockup images (lines starting with `- mockup:`). If mockup references exist, include them in the ticket's `references` section as `mockups` so the coding agent can see the target visual design when implementing the UI. Example:
+
+```yaml
+references:
+  prd: docs/Product Requirements Document/PRD.md
+  architecture: docs/Architecture/Architecture.md
+  style_guide: docs/Style Guide/StyleGuide.md
+  mockups:
+    - docs/Mockups/AppScaffold.png
+    - docs/Mockups/Dashboard.png
+```
+
+This ensures the agent implements the UI to match the approved mockup designs.
+
 ### 4. Integration
 - Connecting frontend to backend
 - Third-party API integration
@@ -106,7 +120,7 @@ Example:
 1. **Read** the epic specification completely
 2. **Identify** the logical work units
 3. **Order** them by dependency (setup → core → integration → UI)
-4. **Detect** project documents for references (PRD, Architecture, Style Guide)
+4. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
 5. **Propose** a summary table with: ID, Title, Type, Dependencies
 6. **Wait** for user confirmation
 7. **Write** the tickets to `.ombutocode/planning/backlog.yml` with references included
@@ -136,6 +150,8 @@ Example:
     prd: docs/Product Requirements Document/PRD.md
     architecture: docs/Architecture/Architecture.md
     style_guide: docs/Style Guide/StyleGuide.md
+    mockups:
+      - docs/Mockups/LoginPage.png
   acceptance_criteria:
     - "[ ] Accepts email and password, returns signed JWT"
     - "[ ] Validates password against bcrypt hash"

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "build:renderer": "vite build",
-    "build": "vite build && electron-builder"
+    "build": "vite build && electron-builder --win"
   },
   "dependencies": {
     "vue": "3.5.13",
@@ -14,7 +14,30 @@
   },
   "devDependencies": {
     "electron": "33.3.1",
+    "electron-builder": "24.13.3",
     "@vitejs/plugin-vue": "5.2.3",
     "vite": "6.3.2"
+  },
+  "build": {
+    "appId": "com.dropsync.app",
+    "productName": "DropSync",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "src/main/**/*",
+      "src/preload/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    }
   }
 }

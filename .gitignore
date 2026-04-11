@@ -16,6 +16,7 @@ yarn.lock
 # Build output
 dist/
 build/
+release/
 frontend/release/
 frontend/dist/
 .ombutoplan/src/release/

@@ -146,7 +146,16 @@ gh release view v0.2.0
 >
 > **Never commit a `CLONE_REF` value that points at a tag that does not yet exist on the remote** — the installer will fail with `fatal: Remote branch vX.Y.Z not found in upstream origin`, which is exactly the error users will see when they try to scaffold.
 >
-> **One-time legacy note:** `create-ombutocode@1.0.0` was published before the lockstep policy existed, and remains on npm for historical reasons. It pointed at an older workbench pre-release and is effectively abandoned. It's still installable via `npx create-ombutocode@1.0.0` but the `latest` dist-tag has been manually moved to the `0.x.y` line (see §3.5).
+> **Retired version numbers — do not reuse:**
+>
+> The following `create-ombutocode` version numbers were published on npm before the lockstep policy (installer version = workbench version) was adopted and are now permanently retired:
+>
+> - `create-ombutocode@1.0.0` — initial installer publish, pointed at an older workbench pre-release.
+> - `create-ombutocode@1.1.1` — interim publish after the scaffold-strip + template changes, before the lockstep decision. Functionally pointed at workbench `v0.1.1` but with a mismatched version number.
+>
+> These versions still exist on the npm registry (or may have been unpublished) and are installable via `npx create-ombutocode@1.0.0` / `@1.1.1` for archival reasons. **Never republish under either number**, and never use a new `1.x.y` version — all future releases stay on the `0.x.y` / eventual `1.x.y`-once-we-leave-beta line that matches the workbench. npm also refuses to republish an unpublished version for policy reasons, so attempting to use these numbers will fail anyway.
+>
+> The `latest` dist-tag has been manually moved to the lockstep `0.x.y` line (see §3.5); from here on it auto-advances normally as long as each release bumps the version forward.
 
 ### 3.1 Prerequisites (one-time)
 

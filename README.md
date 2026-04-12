@@ -19,12 +19,23 @@
 </p>
 
 <p align="center">
+  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/status-beta-orange" alt="Beta" />
   <img src="https://img.shields.io/badge/Electron-25-47848F?logo=electron&logoColor=white" alt="Electron" />
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
   <img src="https://img.shields.io/badge/Pinia-State-ffd859?logo=pinia&logoColor=black" alt="Pinia" />
   <img src="https://img.shields.io/badge/SQLite-sql.js-003B57?logo=sqlite&logoColor=white" alt="SQLite" />
   <img src="https://img.shields.io/badge/License-Apache%202.0-blue" alt="License" />
 </p>
+
+---
+
+> ## ⚠️ Beta — Not Released
+>
+> **Ombuto Code is currently in beta (v0.1.0) and has not been officially released.**
+> APIs, data formats, and features may change without notice. Use at your own risk and
+> expect breaking changes between versions until the 1.0.0 release. Feedback and bug
+> reports are very welcome while we stabilise the product.
 
 ---
 

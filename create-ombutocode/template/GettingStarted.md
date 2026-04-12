@@ -119,15 +119,7 @@ Open **Architecture** and draft a short architecture spec at
 and any technology decisions that would affect how tickets are broken
 down.
 
-### 4.3 Capture use cases and a data model
-
-- Add use cases under `docs/Use Cases/` — one markdown file per use case.
-- Draw a use case diagram in the **Use Case Diagrams** editor.
-- If your system has meaningful persistence, describe the schema in
-  `docs/Data Model/Schema.ddl` (plain SQL DDL works best). Ombuto Code
-  can render it as an ER diagram directly from the DDL.
-
-### 4.4 Break work into epics
+### 4.3 Break work into epics
 
 Create epic specs under `docs/Epics/`, one markdown file per epic
 (`epic_AUTHENTICATION.md`, `epic_BILLING.md`, etc.). Each epic describes
@@ -137,7 +129,7 @@ references back to the PRD and architecture.
 Use the template at `.ombutocode/templates/epic.md` as a starting point
 (or use the **Epics** view in the app to create one interactively).
 
-### 4.5 Generate tickets from an epic
+### 4.4 Generate tickets from an epic
 
 Once an epic is well-specified, switch to **Build** mode, open the
 **Backlog** view, and ask a coding agent to generate tickets for the
@@ -150,7 +142,7 @@ scheduler — agents will pick up `todo` tickets one by one, move them
 through `in_progress` → `eval` → `review`, and leave you to approve
 each one.
 
-### 4.6 Watch it work
+### 4.5 Watch it work
 
 The **Automation** dashboard shows active runs, recent completions, and
 the evaluation queue. Logs are captured under `.ombutocode/run-output/`

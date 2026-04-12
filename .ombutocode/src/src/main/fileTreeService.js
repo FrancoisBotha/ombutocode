@@ -129,26 +129,31 @@ function createFolder(relativePath) {
 }
 
 /**
- * Delete an empty folder within docs/.
+ * Delete a folder within docs/ recursively — removes the folder and
+ * everything inside it (subfolders and files). The renderer-side
+ * confirmation dialog is responsible for warning the user, and the
+ * folder tree UI refuses to call this for top-level docs/ categories
+ * (depth === 0).
+ *
+ * Extra guard: refuses to operate on the docs/ root itself, even if
+ * a caller passes an empty path.
  */
 function deleteFolder(relativePath) {
   const resolved = path.resolve(DOCS_DIR, relativePath);
   if (!resolved.startsWith(DOCS_DIR)) {
     throw new Error('Path is outside docs/ directory');
   }
+  if (resolved === DOCS_DIR) {
+    throw new Error('Refusing to delete the docs/ root');
+  }
   if (!fs.existsSync(resolved)) {
     throw new Error('Folder not found');
   }
-  // Only allow deleting if empty (or has only .gitkeep)
-  const entries = fs.readdirSync(resolved);
-  const meaningful = entries.filter(e => e !== '.gitkeep');
-  if (meaningful.length > 0) {
-    throw new Error('Folder is not empty');
+  const stat = fs.lstatSync(resolved);
+  if (!stat.isDirectory()) {
+    throw new Error('Path is not a folder');
   }
-  // Remove .gitkeep if present
-  const gitkeep = path.join(resolved, '.gitkeep');
-  if (fs.existsSync(gitkeep)) fs.unlinkSync(gitkeep);
-  fs.rmdirSync(resolved);
+  fs.rmSync(resolved, { recursive: true, force: false });
   return { success: true };
 }
 

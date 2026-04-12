@@ -753,7 +753,15 @@ export default {
       folderToDelete.value = null;
       if (!node) return;
       try {
-        await window.electron.ipcRenderer.invoke('filetree:deleteFolder', node.path);
+        const result = await window.electron.ipcRenderer.invoke('filetree:deleteFolder', node.path);
+
+        // IPC handlers in this app return whatever the main-process function
+        // returns on success, and `undefined` with console-logged errors on
+        // failure. Treat a falsy result as a failure so we don't silently
+        // pretend the delete worked.
+        if (!result || result.success !== true) {
+          throw new Error('Delete folder IPC returned no success flag');
+        }
 
         // Drop any expanded-folder entries that lived inside the deleted
         // subtree, and clear the active path if it pointed there, so the
@@ -768,7 +776,14 @@ export default {
         }
 
         loadFileTree();
-      } catch (e) { console.error('Failed to delete folder:', e); }
+      } catch (e) {
+        console.error('Failed to delete folder:', e);
+        // Surface the error to the user instead of silently swallowing it —
+        // filesystem permission errors, file-locks, and "folder not found"
+        // all used to disappear into the console with no UI feedback.
+        const message = (e && e.message) ? e.message : String(e);
+        alert(`Could not delete folder "${node.name}".\n\n${message}`);
+      }
     }
 
     // ── Copy path (folders and files) ──

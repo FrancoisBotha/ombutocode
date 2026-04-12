@@ -88,21 +88,41 @@
               <span class="mdi" :class="planExpandedFolders.has(node.path) ? 'mdi-chevron-down' : 'mdi-chevron-right'"></span>
             </button>
             <span class="mdi plan-node-icon plan-folder-icon" :class="planExpandedFolders.has(node.path) ? 'mdi-folder-open' : 'mdi-folder'"></span>
-            <span class="plan-node-title">{{ node.name }}</span>
+            <input
+              v-if="planRenameTarget && planRenameTarget.path === node.path"
+              :ref="el => { if (el) { el.focus(); el.select(); } }"
+              v-model="planRenameValue"
+              class="plan-rename-input"
+              @click.stop
+              @keyup.enter="commitPlanRename"
+              @keyup.escape="cancelPlanRename"
+              @blur="commitPlanRename"
+            />
+            <span v-else class="plan-node-title">{{ node.name }}</span>
           </div>
           <div
             v-else
             class="plan-tree-node"
             :class="{ 'is-active': planActivePath === node.path }"
             :style="{ paddingLeft: node.depth * 16 + 8 + 'px' }"
-            draggable="true"
+            :draggable="!(planRenameTarget && planRenameTarget.path === node.path)"
             @click="navigatePlanFile(node)"
             @contextmenu.prevent="onPlanFileContext($event, node)"
             @dragstart="onPlanDragStart($event, node)"
           >
             <span class="plan-expand-spacer"></span>
             <span class="mdi plan-node-icon plan-file-icon mdi-file-document-outline"></span>
-            <span class="plan-node-title">{{ node.name }}</span>
+            <input
+              v-if="planRenameTarget && planRenameTarget.path === node.path"
+              :ref="el => { if (el) { el.focus(); el.select(); } }"
+              v-model="planRenameValue"
+              class="plan-rename-input"
+              @click.stop
+              @keyup.enter="commitPlanRename"
+              @keyup.escape="cancelPlanRename"
+              @blur="commitPlanRename"
+            />
+            <span v-else class="plan-node-title">{{ node.name }}</span>
           </div>
         </template>
       </div>
@@ -110,11 +130,15 @@
       <!-- Folder context menu -->
       <div v-if="planContextMenu" class="plan-context-menu" :style="{ left: planContextMenu.x + 'px', top: planContextMenu.y + 'px' }">
         <button class="plan-ctx-item" @click="planCtxAddSubfolder"><span class="mdi mdi-folder-plus"></span> New Sub-folder</button>
+        <button v-if="planContextMenu.node.depth > 0" class="plan-ctx-item" @click="planCtxRenameFolder"><span class="mdi mdi-rename-box"></span> Rename Sub-folder</button>
+        <button class="plan-ctx-item" @click="planCtxCopyFolderPath"><span class="mdi mdi-content-copy"></span> Copy Path</button>
         <button v-if="planContextMenu.node.depth > 0" class="plan-ctx-item plan-ctx-delete" @click="planCtxDeleteFolder"><span class="mdi mdi-folder-remove"></span> Delete Folder</button>
       </div>
 
       <!-- File context menu -->
       <div v-if="planFileContextMenu" class="plan-context-menu" :style="{ left: planFileContextMenu.x + 'px', top: planFileContextMenu.y + 'px' }">
+        <button class="plan-ctx-item" @click="planCtxRenameFile"><span class="mdi mdi-rename-box"></span> Rename</button>
+        <button class="plan-ctx-item" @click="planCtxCopyFilePath"><span class="mdi mdi-content-copy"></span> Copy Path</button>
         <button class="plan-ctx-item plan-ctx-delete" @click="planCtxDeleteFile"><span class="mdi mdi-file-remove"></span> Delete File</button>
       </div>
 
@@ -606,6 +630,8 @@ export default {
     const planContextMenu = ref(null);
     const planNewFolderParent = ref(null);
     const planNewFolderName = ref('');
+    const planRenameTarget = ref(null);
+    const planRenameValue = ref('');
     const planDropTarget = ref(null);
     let planDragFilePath = null;
     let planWatcherCleanup = null;
@@ -694,6 +720,129 @@ export default {
         loadFileTree();
       } catch (e) { console.error('Failed to delete folder:', e); }
     };
+
+    // ── Copy path (folders and files) ──
+    // Copy the project-relative `docs/<path>` form of the node path so
+    // the clipboard value matches how paths appear in ticket notes,
+    // epic refs, and markdown links across the project.
+    function copyPlanPathToClipboard(node) {
+      const relPath = node && node.path ? `docs/${node.path}` : '';
+      if (!relPath) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(relPath);
+        } else {
+          // Fallback for older Electron contexts
+          const textarea = document.createElement('textarea');
+          textarea.value = relPath;
+          textarea.setAttribute('readonly', '');
+          textarea.style.position = 'absolute';
+          textarea.style.left = '-9999px';
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+        }
+      } catch (err) {
+        console.error('Failed to copy path to clipboard:', err);
+      }
+    }
+
+    const planCtxCopyFolderPath = () => {
+      const node = planContextMenu.value && planContextMenu.value.node;
+      closePlanContextMenu();
+      copyPlanPathToClipboard(node);
+    };
+
+    // ── Rename (folders) ──
+    const planCtxRenameFolder = () => {
+      const node = planContextMenu.value && planContextMenu.value.node;
+      closePlanContextMenu();
+      if (!node || node.depth === 0) return;
+      startPlanRename(node);
+    };
+
+    // ── Rename (files) ──
+    const planCtxRenameFile = () => {
+      const node = planFileContextMenu.value && planFileContextMenu.value.node;
+      closePlanFileContextMenu();
+      if (!node) return;
+      startPlanRename(node);
+    };
+
+    const planCtxCopyFilePath = () => {
+      const node = planFileContextMenu.value && planFileContextMenu.value.node;
+      closePlanFileContextMenu();
+      copyPlanPathToClipboard(node);
+    };
+
+    function startPlanRename(node) {
+      planRenameTarget.value = { path: node.path, type: node.type, name: node.name };
+      planRenameValue.value = node.name;
+    }
+
+    function cancelPlanRename() {
+      planRenameTarget.value = null;
+      planRenameValue.value = '';
+    }
+
+    async function commitPlanRename() {
+      const target = planRenameTarget.value;
+      if (!target) return;
+
+      const newName = (planRenameValue.value || '').trim();
+      // No change / empty name → cancel silently.
+      if (!newName || newName === target.name) {
+        cancelPlanRename();
+        return;
+      }
+
+      // Strip characters that are illegal on Windows filesystems, matching
+      // the sanitisation used by createPlanSubfolder.
+      const safeName = newName.replace(/[<>:"/\\|?*]/g, '_');
+      const parentPath = target.path.includes('/')
+        ? target.path.substring(0, target.path.lastIndexOf('/'))
+        : '';
+      const newPath = parentPath ? `${parentPath}/${safeName}` : safeName;
+
+      if (newPath === target.path) {
+        cancelPlanRename();
+        return;
+      }
+
+      // Clear the target before awaiting so the input doesn't re-fire
+      // commit via @blur if the IPC triggers a re-render.
+      planRenameTarget.value = null;
+      planRenameValue.value = '';
+
+      try {
+        // filetree:renameFile is implemented with fs.renameSync on the
+        // main side, which works for both files and directories.
+        await window.electron.ipcRenderer.invoke('filetree:renameFile', target.path, newPath);
+
+        // Preserve the user's expanded state across the rename: if the
+        // renamed node was an expanded folder, expand the new path;
+        // likewise migrate the active path if it pointed at the renamed node.
+        if (target.type === 'folder') {
+          const newExpanded = new Set();
+          for (const p of planExpandedFolders.value) {
+            if (p === target.path) newExpanded.add(newPath);
+            else if (p.startsWith(target.path + '/')) newExpanded.add(newPath + p.slice(target.path.length));
+            else newExpanded.add(p);
+          }
+          planExpandedFolders.value = newExpanded;
+        }
+        if (planActivePath.value === target.path) {
+          planActivePath.value = newPath;
+        } else if (planActivePath.value && planActivePath.value.startsWith(target.path + '/')) {
+          planActivePath.value = newPath + planActivePath.value.slice(target.path.length);
+        }
+
+        loadFileTree();
+      } catch (err) {
+        console.error('Failed to rename:', err);
+      }
+    }
     const createPlanSubfolder = async () => {
       if (!planNewFolderParent.value || !planNewFolderName.value.trim()) {
         planNewFolderParent.value = null;
@@ -1146,20 +1295,28 @@ export default {
       planContextMenu,
       planNewFolderParent,
       planNewFolderName,
+      planRenameTarget,
+      planRenameValue,
       planDropTarget,
       loadFileTree,
       togglePlanFolder,
       navigatePlanFile,
       onPlanFolderContext,
       planCtxAddSubfolder,
+      planCtxRenameFolder,
+      planCtxCopyFolderPath,
       planCtxDeleteFolder,
       createPlanSubfolder,
+      commitPlanRename,
+      cancelPlanRename,
       onPlanDragStart,
       onPlanDragOver,
       onPlanDrop,
       onTextMenuClick,
       planFileContextMenu,
       onPlanFileContext,
+      planCtxRenameFile,
+      planCtxCopyFilePath,
       planCtxDeleteFile,
       showFileDeleteConfirm,
       fileToDelete,
@@ -1979,6 +2136,28 @@ export default {
   color: rgba(255, 255, 255, 0.85);
   font-size: 0.8rem;
   outline: none;
+}
+
+/* Inline rename input — sits in place of .plan-node-title when a tree
+   node is being renamed. Styled to blend with the tree row but clearly
+   editable. */
+.plan-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #6dd4a0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 0.85rem;
+  font-weight: 300;
+  font-family: inherit;
+  outline: none;
+}
+
+.plan-rename-input:focus {
+  border-color: #8ae5b8;
+  background: rgba(255, 255, 255, 0.09);
 }
 
 /* File delete confirmation */

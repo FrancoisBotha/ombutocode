@@ -5,7 +5,47 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const REPO_URL = 'https://github.com/FrancoisBotha/ombutocode.git';
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
+
+// Files and directories at the repo root that belong to the Ombuto Code
+// upstream project and should be removed from a scaffolded user project.
+//
+// Two categories:
+//
+// 1. Maintainer docs — describe how to contribute to / release Ombuto Code
+//    itself, not anything the user's new project should inherit.
+//
+// 2. Sample / demo app files — the upstream repo contains an example
+//    Electron + Vue app at the repo root (DropSync) that is used as a
+//    test bed for the workbench. It is NOT meant to be a starter template
+//    for user projects, so it is stripped too.
+const UPSTREAM_FILES_TO_STRIP = [
+  // Maintainer docs
+  'README.md',
+  'CLA.md',
+  'CONTRIBUTING.md',
+  'DeployInstructions.md',
+  'CLAUDE.md',
+  'LICENSE', // upstream Apache 2.0 lives under .ombutocode/LICENSE
+
+  // Sample / demo app at the repo root (not a user-facing starter)
+  'src',
+  'scripts',
+  'package.json',
+  'package-lock.json',
+  'vite.config.js',
+  'eslint.config.js',
+  'tsconfig.json',
+];
+
+// Files in create-ombutocode/template/ that are copied into the scaffolded
+// project after stripping. Any occurrence of {{PROJECT_NAME}} in these
+// files is substituted with the user's project name at copy time.
+const TEMPLATE_FILES = [
+  'README.md',
+  'CLAUDE.md',
+  'GettingStarted.md',
+];
 
 // ── Helpers ──
 
@@ -35,6 +75,39 @@ function copyDirSync(src, dest) {
     } else {
       fs.copyFileSync(srcPath, destPath);
     }
+  }
+}
+
+function stripUpstreamFiles(projectDir) {
+  for (const name of UPSTREAM_FILES_TO_STRIP) {
+    const target = path.join(projectDir, name);
+    if (fs.existsSync(target)) {
+      // Use recursive + force so this handles both files and directories.
+      fs.rmSync(target, { recursive: true, force: true });
+      log(`Removed upstream ${name}`);
+    }
+  }
+}
+
+function writeTemplateFiles(projectDir, projectName) {
+  // Template files ship inside the installer package at ../template
+  // relative to this script (bin/create-ombutocode.js).
+  const templateDir = path.resolve(__dirname, '..', 'template');
+  if (!fs.existsSync(templateDir)) {
+    log('Template directory not found — skipping template overlay.');
+    return;
+  }
+
+  for (const name of TEMPLATE_FILES) {
+    const src = path.join(templateDir, name);
+    if (!fs.existsSync(src)) {
+      log(`Template file missing: ${name} (skipping)`);
+      continue;
+    }
+    const content = fs.readFileSync(src, 'utf-8')
+      .replace(/\{\{PROJECT_NAME\}\}/g, projectName);
+    fs.writeFileSync(path.join(projectDir, name), content);
+    log(`Wrote ${name}`);
   }
 }
 
@@ -100,6 +173,17 @@ if (fs.existsSync(installerDir)) {
   fs.rmSync(installerDir, { recursive: true, force: true });
 }
 
+// ── Step 1b: Strip upstream maintainer files & write project templates ──
+//
+// The Ombuto Code repo we just cloned contains files that belong to the
+// upstream project (README, CLA, CONTRIBUTING, DeployInstructions, CLAUDE,
+// root LICENSE) — they should not travel into the user's new project.
+// Replace them with minimal project-specific templates.
+
+heading('Preparing project files');
+stripUpstreamFiles(projectDir);
+writeTemplateFiles(projectDir, projectName);
+
 // ── Step 2: Install dependencies ──
 
 heading('Installing dependencies');
@@ -155,16 +239,12 @@ console.log(`
 
   cd ${projectName}
 
-  # Run Ombuto Code:
+  # Read this first:
+  GettingStarted.md           — what's in the project and what to do next
+
+  # Launch the workbench:
   .ombutocode/buildandrun.bat          # Windows
   bash .ombutocode/buildandrun         # macOS / Linux
-
-  # Or manually:
-  cd .ombutocode/src
-  npx vite build && npx electron .
-
-  # Configure coding agents in Settings → Coding Agents.
-  # See the README for more details.
 
   Happy building!
 `);

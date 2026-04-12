@@ -212,7 +212,7 @@ ombutocode/
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
+Licensed under the Apache License, Version 2.0. See [.ombutocode/LICENSE](.ombutocode/LICENSE) for details.
 
 Copyright &copy; 2026 Francois Botha.
 

@@ -29,6 +29,8 @@ The version lives in exactly **one** source of truth that flows through to the A
 - **`.ombutocode/src/package.json`** — `"version"` field.
   The `app:getBuildInfo` IPC handler in `.ombutocode/src/main.js` reads this file, and both the About modal (`BoardList.vue`) and the status bar (`StatusBar.vue`) render it.
 
+> **Note:** The Apache 2.0 `LICENSE` file lives under `.ombutocode/LICENSE` (not the repo root), so that when the tool is scaffolded into a user project via `npx create-ombutocode`, the license travels with the tool directory and the user's project root is free for them to license however they choose. The root-level `CLA.md`, `CONTRIBUTING.md`, `DeployInstructions.md`, `CLAUDE.md`, and `README.md` are **maintainer-only files** that are stripped out by the `create-ombutocode` installer.
+
 When bumping to a release that is no longer beta, also:
 
 - Update `README.md` — remove or soften the "⚠️ Beta — Not Released" block and update the version badge.

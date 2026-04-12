@@ -90,7 +90,7 @@
             <span class="mdi plan-node-icon plan-folder-icon" :class="planExpandedFolders.has(node.path) ? 'mdi-folder-open' : 'mdi-folder'"></span>
             <input
               v-if="planRenameTarget && planRenameTarget.path === node.path"
-              :ref="el => { if (el) { el.focus(); el.select(); } }"
+              :ref="el => { if (el && document.activeElement !== el) { el.focus(); el.select(); } }"
               v-model="planRenameValue"
               class="plan-rename-input"
               @click.stop
@@ -114,7 +114,7 @@
             <span class="mdi plan-node-icon plan-file-icon mdi-file-document-outline"></span>
             <input
               v-if="planRenameTarget && planRenameTarget.path === node.path"
-              :ref="el => { if (el) { el.focus(); el.select(); } }"
+              :ref="el => { if (el && document.activeElement !== el) { el.focus(); el.select(); } }"
               v-model="planRenameValue"
               class="plan-rename-input"
               @click.stop

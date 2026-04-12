@@ -387,6 +387,29 @@
       </div>
     </Teleport>
 
+    <!-- Folder Delete Confirmation -->
+    <Teleport to="body">
+      <div v-if="showFolderDeleteConfirm" class="plan-delete-overlay" @click.self="showFolderDeleteConfirm = false">
+        <div class="plan-delete-dialog">
+          <div class="plan-delete-icon">
+            <span class="mdi mdi-folder-remove-outline"></span>
+          </div>
+          <h3>Delete folder?</h3>
+          <p>
+            Are you sure you want to delete <strong>{{ folderToDelete?.name }}</strong>?
+            <br />
+            <span class="plan-delete-warning">This will also delete every file and subfolder inside it. This action cannot be undone.</span>
+          </p>
+          <div class="plan-delete-actions">
+            <button class="prd-btn prd-btn-secondary" @click="showFolderDeleteConfirm = false">Cancel</button>
+            <button class="prd-btn prd-btn-danger" @click="confirmDeleteFolder">
+              <span class="mdi mdi-delete-outline"></span> Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- About Modal -->
     <Teleport to="body">
       <div v-if="showAboutModal" class="about-modal-overlay" @click.self="showAboutModal = false">
@@ -711,15 +734,42 @@ export default {
       planNewFolderName.value = '';
       closePlanContextMenu();
     };
-    const planCtxDeleteFolder = async () => {
-      const node = planContextMenu.value.node;
+    const showFolderDeleteConfirm = ref(false);
+    const folderToDelete = ref(null);
+
+    const planCtxDeleteFolder = () => {
+      const node = planContextMenu.value && planContextMenu.value.node;
       closePlanContextMenu();
-      if (node.depth === 0) return;
+      if (!node || node.depth === 0) return;
+      folderToDelete.value = node;
+      showFolderDeleteConfirm.value = true;
+    };
+
+    async function confirmDeleteFolder() {
+      const node = folderToDelete.value;
+      // Clear UI state before the await so the dialog closes immediately,
+      // and so a transient re-render can't double-fire the confirm button.
+      showFolderDeleteConfirm.value = false;
+      folderToDelete.value = null;
+      if (!node) return;
       try {
         await window.electron.ipcRenderer.invoke('filetree:deleteFolder', node.path);
+
+        // Drop any expanded-folder entries that lived inside the deleted
+        // subtree, and clear the active path if it pointed there, so the
+        // tree doesn't try to re-open a now-missing node on reload.
+        const pruned = new Set();
+        for (const p of planExpandedFolders.value) {
+          if (p !== node.path && !p.startsWith(node.path + '/')) pruned.add(p);
+        }
+        planExpandedFolders.value = pruned;
+        if (planActivePath.value === node.path || (planActivePath.value && planActivePath.value.startsWith(node.path + '/'))) {
+          planActivePath.value = null;
+        }
+
         loadFileTree();
       } catch (e) { console.error('Failed to delete folder:', e); }
-    };
+    }
 
     // ── Copy path (folders and files) ──
     // Copy the project-relative `docs/<path>` form of the node path so
@@ -1306,6 +1356,9 @@ export default {
       planCtxRenameFolder,
       planCtxCopyFolderPath,
       planCtxDeleteFolder,
+      showFolderDeleteConfirm,
+      folderToDelete,
+      confirmDeleteFolder,
       createPlanSubfolder,
       commitPlanRename,
       cancelPlanRename,
@@ -2205,6 +2258,13 @@ export default {
 
 .plan-delete-dialog strong {
   color: rgba(255, 255, 255, 0.8);
+}
+
+.plan-delete-warning {
+  display: inline-block;
+  margin-top: 0.4rem;
+  color: #e5a830;
+  font-size: 0.82rem;
 }
 
 .plan-delete-actions {

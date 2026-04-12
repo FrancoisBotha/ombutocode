@@ -1799,6 +1799,112 @@ ipcMain.handle('app:getBuildInfo', () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Update check — queries GitHub Releases API for the latest published
+// Ombuto Code release and compares against the bundled package.json version.
+// Cached for UPDATE_CHECK_TTL_MS so we don't hammer the API if the UI polls.
+// ---------------------------------------------------------------------------
+
+const UPDATE_CHECK_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const UPDATE_RELEASES_URL = 'https://api.github.com/repos/FrancoisBotha/ombutocode/releases/latest';
+let _updateCheckCache = null; // { fetchedAt, result }
+
+function _parseSemver(v) {
+  // Accepts "0.1.0", "v0.1.0", "0.1.0-beta.1" — ignores pre-release suffix
+  // for ordering purposes here (beta builds compare equal to the base).
+  const m = String(v || '').trim().replace(/^v/, '').match(/^(\d+)\.(\d+)\.(\d+)/);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+}
+
+function _semverCompare(a, b) {
+  const pa = _parseSemver(a);
+  const pb = _parseSemver(b);
+  if (!pa || !pb) return 0;
+  for (let i = 0; i < 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] < pb[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+function _fetchLatestRelease() {
+  return new Promise((resolve, reject) => {
+    const https = require('https');
+    const req = https.request(UPDATE_RELEASES_URL, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'ombutocode-app',
+        'Accept': 'application/vnd.github+json'
+      },
+      timeout: 8000
+    }, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          reject(new Error(`GitHub API ${res.statusCode}: ${body.slice(0, 200)}`));
+          return;
+        }
+        try {
+          resolve(JSON.parse(body));
+        } catch (e) {
+          reject(new Error(`Invalid JSON from GitHub API: ${e.message}`));
+        }
+      });
+    });
+    req.on('timeout', () => { req.destroy(new Error('GitHub API request timed out')); });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+ipcMain.handle('app:checkForUpdates', async (_event, { force = false } = {}) => {
+  const current = (() => {
+    try { return require('./package.json').version; } catch { return '0.0.0'; }
+  })();
+
+  const now = Date.now();
+  if (!force && _updateCheckCache && (now - _updateCheckCache.fetchedAt) < UPDATE_CHECK_TTL_MS) {
+    return { ..._updateCheckCache.result, cached: true };
+  }
+
+  try {
+    const release = await _fetchLatestRelease();
+    const latest = String(release.tag_name || '').replace(/^v/, '');
+    const updateAvailable = _semverCompare(current, latest) < 0;
+    const result = {
+      current,
+      latest,
+      updateAvailable,
+      release: {
+        name: release.name || release.tag_name || latest,
+        url: release.html_url || `https://github.com/FrancoisBotha/ombutocode/releases/tag/${release.tag_name || ''}`,
+        notes: release.body || '',
+        publishedAt: release.published_at || null,
+        prerelease: !!release.prerelease
+      },
+      checkedAt: new Date(now).toISOString(),
+      error: null,
+      cached: false
+    };
+    _updateCheckCache = { fetchedAt: now, result };
+    return result;
+  } catch (err) {
+    const result = {
+      current,
+      latest: null,
+      updateAvailable: false,
+      release: null,
+      checkedAt: new Date(now).toISOString(),
+      error: err && err.message ? err.message : String(err),
+      cached: false
+    };
+    // Cache failures briefly too (1 minute) so we don't spam the API on errors.
+    _updateCheckCache = { fetchedAt: now - (UPDATE_CHECK_TTL_MS - 60_000), result };
+    return result;
+  }
+});
+
 ipcMain.handle('app:getPath', (_, pathName) => {
   return app.getPath(pathName);
 });

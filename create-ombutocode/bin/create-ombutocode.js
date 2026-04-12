@@ -7,6 +7,18 @@ const { execSync } = require('child_process');
 const REPO_URL = 'https://github.com/FrancoisBotha/ombutocode.git';
 const VERSION = '1.1.0';
 
+// Pinned Ombuto Code workbench release to clone.
+//
+// This installer version ships paired with a specific, tested release of
+// the workbench — not the tip of main — so that every `npx create-ombutocode`
+// run is reproducible. To ship a new workbench release to users:
+//
+//   1. Tag and release the workbench on GitHub (see DeployInstructions.md §2)
+//   2. Bump CLONE_REF below to the new tag
+//   3. Bump this installer's VERSION (above) and the package.json version
+//   4. `npm publish` the installer (see DeployInstructions.md §3)
+const CLONE_REF = 'v0.1.0';
+
 // Files and directories at the repo root that belong to the Ombuto Code
 // upstream project and should be removed from a scaffolded user project.
 //
@@ -152,10 +164,10 @@ console.log(`
 
 console.log(`Creating project: ${projectName}`);
 
-// ── Step 1: Clone the repository ──
+// ── Step 1: Clone the repository at the pinned release tag ──
 
-heading('Cloning Ombuto Code repository');
-run(`git clone --depth 1 ${REPO_URL} "${projectName}"`);
+heading(`Cloning Ombuto Code ${CLONE_REF}`);
+run(`git clone --depth 1 --branch ${CLONE_REF} ${REPO_URL} "${projectName}"`);
 
 const projectDir = path.resolve(projectName);
 

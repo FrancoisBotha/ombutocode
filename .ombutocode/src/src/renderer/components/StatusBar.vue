@@ -13,6 +13,14 @@
     <span class="status-bar-project-name">{{ projectName }}</span>
     <span class="status-bar-build" :title="buildTooltip">{{ buildLabel }}</span>
     <span class="status-bar-beta" title="Pre-release build — APIs and features may change without notice">BETA</span>
+    <span
+      v-if="updateAvailable"
+      class="status-bar-update"
+      :title="updateTooltip"
+      @click="openUpdatePage"
+    >
+      ⬆ UPDATE {{ latestVersion }}
+    </span>
   </div>
 </template>
 
@@ -37,6 +45,45 @@ export default {
     const gitAhead = ref(0);
     const gitBehind = ref(0);
     let gitPollInterval = null;
+
+    // Update check
+    const updateAvailable = ref(false);
+    const latestVersion = ref('');
+    const updateReleaseUrl = ref('');
+    const updateTooltip = ref('');
+    let updateCheckInterval = null;
+
+    async function checkForUpdates(force = false) {
+      if (!window.electron?.ipcRenderer?.invoke) return;
+      try {
+        const info = await window.electron.ipcRenderer.invoke('app:checkForUpdates', { force });
+        if (info && info.updateAvailable) {
+          updateAvailable.value = true;
+          latestVersion.value = `v${info.latest}`;
+          updateReleaseUrl.value = info.release?.url || '';
+          updateTooltip.value = `Ombuto Code v${info.latest} is available (you have v${info.current}). Click to view release notes.`;
+        } else {
+          updateAvailable.value = false;
+          latestVersion.value = '';
+          updateReleaseUrl.value = '';
+          updateTooltip.value = '';
+        }
+      } catch (err) {
+        // Silent — update check failures should never block the UI
+        console.debug('Update check failed:', err);
+      }
+    }
+
+    async function openUpdatePage() {
+      if (!updateReleaseUrl.value) return;
+      try {
+        if (window.electron?.shell?.openExternal) {
+          await window.electron.shell.openExternal(updateReleaseUrl.value);
+        }
+      } catch (err) {
+        console.error('Failed to open release page:', err);
+      }
+    }
 
     async function loadGitStatus() {
       if (!window.electron?.ipcRenderer?.invoke) return;
@@ -77,13 +124,22 @@ export default {
 
       await loadGitStatus();
       gitPollInterval = setInterval(loadGitStatus, 15000);
+
+      // Check for updates on mount, then every 6 hours while the app is open.
+      checkForUpdates(false);
+      updateCheckInterval = setInterval(() => checkForUpdates(false), 6 * 60 * 60 * 1000);
     });
 
     onUnmounted(() => {
       if (gitPollInterval) clearInterval(gitPollInterval);
+      if (updateCheckInterval) clearInterval(updateCheckInterval);
     });
 
-    return { projectPath, projectName, buildLabel, buildTooltip, gitBranch, gitModified, gitUntracked, gitAhead, gitBehind };
+    return {
+      projectPath, projectName, buildLabel, buildTooltip,
+      gitBranch, gitModified, gitUntracked, gitAhead, gitBehind,
+      updateAvailable, latestVersion, updateTooltip, openUpdatePage
+    };
   }
 };
 </script>
@@ -193,5 +249,24 @@ export default {
   border-radius: 3px;
   cursor: help;
   flex-shrink: 0;
+}
+
+.status-bar-update {
+  margin-left: 0.4rem;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  background: #6dd4a0;
+  padding: 0 0.35rem;
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease;
+}
+
+.status-bar-update:hover {
+  background: #5bc08c;
 }
 </style>

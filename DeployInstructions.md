@@ -121,6 +121,29 @@ gh release view v0.2.0
 
 `npx create-ombutocode my-project` resolves to the **npm registry**, not GitHub. To deliver a new installer you must publish a new version of the `create-ombutocode` package.
 
+> ### 3.0 How the installer is pinned to a workbench release
+>
+> The installer does **not** clone the tip of `main`. It clones a **specific release tag** so that every `npx create-ombutocode` run is reproducible and a half-finished push to `main` cannot break new-project creation.
+>
+> The pinned tag is a constant at the top of `create-ombutocode/bin/create-ombutocode.js`:
+>
+> ```js
+> // create-ombutocode/bin/create-ombutocode.js
+> const CLONE_REF = 'v0.1.0';
+> ```
+>
+> **When cutting a new workbench release, the order of operations is:**
+>
+> 1. **Tag and publish the workbench release first** — complete sections 1 and 2 above, so `vX.Y.Z` exists on GitHub and the release is live.
+> 2. **Bump `CLONE_REF`** in `create-ombutocode/bin/create-ombutocode.js` to the new tag.
+> 3. **Bump the installer version** in `create-ombutocode/package.json` (section 3.2 below). Installer and workbench versions are independent — bump the installer by at least a `patch` whenever `CLONE_REF` changes.
+> 4. **Commit and push** the installer changes to `main`.
+> 5. **Publish to npm** (sections 3.3 – 3.6 below).
+>
+> Because the installer ignores `main` entirely once it's published, users of the *previous* installer version continue to get the *previous* workbench tag. Nothing breaks until they upgrade with `npx create-ombutocode@latest`.
+>
+> **Never commit a `CLONE_REF` value that points at a tag that does not yet exist on the remote** — the installer will fail with `fatal: Remote branch vX.Y.Z not found in upstream origin`, which is exactly the error users will see when they try to scaffold.
+
 ### 3.1 Prerequisites (one-time)
 
 ```bash
@@ -199,6 +222,36 @@ git push origin main
 - **`E402 Payment Required` / scoped-package errors** — `create-ombutocode` is *unscoped*, so this should not appear; if it does, double-check `package.json` `name` field.
 - **`E409 Cannot publish over the previously published version`** — you forgot to bump. Run `npm version patch --no-git-tag-version` again.
 - **`npm warn publish errors corrected: repository.url was normalized ...`** — non-fatal, but you can clean it up by running `npm pkg fix` inside `create-ombutocode/`.
+- **`fatal: Remote branch vX.Y.Z not found in upstream origin`** during `git clone` — `CLONE_REF` in the installer points at a tag that hasn't been pushed to GitHub yet. Either push the tag, or temporarily roll `CLONE_REF` back to the previous release.
+
+---
+
+## 4. How the In-App Update Check Works
+
+Every installed copy of the workbench polls GitHub for new releases so users know when to pull a new version.
+
+- **Source of truth:** `https://api.github.com/repos/FrancoisBotha/ombutocode/releases/latest` — whatever the GitHub API reports as the *latest* release. Pre-releases (like the current `v0.1.0 (Beta)`) are **excluded** by GitHub's `/latest` endpoint by default. This is important: publishing a pre-release will **not** trigger an update notification in existing installs. Only non-prerelease tags count as "releases" for update detection.
+- **Implementation:** the main process handler `app:checkForUpdates` in `.ombutocode/src/main.js` fetches the endpoint via Node's built-in `https` module, parses `tag_name`, compares against `.ombutocode/src/package.json`'s `version` using a simple numeric semver compare (pre-release suffixes are ignored), and caches the result for 6 hours to avoid hitting API rate limits.
+- **UI surface:** `.ombutocode/src/src/renderer/components/StatusBar.vue` calls the handler on mount and then every 6 hours. If `updateAvailable` is true, a green `⬆ UPDATE vX.Y.Z` pill appears in the right side of the status bar next to the BETA badge. Clicking it opens the GitHub release page in the user's default browser via `shell.openExternal`.
+- **No automated install yet.** The workbench does *not* currently self-update the `.ombutocode/` directory in a user's project. Users are expected to pull the new version manually (typically by re-running `npx create-ombutocode@latest` in a scratch dir and diffing, or by a `git`-based sync if they cloned the repo directly). See the deferred work below.
+
+### 4.1 Making a release visible to the update check
+
+Because `/releases/latest` skips pre-releases, there is one important wrinkle:
+
+- **While the project is in Beta**, every release is marked `--prerelease` (see section 2.2). The update check will therefore **never fire for beta releases**. This is intentional — we don't want every early tester to get "update available" noise when nothing is polished yet.
+- **When you cut the first non-beta release**, drop `--prerelease` from `gh release create`. That release becomes the first one the update check will notice, and from then on every non-prerelease release triggers the in-app notification.
+- If you urgently need an update notification for a beta release, you can temporarily un-mark the release as a pre-release in the GitHub UI (release → Edit → uncheck *Set as a pre-release*). Remember to flip it back afterwards.
+
+### 4.2 Planned: automated workbench update (deferred)
+
+Fully automated in-app updates (where the "Update" button replaces the contents of `.ombutocode/` without touching `.ombutocode/data/`, re-runs `npm install`, and restarts the app) are **not** yet implemented. When they are, this section will document:
+
+- How the update script preserves the SQLite database and logs
+- How it handles schema migrations between workbench versions
+- How it restores the app to a known-good state if the update fails mid-way
+
+Until then, the in-app check is "notify + link", and the user pulls the new release themselves.
 
 ---
 
@@ -206,14 +259,18 @@ git push origin main
 
 A typical release touches all three sections above. Use this as a quick reference:
 
+**Workbench release**
 - [ ] Decide the new Ombuto Code version (`0.x.y`)
 - [ ] Bump `.ombutocode/src/package.json`
-- [ ] (If leaving Beta) update `README.md` and remove BETA pills
+- [ ] (If leaving Beta) update `README.md`, remove BETA pills from `BoardList.vue` About modal and `StatusBar.vue`
 - [ ] `git commit` + `git push origin main`
 - [ ] `git tag -a v<version> -m "..."` + `git push origin v<version>`
-- [ ] `gh release create v<version> --title "..." --notes-from-tag --prerelease`
-- [ ] (If installer changed) bump `create-ombutocode/package.json`
-- [ ] `npm publish --dry-run` inside `create-ombutocode/`
+- [ ] `gh release create v<version> --title "..." --notes-from-tag --prerelease` *(drop `--prerelease` when leaving Beta so the in-app update check picks it up — see §4.1)*
+
+**Installer release (required whenever the workbench tag changes)**
+- [ ] Bump `CLONE_REF` in `create-ombutocode/bin/create-ombutocode.js` to the new tag
+- [ ] Bump `VERSION` constant in the same file and `version` in `create-ombutocode/package.json`
+- [ ] `git commit` + `git push origin main`
+- [ ] `npm publish --dry-run` inside `create-ombutocode/` — confirm `bin/` and `template/` are in the tarball
 - [ ] `npm publish --otp=<code>` inside `create-ombutocode/`
-- [ ] `npx create-ombutocode@latest` sanity check in a scratch directory
-- [ ] Commit + push the installer version bump
+- [ ] `npx create-ombutocode@latest` sanity check in a scratch directory (clones the new tag, scaffolds a project, boots the workbench)

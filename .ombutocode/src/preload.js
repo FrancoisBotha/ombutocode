@@ -16,6 +16,7 @@ const validChannels = [
   'app:getPath',
   'app:getProjectRoot',
   'app:getBuildInfo',
+  'app:checkForUpdates',
   'app:setTitleBranding',
   'app:getTitleBranding',
   'app:titleBrandingChanged',

@@ -2157,8 +2157,8 @@ export default {
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #1a1d22;
-  background: #e5a830;
+  color: #ffffff;
+  background: #6a737d;
   padding: 0.08rem 0.35rem;
   border-radius: 3px;
 }
@@ -2168,7 +2168,7 @@ export default {
   max-width: 360px;
   font-size: 0.68rem;
   line-height: 1.5;
-  color: rgba(229, 168, 48, 0.85);
+  color: rgba(255, 255, 255, 0.5);
   font-weight: 300;
 }
 

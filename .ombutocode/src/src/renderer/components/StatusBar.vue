@@ -49,7 +49,7 @@ export default {
     // Update check
     const updateAvailable = ref(false);
     const latestVersion = ref('');
-    const updateReleaseUrl = ref('');
+    const upgradeGuideUrl = ref('');
     const updateTooltip = ref('');
     let updateCheckInterval = null;
 
@@ -60,12 +60,12 @@ export default {
         if (info && info.updateAvailable) {
           updateAvailable.value = true;
           latestVersion.value = `v${info.latest}`;
-          updateReleaseUrl.value = info.release?.url || '';
-          updateTooltip.value = `Ombuto Code v${info.latest} is available (you have v${info.current}). Click to view release notes.`;
+          upgradeGuideUrl.value = info.release?.upgradeGuideUrl || '';
+          updateTooltip.value = `Ombuto Code v${info.latest} is available (you have v${info.current}). Click to open the upgrade guide. Automated upgrades are not yet implemented.`;
         } else {
           updateAvailable.value = false;
           latestVersion.value = '';
-          updateReleaseUrl.value = '';
+          upgradeGuideUrl.value = '';
           updateTooltip.value = '';
         }
       } catch (err) {
@@ -75,13 +75,13 @@ export default {
     }
 
     async function openUpdatePage() {
-      if (!updateReleaseUrl.value) return;
+      if (!upgradeGuideUrl.value) return;
       try {
         if (window.electron?.shell?.openExternal) {
-          await window.electron.shell.openExternal(updateReleaseUrl.value);
+          await window.electron.shell.openExternal(upgradeGuideUrl.value);
         }
       } catch (err) {
-        console.error('Failed to open release page:', err);
+        console.error('Failed to open upgrade guide:', err);
       }
     }
 
@@ -243,8 +243,8 @@ export default {
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #1a1d22;
-  background: #e5a830;
+  color: #ffffff;
+  background: #6a737d;
   padding: 0 0.35rem;
   border-radius: 3px;
   cursor: help;

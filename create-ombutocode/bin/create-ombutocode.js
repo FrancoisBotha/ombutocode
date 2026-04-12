@@ -37,6 +37,7 @@ const UPSTREAM_FILES_TO_STRIP = [
   'CLA.md',
   'CONTRIBUTING.md',
   'DeployInstructions.md',
+  'UPGRADING.md',
   'CLAUDE.md',
   'LICENSE', // upstream Apache 2.0 lives under .ombutocode/LICENSE
 

@@ -232,8 +232,9 @@ Every installed copy of the workbench polls GitHub for new releases so users kno
 
 - **Source of truth:** `https://api.github.com/repos/FrancoisBotha/ombutocode/releases/latest` — whatever the GitHub API reports as the *latest* release. Pre-releases (like the current `v0.1.0 (Beta)`) are **excluded** by GitHub's `/latest` endpoint by default. This is important: publishing a pre-release will **not** trigger an update notification in existing installs. Only non-prerelease tags count as "releases" for update detection.
 - **Implementation:** the main process handler `app:checkForUpdates` in `.ombutocode/src/main.js` fetches the endpoint via Node's built-in `https` module, parses `tag_name`, compares against `.ombutocode/src/package.json`'s `version` using a simple numeric semver compare (pre-release suffixes are ignored), and caches the result for 6 hours to avoid hitting API rate limits.
-- **UI surface:** `.ombutocode/src/src/renderer/components/StatusBar.vue` calls the handler on mount and then every 6 hours. If `updateAvailable` is true, a green `⬆ UPDATE vX.Y.Z` pill appears in the right side of the status bar next to the BETA badge. Clicking it opens the GitHub release page in the user's default browser via `shell.openExternal`.
-- **No automated install yet.** The workbench does *not* currently self-update the `.ombutocode/` directory in a user's project. Users are expected to pull the new version manually (typically by re-running `npx create-ombutocode@latest` in a scratch dir and diffing, or by a `git`-based sync if they cloned the repo directly). See the deferred work below.
+- **UI surface:** `.ombutocode/src/src/renderer/components/StatusBar.vue` calls the handler on mount and then every 6 hours. If `updateAvailable` is true, a green `⬆ UPDATE vX.Y.Z` pill appears in the right side of the status bar next to the BETA badge. Clicking it opens **`UPGRADING.md` at the target release tag** (`https://github.com/FrancoisBotha/ombutocode/blob/vX.Y.Z/UPGRADING.md`) in the user's default browser via `shell.openExternal`. The upgrade guide is version-pinned so users see the steps that match the version they're upgrading to, not whatever happens to be on main.
+- **No automated install yet.** The workbench does *not* currently self-update the `.ombutocode/` directory in a user's project. The in-app notification is **notify + link** only — it takes users to `UPGRADING.md`, which walks them through the manual upgrade procedure. See the [roadmap section](#42-planned-automated-workbench-update-deferred) below for what automated upgrades would need.
+- **`UPGRADING.md` must exist on every release tag.** Because the in-app link embeds the tag in the URL, a release without `UPGRADING.md` at its tag will 404 for users. The file lives at the repo root and is included in every tagged release by default — just don't delete it.
 
 ### 4.1 Making a release visible to the update check
 
@@ -251,7 +252,11 @@ Fully automated in-app updates (where the "Update" button replaces the contents 
 - How it handles schema migrations between workbench versions
 - How it restores the app to a known-good state if the update fails mid-way
 
-Until then, the in-app check is "notify + link", and the user pulls the new release themselves.
+Until then, the in-app check is "notify + link", and `UPGRADING.md` at the repo root is the manual upgrade procedure that the link opens.
+
+### 4.3 What about *new* projects?
+
+New projects created with `npx create-ombutocode` don't need `UPGRADING.md` at all — the installer is pinned to a workbench release tag via `CLONE_REF` (see §3.0), and the maintainer bumps that pin with every release. As long as you follow the release checklist at the bottom of this doc, `npx create-ombutocode@latest` always scaffolds the current released workbench. First-time users never see the upgrade notification because they are already on the latest version.
 
 ---
 

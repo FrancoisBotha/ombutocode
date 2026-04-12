@@ -1872,13 +1872,18 @@ ipcMain.handle('app:checkForUpdates', async (_event, { force = false } = {}) => 
     const release = await _fetchLatestRelease();
     const latest = String(release.tag_name || '').replace(/^v/, '');
     const updateAvailable = _semverCompare(current, latest) < 0;
+    const tag = release.tag_name || `v${latest}`;
     const result = {
       current,
       latest,
       updateAvailable,
       release: {
         name: release.name || release.tag_name || latest,
-        url: release.html_url || `https://github.com/FrancoisBotha/ombutocode/releases/tag/${release.tag_name || ''}`,
+        url: release.html_url || `https://github.com/FrancoisBotha/ombutocode/releases/tag/${tag}`,
+        // The upgrade guide is pinned to the target release tag so users
+        // see the instructions that match the version they're upgrading to,
+        // not whatever happens to be on main.
+        upgradeGuideUrl: `https://github.com/FrancoisBotha/ombutocode/blob/${tag}/UPGRADING.md`,
         notes: release.body || '',
         publishedAt: release.published_at || null,
         prerelease: !!release.prerelease

@@ -868,4 +868,159 @@ export default {
   font-style: italic;
   line-height: 1.4;
 }
+
+/* ══════════════════════════════════════════════
+   Dark theme overrides
+   These selectors have higher specificity than the
+   defaults above (scoped data-v attr + ancestor
+   selector), so they reliably win.
+   ══════════════════════════════════════════════ */
+
+[data-theme="dark"] .archive-view {
+  background-color: var(--secondary-color);
+}
+
+[data-theme="dark"] .archive-loading,
+[data-theme="dark"] .archive-empty {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .archive-empty .mdi {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .feature-ref-dropdown {
+  background-color: #1a1e24;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .feature-ref-dropdown:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.15);
+}
+
+[data-theme="dark"] .feature-ref-dropdown option {
+  background-color: var(--card-bg);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .result-count {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .tabulator-table {
+  background-color: var(--card-bg);
+  box-shadow: var(--box-shadow);
+}
+
+[data-theme="dark"] .resize-handle {
+  background-color: var(--bg-color);
+}
+
+[data-theme="dark"] .resize-handle::before {
+  background-color: var(--border-color);
+}
+
+[data-theme="dark"] .archive-detail {
+  background-color: var(--card-bg);
+  border-left-color: var(--border-color);
+}
+
+[data-theme="dark"] .detail-title {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .detail-fields dt {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .detail-fields dd {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .status-archive {
+  background-color: rgba(108, 74, 142, 0.25);
+  color: #b99de0;
+}
+
+[data-theme="dark"] .criteria-list li,
+[data-theme="dark"] .files-list li {
+  color: var(--text-color);
+}
+
+/* Tabulator dark theme (deep selectors) */
+[data-theme="dark"] :deep(.tabulator) {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] :deep(.tabulator-header),
+[data-theme="dark"] :deep(.tabulator-header .tabulator-col) {
+  background-color: #1a1e24;
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] :deep(.tabulator-header .tabulator-col-title) {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] :deep(.tabulator-row) {
+  background-color: var(--card-bg);
+}
+
+[data-theme="dark"] :deep(.tabulator-row:hover) {
+  background-color: #282d35;
+}
+
+[data-theme="dark"] :deep(.tabulator-row.selected-row) {
+  background-color: #1e2a3a !important;
+}
+
+[data-theme="dark"] :deep(.tabulator-cell) {
+  color: var(--text-color);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] :deep(.col-date) {
+  color: var(--text-muted);
+}
+
+/* Eval summary — dark */
+[data-theme="dark"] .eval-verdict-badge.is-pass {
+  background-color: rgba(22, 101, 52, 0.25);
+  color: #6dd4a0;
+}
+
+[data-theme="dark"] .eval-verdict-badge.is-fail {
+  background-color: rgba(127, 29, 29, 0.3);
+  color: #e06060;
+}
+
+[data-theme="dark"] .eval-summary-timestamp,
+[data-theme="dark"] .eval-summary-empty,
+[data-theme="dark"] .eval-check-reason {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .eval-check-item {
+  background-color: #1a1e24;
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .eval-check-criterion {
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .eval-check-icon-pass {
+  color: #6dd4a0;
+}
+
+[data-theme="dark"] .eval-check-icon-fail {
+  color: #e06060;
+}
+
+[data-theme="dark"] .eval-check-suggestion {
+  color: #5eead4;
+}
 </style>

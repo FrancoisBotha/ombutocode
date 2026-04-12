@@ -374,7 +374,14 @@
             <img src="../assets/logo.svg" alt="Ombuto Code" class="about-modal-logo" />
             <h2 class="about-modal-name">Ombuto Code</h2>
             <p class="about-modal-tagline">Agentic Software Engineering Workbench</p>
-            <p class="about-modal-version" v-if="aboutBuildVersion">Version {{ aboutBuildVersion }}</p>
+            <p class="about-modal-version" v-if="aboutBuildVersion">
+              Version {{ aboutBuildVersion }}
+              <span class="about-modal-beta">BETA</span>
+            </p>
+            <p class="about-modal-beta-notice">
+              This is a pre-release build. APIs, data formats, and features may change
+              without notice until the 1.0.0 release.
+            </p>
           </div>
           <div class="about-modal-body">
             <p class="about-modal-copyright">&copy; {{ new Date().getFullYear() }} Francois Botha. Licensed under Apache 2.0.</p>
@@ -2140,6 +2147,29 @@ export default {
   background: rgba(255, 255, 255, 0.04);
   padding: 0.2rem 0.6rem;
   border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.about-modal-beta {
+  font-family: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #1a1d22;
+  background: #e5a830;
+  padding: 0.08rem 0.35rem;
+  border-radius: 3px;
+}
+
+.about-modal-beta-notice {
+  margin: 0.6rem auto 0;
+  max-width: 360px;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: rgba(229, 168, 48, 0.85);
+  font-weight: 300;
 }
 
 .about-modal-body {

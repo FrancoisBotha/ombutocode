@@ -5,7 +5,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const REPO_URL = 'https://github.com/FrancoisBotha/ombutocode.git';
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 
 // Pinned Ombuto Code workbench release to clone.
 //
@@ -17,7 +17,7 @@ const VERSION = '1.1.0';
 //   2. Bump CLONE_REF below to the new tag
 //   3. Bump this installer's VERSION (above) and the package.json version
 //   4. `npm publish` the installer (see DeployInstructions.md §3)
-const CLONE_REF = 'v0.1.0';
+const CLONE_REF = 'v0.1.1';
 
 // Files and directories at the repo root that belong to the Ombuto Code
 // upstream project and should be removed from a scaffolded user project.

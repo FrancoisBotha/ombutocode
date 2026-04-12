@@ -121,13 +121,23 @@ down.
 
 ### 4.3 Break work into epics
 
-Create epic specs under `docs/Epics/`, one markdown file per epic
-(`epic_AUTHENTICATION.md`, `epic_BILLING.md`, etc.). Each epic describes
-a self-contained feature area with scope, acceptance criteria, and
+Epic specs live in `docs/Epics/`, one markdown file per epic
+(`epic_AUTHENTICATION.md`, `epic_BILLING.md`, etc.). Each describes a
+self-contained feature area with scope, acceptance criteria, and
 references back to the PRD and architecture.
 
-Use the template at `.ombutocode/templates/epic.md` as a starting point
-(or use the **Epics** view in the app to create one interactively).
+The easiest way to get started is to let the app do the first pass:
+open the **Epics** view and use the **Generate epics from PRD and
+architecture** action. A coding agent reads your `PRD.md` and
+`Architecture.md` and proposes an initial set of epics covering the
+product's main feature areas. Review what it produces, rename or
+delete anything that doesn't fit, and edit each epic to sharpen the
+scope and acceptance criteria.
+
+You can also create epics by hand: use the template at
+`.ombutocode/templates/epic.md` as a starting point and add the file
+under `docs/Epics/`. Either approach produces the same on-disk
+result — markdown files the rest of the workflow reads.
 
 ### 4.4 Generate tickets from an epic
 

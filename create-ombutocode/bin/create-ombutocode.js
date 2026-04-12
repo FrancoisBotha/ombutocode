@@ -5,7 +5,10 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const REPO_URL = 'https://github.com/FrancoisBotha/ombutocode.git';
-const VERSION = '1.1.1';
+// Installer version is kept in lockstep with the workbench version
+// (.ombutocode/src/package.json) — every workbench release bumps both
+// to the same number. See DeployInstructions.md §3 and §3.0.
+const VERSION = '0.1.1';
 
 // Pinned Ombuto Code workbench release to clone.
 //

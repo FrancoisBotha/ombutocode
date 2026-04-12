@@ -129,20 +129,24 @@ gh release view v0.2.0
 >
 > ```js
 > // create-ombutocode/bin/create-ombutocode.js
-> const CLONE_REF = 'v0.1.0';
+> const CLONE_REF = 'v0.1.1';
 > ```
+>
+> **Installer version = workbench version (lockstep).** The installer package on npm uses the **same version number** as the workbench it scaffolds. When the workbench is `0.1.1`, the installer on npm is also `0.1.1`. This means users can read a single number in the About dialog, on GitHub releases, and on the npm page without mental translation. Do **not** drift the installer version from the workbench version.
 >
 > **When cutting a new workbench release, the order of operations is:**
 >
 > 1. **Tag and publish the workbench release first** — complete sections 1 and 2 above, so `vX.Y.Z` exists on GitHub and the release is live.
 > 2. **Bump `CLONE_REF`** in `create-ombutocode/bin/create-ombutocode.js` to the new tag.
-> 3. **Bump the installer version** in `create-ombutocode/package.json` (section 3.2 below). Installer and workbench versions are independent — bump the installer by at least a `patch` whenever `CLONE_REF` changes.
+> 3. **Bump the installer version** in both `create-ombutocode/bin/create-ombutocode.js` (the `VERSION` constant) and `create-ombutocode/package.json` to match the workbench version exactly. Do not use `npm version` — it's simpler to edit by hand since both files must match.
 > 4. **Commit and push** the installer changes to `main`.
 > 5. **Publish to npm** (sections 3.3 – 3.6 below).
 >
 > Because the installer ignores `main` entirely once it's published, users of the *previous* installer version continue to get the *previous* workbench tag. Nothing breaks until they upgrade with `npx create-ombutocode@latest`.
 >
 > **Never commit a `CLONE_REF` value that points at a tag that does not yet exist on the remote** — the installer will fail with `fatal: Remote branch vX.Y.Z not found in upstream origin`, which is exactly the error users will see when they try to scaffold.
+>
+> **One-time legacy note:** `create-ombutocode@1.0.0` was published before the lockstep policy existed, and remains on npm for historical reasons. It pointed at an older workbench pre-release and is effectively abandoned. It's still installable via `npx create-ombutocode@1.0.0` but the `latest` dist-tag has been manually moved to the `0.x.y` line (see §3.5).
 
 ### 3.1 Prerequisites (one-time)
 
@@ -158,17 +162,14 @@ Two-factor authentication is enabled on the account, so publishes require an OTP
 
 ### 3.2 Bump the installer version
 
-The installer is versioned **independently** of Ombuto Code itself. Decide whether the installer change is `patch` / `minor` / `major` in its own right (usually `patch` for a simple fix, `minor` when the installer's UX or options change).
+The installer is versioned in **lockstep** with Ombuto Code itself — see §3.0. Set the installer version to exactly match the workbench version you just released.
 
-```bash
-cd create-ombutocode
+You need to edit **two** places:
 
-# Bump and commit in one step (creates its own git commit; no git tag)
-npm version patch --no-git-tag-version
+- `create-ombutocode/package.json` — the `"version"` field
+- `create-ombutocode/bin/create-ombutocode.js` — the `VERSION` constant at the top (this is what the installer prints in its banner and `--help` output)
 
-# Inspect the new version
-cat package.json | grep version
-```
+Do **not** use `npm version`, because it only updates `package.json` and would leave the `VERSION` constant drifting.
 
 ### 3.3 Dry-run the publish
 
@@ -196,7 +197,25 @@ Replace `123456` with the current code from your authenticator app. If you prefe
 
 …then plain `npm publish` will work without `--otp`.
 
-### 3.5 Verify end-to-end
+### 3.5 Check and move the `latest` dist-tag if necessary
+
+npm auto-assigns the `latest` dist-tag to the **highest** version by semver comparison at publish time. Because we're on the `0.x.y` line but `create-ombutocode@1.0.0` still exists on the registry from a legacy pre-lockstep publish, a fresh `0.x.y` publish will **not** auto-advance `latest` — it stays pointed at `1.0.0`.
+
+Check the current dist-tags:
+
+```bash
+npm view create-ombutocode dist-tags
+```
+
+If `latest` is not the version you just published, move it:
+
+```bash
+npm dist-tag add create-ombutocode@<new-version> latest
+```
+
+From the **next** release onwards this step is not needed, because `0.1.2 > 0.1.1 > ...` auto-advances `latest` normally as long as the version line stays monotonically increasing within `0.x.y`.
+
+### 3.6 Verify end-to-end
 
 Wait ~30 seconds for the npm CDN to settle, then verify the new version is installable:
 
@@ -205,22 +224,19 @@ Wait ~30 seconds for the npm CDN to settle, then verify the new version is insta
 npx create-ombutocode@latest my-test-project
 ```
 
-`npx` always fetches the latest published version unless the user pins one, so this also confirms what a first-time user will see.
+`npx` always fetches the `latest` dist-tag unless the user pins a version, so this confirms what a first-time user will see. The banner should show the version you just published.
 
-### 3.6 Commit & push the version bump
+### 3.7 Commit & push the version bump
 
-```bash
-cd ..
-git add create-ombutocode/package.json
-git commit -m "create-ombutocode: bump to <new-version>"
-git push origin main
-```
+This is done **before** publish, not after — the installer files need to be in sync with `main` when the workbench release tag is created. If you followed the release checklist at the bottom of this doc, the commit is already pushed. This subsection remains only as a reminder that local uncommitted installer changes must not be left dangling after a publish.
 
-### 3.7 Troubleshooting
+### 3.8 Troubleshooting
 
+- **`E401 Unauthorized` / `E404 Not Found` on publish** — you are not logged in, or the logged-in user doesn't own the package. `npm whoami` will return 401 in that state. Run `npm login`, or set a granular access token in `~/.npmrc` (see §3.4). npm returns 404 (not 403) for unauthorised package writes to avoid leaking package ownership.
 - **`E403 Two-factor authentication ... required`** — pass `--otp=<code>`, or configure a token with bypass-2FA.
 - **`E402 Payment Required` / scoped-package errors** — `create-ombutocode` is *unscoped*, so this should not appear; if it does, double-check `package.json` `name` field.
-- **`E409 Cannot publish over the previously published version`** — you forgot to bump. Run `npm version patch --no-git-tag-version` again.
+- **`E409 Cannot publish over the previously published version`** — you forgot to bump, or the version already exists on npm. Bump both `package.json` and the `VERSION` constant (§3.2).
+- **`npx create-ombutocode` scaffolds an old version after publish** — `latest` dist-tag didn't move. Check with `npm view create-ombutocode dist-tags` and move it manually (§3.5).
 - **`npm warn publish errors corrected: repository.url was normalized ...`** — non-fatal, but you can clean it up by running `npm pkg fix` inside `create-ombutocode/`.
 - **`fatal: Remote branch vX.Y.Z not found in upstream origin`** during `git clone` — `CLONE_REF` in the installer points at a tag that hasn't been pushed to GitHub yet. Either push the tag, or temporarily roll `CLONE_REF` back to the previous release.
 
@@ -274,8 +290,9 @@ A typical release touches all three sections above. Use this as a quick referenc
 
 **Installer release (required whenever the workbench tag changes)**
 - [ ] Bump `CLONE_REF` in `create-ombutocode/bin/create-ombutocode.js` to the new tag
-- [ ] Bump `VERSION` constant in the same file and `version` in `create-ombutocode/package.json`
+- [ ] Bump `VERSION` constant in the same file **and** `version` in `create-ombutocode/package.json` to match the workbench version exactly (lockstep — see §3.0)
 - [ ] `git commit` + `git push origin main`
 - [ ] `npm publish --dry-run` inside `create-ombutocode/` — confirm `bin/` and `template/` are in the tarball
-- [ ] `npm publish --otp=<code>` inside `create-ombutocode/`
+- [ ] `npm publish` inside `create-ombutocode/` (or `npm publish --otp=<code>` if no granular token configured)
+- [ ] `npm view create-ombutocode dist-tags` — if `latest` is not the new version, run `npm dist-tag add create-ombutocode@<new-version> latest` (one-time drift fix; auto-advances normally once we're back on the `0.x.y` line)
 - [ ] `npx create-ombutocode@latest` sanity check in a scratch directory (clones the new tag, scaffolds a project, boots the workbench)

@@ -236,18 +236,8 @@ agents build from it.
 
 ## 7. Where to go next
 
-- **Read `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md`.** Even if you
-  never write a coding agent yourself, this document explains the
-  ticket lifecycle, scheduler rules, and what agents are and aren't
-  allowed to do. It's short.
-- **Explore `.ombutocode/templates/`.** The `backlog.yml` and `epic.md`
-  templates show you the fields agents expect, which is useful when
-  you write tickets or epics by hand.
-- **Check `.ombutocode/codingagents/codingagents.yml`.** That's where
-  you configure which CLIs are available, which models they use, and
-  concurrency limits.
-- **Settings → Coding Agents (inside the app)** has a **Test** button
-  that verifies each agent is reachable and authenticated. Run it
-  before you enable the scheduler.
+Open **Help** in the app — it's the canonical reference for every
+feature, with walkthroughs, keyboard shortcuts, and troubleshooting.
+Anything you need beyond this quick start lives there.
 
 Happy building.

@@ -4,7 +4,14 @@
       <img src="../assets/logo.svg" alt="Ombuto Code" class="about-hero-logo" />
       <h1 class="about-hero-name">Ombuto Code</h1>
       <p class="about-hero-tagline">Agentic Software Engineering Workbench</p>
-      <p class="about-hero-version" v-if="buildVersion">Version {{ buildVersion }}</p>
+      <p class="about-hero-version" v-if="buildVersion">
+        Version {{ buildVersion }}
+        <span class="about-hero-beta">BETA</span>
+      </p>
+      <p class="about-hero-beta-notice">
+        This is a pre-release build. APIs, data formats, and features may change
+        without notice until the 1.0.0 release.
+      </p>
     </div>
 
     <div class="about-content">
@@ -130,6 +137,29 @@ export default {
   background: rgba(255, 255, 255, 0.04);
   padding: 0.25rem 0.75rem;
   border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.about-hero-beta {
+  font-family: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #1a1d22;
+  background: #e5a830;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+
+.about-hero-beta-notice {
+  margin: 0.75rem auto 0;
+  max-width: 420px;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: rgba(229, 168, 48, 0.85);
+  font-weight: 300;
 }
 
 .about-content {

@@ -79,6 +79,56 @@ function resolveProjectRoot() {
 const PROJECT_ROOT = resolveProjectRoot();
 fileTreeService.init(PROJECT_ROOT);
 const OMBUTOCODE_DIR    = path.join(PROJECT_ROOT, '.ombutocode');
+
+// Per-project userData isolation. The project folder name (e.g. "ombutocode",
+// "myfirstproject") becomes a subdirectory of the default userData path so
+// each project gets its own electron-store, window state, and GPU cache.
+const PROJECT_SLUG = path.basename(PROJECT_ROOT).replace(/[^A-Za-z0-9._-]+/g, '_') || 'default';
+app.setPath('userData', path.join(app.getPath('appData'), 'Ombuto Code', PROJECT_SLUG));
+
+// Per-project single-instance lockfile. Electron's requestSingleInstanceLock
+// is process-wide, so we use a lockfile inside the project's .ombutocode/
+// directory instead — that lets different projects run side by side while
+// still preventing two instances on the same project (which would corrupt
+// the shared SQLite DB).
+const INSTANCE_LOCK_PATH = path.join(OMBUTOCODE_DIR, '.instance.lock');
+function isPidAlive(pid) {
+  try { process.kill(pid, 0); return true; }
+  catch (e) { return e.code === 'EPERM'; }
+}
+function acquireProjectLock() {
+  try {
+    if (fs.existsSync(INSTANCE_LOCK_PATH)) {
+      const existing = parseInt(fs.readFileSync(INSTANCE_LOCK_PATH, 'utf8').trim(), 10);
+      if (Number.isFinite(existing) && existing !== process.pid && isPidAlive(existing)) {
+        return false;
+      }
+    }
+    fs.mkdirSync(path.dirname(INSTANCE_LOCK_PATH), { recursive: true });
+    fs.writeFileSync(INSTANCE_LOCK_PATH, String(process.pid));
+    return true;
+  } catch (err) {
+    console.error('Failed to acquire project lock:', err);
+    return true; // fail open — don't block startup on lockfile IO errors
+  }
+}
+function releaseProjectLock() {
+  try {
+    if (fs.existsSync(INSTANCE_LOCK_PATH)) {
+      const owner = parseInt(fs.readFileSync(INSTANCE_LOCK_PATH, 'utf8').trim(), 10);
+      if (owner === process.pid) fs.unlinkSync(INSTANCE_LOCK_PATH);
+    }
+  } catch (_) { /* best effort */ }
+}
+if (!acquireProjectLock()) {
+  console.log(`Another instance is already running for project "${PROJECT_SLUG}" at ${PROJECT_ROOT}, quitting.`);
+  app.quit();
+  process.exit(0);
+}
+process.on('exit', releaseProjectLock);
+process.on('SIGINT', () => { releaseProjectLock(); process.exit(0); });
+process.on('SIGTERM', () => { releaseProjectLock(); process.exit(0); });
+
 const BACKLOG_PATH    = path.join(OMBUTOCODE_DIR, 'planning', 'backlog.yml');
 const ARCHIVE_PATH    = path.join(OMBUTOCODE_DIR, 'planning', 'archive.yml');
 const ARCHIVE_DB_PATH = path.join(OMBUTOCODE_DIR, 'planning', 'archive.db');
@@ -408,33 +458,14 @@ if (process.defaultApp) {
   app.setAsDefaultProtocolClient('ombutocode')
 }
 
-// Handle the protocol 
-const gotTheLock = app.requestSingleInstanceLock();
+// NOTE: project-level single-instance uniqueness is enforced by the lockfile
+// in `.ombutocode/.instance.lock` (see acquireProjectLock above). The legacy
+// global Electron lock was removed so different projects can run side by side.
+// One known consequence: a Dropbox OAuth `ombutocode://` callback launched by
+// the OS will start a fresh Electron process instead of being routed into the
+// existing instance. That flow needs to be revisited if multi-instance OAuth
+// becomes a real use case.
 
-if (!gotTheLock) {
-  console.log('Another instance is running, quitting...');
-  app.quit();
-  return;
-}
-
-app.on('second-instance', (event, commandLine, workingDirectory) => {
-  console.log('Second instance detected, focusing main window');
-  
-  // Focus the main window
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-  
-  // Look for URL in command line arguments
-  if (commandLine && commandLine.length > 1) {
-    const urlArg = commandLine.find(arg => arg && typeof arg === 'string' && arg.startsWith('ombutocode://'));
-    if (urlArg) {
-      console.log('Handling URL from command line:', urlArg);
-      handleUrl(urlArg);
-    }
-  }
-});
 
 function handleUrl(url) {
   try {
@@ -1392,7 +1423,17 @@ app.whenReady().then(async () => {
     }
   });
   
-  // Start the server on the local OAuth callback port
+  // Start the server on the local OAuth callback port. The port is hardcoded
+  // because the redirect_uri is pre-registered with Dropbox. With multiple
+  // Ombuto Code instances running, only the first one can bind it; the rest
+  // log and continue without Dropbox-auth capability rather than crashing.
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn('OAuth callback port 31031 already in use (another Ombuto Code instance owns it). Dropbox auth disabled in this instance.');
+    } else {
+      console.error('OAuth callback server error:', err);
+    }
+  });
   server.listen(31031, 'localhost', () => {
     console.log('OAuth callback server running on http://localhost:31031');
   });
@@ -1674,6 +1715,7 @@ app.on('before-quit', () => {
     try { proc.kill(); } catch (_) { /* already dead */ }
     activeShells.delete(id);
   }
+  releaseProjectLock();
   // Don't persist false here - preserve the user's last preference
 });
 
@@ -1761,19 +1803,9 @@ function handleUrl(url) {
   }
 }
 
-// Handle the app being opened with a URL (Windows)
-app.on('second-instance', (event, commandLine) => {
-  // Someone tried to run a second instance, we should focus our window
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
-  
-  // Handle the URL if one was passed
-  if (process.platform === 'win32' && commandLine.length > 1) {
-    handleUrl(commandLine.pop());
-  }
-});
+// NOTE: the previous `second-instance` URL-forwarding handler was removed when
+// the global single-instance lock was replaced with a per-project lockfile.
+// See acquireProjectLock at the top of this file for the rationale.
 
 // IPC handlers — jobs
 ipcMain.handle('jobs:listWithLatestRun', async () => {

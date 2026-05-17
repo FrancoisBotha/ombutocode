@@ -416,26 +416,26 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
 .tg-subtitle { margin: 0; color: var(--text-muted, #8b929a); font-size: 0.9rem; }
 
 .tg-loading { color: var(--text-muted); padding: 2rem; text-align: center; }
-.tg-empty { display: flex; flex-direction: column; align-items: center; padding: 3rem; text-align: center; color: rgba(255,255,255,0.25); border: 1px dashed rgba(255,255,255,0.08); border-radius: 8px; }
+.tg-empty { display: flex; flex-direction: column; align-items: center; padding: 3rem; text-align: center; color: var(--text-muted); border: 1px dashed var(--border-color); border-radius: 8px; }
 .tg-empty .mdi { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.4; }
 .tg-empty p { margin: 0; font-size: 0.88rem; }
-.tg-empty-hint { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: rgba(255,255,255,0.18); max-width: 380px; line-height: 1.5; }
+.tg-empty-hint { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: var(--text-muted); opacity: 0.75; max-width: 380px; line-height: 1.5; }
 
 /* Table */
 .tg-table-section { margin-bottom: 1rem; max-width: 100%; }
-.tg-table-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); margin: 0 0 0.5rem; }
+.tg-table-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0 0 0.5rem; }
 .tg-table { width: 100%; border-collapse: collapse; }
-.tg-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.35); border-bottom: 1px solid rgba(255,255,255,0.06); }
-.tg-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.tg-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
+.tg-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-color); }
 .tg-row { cursor: pointer; transition: background 0.1s; }
-.tg-row:hover { background: rgba(255,255,255,0.04); }
+.tg-row:hover { background: var(--secondary-color); }
 .col-action { width: 160px; text-align: right; }
-.col-name { font-size: 0.88rem; color: rgba(255,255,255,0.75); font-weight: 400; }
+.col-name { font-size: 0.88rem; color: var(--text-color); font-weight: 400; }
 .col-status { width: 100px; }
 .tg-status-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-.status-new { background: rgba(91,155,213,0.15); color: #7bb8e8; }
-.status-tickets { background: rgba(229,168,48,0.15); color: #e5a830; }
-.col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(255,255,255,0.3); }
+.status-new { background: rgba(91,155,213,0.15); color: #4a90e2; }
+.status-tickets { background: rgba(229,168,48,0.15); color: #b87f0e; }
+.col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-muted); }
 
 /* Actions */
 .tg-actions { display: flex; align-items: center; gap: 0.75rem; max-width: 100%; margin-bottom: 1rem; }

@@ -429,8 +429,8 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-color, #161a1f);
-  color: var(--text-color, #d4d8dd);
+  background: var(--bg-color);
+  color: var(--text-color);
 }
 
 .prd-header {
@@ -446,7 +446,7 @@ export default {
 
 .prd-subtitle {
   margin: 0 0 2rem;
-  color: var(--text-muted, #8b929a);
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -462,8 +462,8 @@ export default {
   gap: 1.25rem;
   padding: 1.5rem;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   max-width: 100%;
 }
 
@@ -485,7 +485,7 @@ export default {
   margin: 0;
   font-size: 0.88rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-weight: 300;
 }
 
@@ -501,7 +501,7 @@ export default {
 }
 
 .prd-existing-info strong {
-  color: var(--text-color, #d4d8dd);
+  color: var(--text-color);
   font-size: 0.9rem;
 }
 
@@ -513,13 +513,13 @@ export default {
 .prd-agent-info {
   margin-top: 0.5rem !important;
   font-size: 0.82rem !important;
-  color: rgba(255, 255, 255, 0.4) !important;
+  color: var(--text-muted) !important;
 }
 
 .prd-agent-warning {
   margin-top: 0.5rem !important;
   font-size: 0.82rem !important;
-  color: #e5a830 !important;
+  color: #b87f0e !important;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -556,12 +556,12 @@ export default {
 }
 
 .prd-btn-secondary {
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.7);
+  background: var(--secondary-color);
+  color: var(--text-color);
 }
 
 .prd-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--border-color);
 }
 
 .prd-btn-sm {
@@ -609,19 +609,19 @@ export default {
   overflow: hidden;
 }
 
-/* Left: Skill panel */
+/* Left: Skill panel (shows system prompt / context — flips with theme) */
 .prd-skill-panel {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #0d1720;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--card-bg);
+  border-right: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
 .prd-skill-selector {
   padding: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
 }
 
@@ -638,10 +638,10 @@ export default {
 .prd-skill-select {
   width: 100%;
   padding: 0.4rem 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-color);
   border-radius: 5px;
-  background: #0A1220;
-  color: var(--text-color, #d4d8dd);
+  background: var(--bg-color);
+  color: var(--text-color);
   font-size: 0.82rem;
   cursor: pointer;
   outline: none;
@@ -662,28 +662,28 @@ export default {
 }
 
 .prd-skill-preview::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 .prd-skill-md {
   font-size: 0.82rem;
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-color);
   font-weight: 300;
 }
 
-.prd-skill-md :deep(h1) { font-size: 1.1rem; color: var(--text-color, #d4d8dd); margin: 0 0 0.5rem; font-weight: 600; }
-.prd-skill-md :deep(h2) { font-size: 0.95rem; color: var(--text-color, #d4d8dd); margin: 1rem 0 0.4rem; font-weight: 600; }
-.prd-skill-md :deep(h3) { font-size: 0.88rem; color: var(--text-color, #d4d8dd); margin: 0.75rem 0 0.3rem; font-weight: 600; }
+.prd-skill-md :deep(h1) { font-size: 1.1rem; color: var(--text-color); margin: 0 0 0.5rem; font-weight: 600; }
+.prd-skill-md :deep(h2) { font-size: 0.95rem; color: var(--text-color); margin: 1rem 0 0.4rem; font-weight: 600; }
+.prd-skill-md :deep(h3) { font-size: 0.88rem; color: var(--text-color); margin: 0.75rem 0 0.3rem; font-weight: 600; }
 .prd-skill-md :deep(p) { margin: 0.4rem 0; }
 .prd-skill-md :deep(ul), .prd-skill-md :deep(ol) { margin: 0.3rem 0; padding-left: 1.25rem; }
 .prd-skill-md :deep(li) { margin: 0.15rem 0; }
-.prd-skill-md :deep(code) { background: rgba(255, 255, 255, 0.06); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.78rem; color: #6dd4a0; }
-.prd-skill-md :deep(pre) { background: #0A1220; padding: 0.6rem; border-radius: 5px; overflow-x: auto; margin: 0.5rem 0; }
-.prd-skill-md :deep(pre code) { background: none; padding: 0; color: rgba(255, 255, 255, 0.65); }
-.prd-skill-md :deep(strong) { color: rgba(255, 255, 255, 0.8); font-weight: 600; }
-.prd-skill-md :deep(em) { color: rgba(255, 255, 255, 0.5); }
+.prd-skill-md :deep(code) { background: var(--secondary-color); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.78rem; color: #3cc77a; }
+.prd-skill-md :deep(pre) { background: var(--secondary-color); padding: 0.6rem; border-radius: 5px; overflow-x: auto; margin: 0.5rem 0; }
+.prd-skill-md :deep(pre code) { background: none; padding: 0; color: var(--text-color); }
+.prd-skill-md :deep(strong) { color: var(--text-color); font-weight: 600; }
+.prd-skill-md :deep(em) { color: var(--text-muted); }
 
 .prd-skill-empty {
   flex: 1;
@@ -691,7 +691,7 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--text-muted);
   text-align: center;
   padding: 2rem;
 }
@@ -774,8 +774,8 @@ export default {
 }
 
 .prd-confirm-dialog {
-  background: #1e2535;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 2rem;
   width: 400px;
@@ -789,20 +789,20 @@ export default {
 
 .prd-confirm-icon .mdi {
   font-size: 2.5rem;
-  color: #e5a830;
+  color: #b87f0e;
 }
 
 .prd-confirm-dialog h3 {
   margin: 0 0 0.6rem;
   font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--text-color);
 }
 
 .prd-confirm-dialog p {
   margin: 0 0 1.5rem;
   font-size: 0.88rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
 }
 
 .prd-confirm-actions {

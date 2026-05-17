@@ -589,32 +589,33 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 <style scoped>
 .epics-view {
   flex: 1; display: flex; flex-direction: column; overflow: hidden;
-  background: var(--bg-color, #161a1f); color: var(--text-color, #d4d8dd);
+  background: var(--bg-color); color: var(--text-color);
 }
 
 .epics-list-view { padding: 2rem; overflow-y: auto; flex: 1; }
 .epics-header { margin-bottom: 1.5rem; }
 .epics-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; font-weight: 600; }
-.epics-subtitle { margin: 0; color: var(--text-muted, #8b929a); font-size: 0.9rem; }
+.epics-subtitle { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
 
 /* Create card */
 .epics-create-card {
   display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.5rem;
-  border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); max-width: 100%; margin-bottom: 1.5rem;
+  border-radius: 8px; background: var(--card-bg); border: 1px solid var(--border-color); max-width: 100%; margin-bottom: 1.5rem;
+  box-shadow: var(--box-shadow);
 }
 .epics-create-icon { font-size: 2rem; color: #6dd4a0; flex-shrink: 0; margin-top: 0.15rem; }
 .epics-create-info { flex: 1; }
 .epics-create-info h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
-.epics-create-info p { margin: 0; font-size: 0.88rem; line-height: 1.6; color: rgba(255,255,255,0.5); font-weight: 300; }
-.epics-agent-info { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: rgba(255,255,255,0.4) !important; }
-.epics-agent-warning { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: #e5a830 !important; display: flex; align-items: center; gap: 0.3rem; }
+.epics-create-info p { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); font-weight: 300; }
+.epics-agent-info { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: var(--text-muted) !important; }
+.epics-agent-warning { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: #b87f0e !important; display: flex; align-items: center; gap: 0.3rem; }
 
 .epics-context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin: 0.75rem 0 0; }
 .epics-context-field { display: flex; flex-direction: column; gap: 0.2rem; }
-.epics-context-label { font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.4); }
+.epics-context-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
 .epics-context-select {
-  padding: 0.4rem 0.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px;
-  background: #0A1220; color: var(--text-color, #d4d8dd); font-size: 0.82rem; cursor: pointer; outline: none; max-width: 350px;
+  padding: 0.4rem 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;
+  background: var(--bg-color); color: var(--text-color); font-size: 0.82rem; cursor: pointer; outline: none; max-width: 350px;
 }
 .epics-context-select:focus { border-color: #6dd4a0; }
 
@@ -626,37 +627,40 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-btn-primary { background: #6dd4a0; color: #0A1220; }
 .epics-btn-primary:hover:not(:disabled) { background: #86efac; }
 .epics-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-.epics-btn-secondary { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
-.epics-btn-secondary:hover { background: rgba(255,255,255,0.12); }
+.epics-btn-secondary { background: var(--secondary-color); color: var(--text-color); }
+.epics-btn-secondary:hover { background: var(--border-color); }
 .epics-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.8rem; }
 
 /* Table */
 .epics-table-section { margin-bottom: 1.5rem; max-width: 100%; }
-.epics-table-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.3); margin: 0 0 0.5rem; }
+.epics-table-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0 0 0.5rem; }
 .epics-table { width: 100%; border-collapse: collapse; }
 .epics-table th {
   text-align: left; padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.04em; color: rgba(255,255,255,0.35);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
 }
-.epics-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.epics-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-color); }
 .epics-row { cursor: pointer; transition: background 0.1s; }
-.epics-row:hover { background: rgba(255,255,255,0.04); }
-.col-name { font-size: 0.88rem; color: rgba(255,255,255,0.75); font-weight: 400; }
-.col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: rgba(255,255,255,0.3); }
+.epics-row:hover { background: var(--secondary-color); }
+.col-name { font-size: 0.88rem; color: var(--text-color); font-weight: 400; }
+.col-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-muted); }
 .col-status { width: 100px; }
 .epic-status-badge {
   display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px;
   font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
 }
-.status-new { background: rgba(91,155,213,0.15); color: #7bb8e8; }
-.status-draft { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
-.status-tickets { background: rgba(229,168,48,0.15); color: #e5a830; }
-.status-building { background: rgba(109,212,160,0.15); color: #6dd4a0; }
-.status-done { background: rgba(109,212,160,0.25); color: #3cc77a; }
+.status-new { background: rgba(91,155,213,0.15); color: #4a90e2; }
+.status-draft { background: var(--secondary-color); color: var(--text-muted); }
+.status-tickets { background: rgba(229,168,48,0.15); color: #b87f0e; }
+/* Default (light mode): darker green for readability on the pale chip bg. */
+.status-building { background: rgba(109,212,160,0.2); color: #2aa05f; }
+/* Dark mode: restore brand-exact green — readable on its dark background. */
+[data-theme="dark"] .status-building { background: rgba(109,212,160,0.15); color: #6dd4a0; }
+.status-done { background: rgba(109,212,160,0.25); color: #2aa05f; }
 .col-actions { width: 40px; text-align: right; }
 .epics-delete-btn {
-  background: transparent; border: none; color: rgba(255,255,255,0.15); cursor: pointer;
+  background: transparent; border: none; color: var(--text-muted); cursor: pointer;
   padding: 0.2rem; border-radius: 4px; opacity: 0; transition: all 0.15s;
 }
 .epics-row:hover .epics-delete-btn { opacity: 1; }
@@ -666,8 +670,8 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-manual-create { max-width: 100%; margin-bottom: 1.5rem; }
 .epics-new-input-wrap { display: flex; align-items: center; gap: 0.5rem; }
 .epics-new-input {
-  padding: 0.45rem 0.7rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
-  background: rgba(255,255,255,0.04); color: var(--text-color, #d4d8dd); font-size: 0.88rem; width: 300px; outline: none;
+  padding: 0.45rem 0.7rem; border: 1px solid var(--border-color); border-radius: 6px;
+  background: var(--card-bg); color: var(--text-color); font-size: 0.88rem; width: 300px; outline: none;
 }
 .epics-new-input:focus { border-color: #6dd4a0; }
 

@@ -373,38 +373,38 @@ export default {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg-color, #161a1f);
-  color: var(--text-color, #d4d8dd);
+  background: var(--bg-color);
+  color: var(--text-color);
 }
 
 .prd-header { padding: 2rem; overflow-y: auto; }
 .prd-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; font-weight: 600; }
-.prd-subtitle { margin: 0 0 2rem; color: var(--text-muted, #8b929a); font-size: 0.9rem; }
+.prd-subtitle { margin: 0 0 2rem; color: var(--text-muted); font-size: 0.9rem; }
 
 .prd-create { margin-bottom: 1rem; }
 .prd-existing + .prd-create { margin-top: 1rem; }
 
 .prd-create-card, .prd-existing-card {
   display: flex; align-items: flex-start; gap: 1.25rem; padding: 1.5rem;
-  border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); max-width: 100%;
+  border-radius: 8px; background: var(--card-bg); border: 1px solid var(--border-color); max-width: 100%;
 }
 .prd-create-icon, .prd-existing-icon { font-size: 2rem; color: #6dd4a0; flex-shrink: 0; margin-top: 0.15rem; }
 .prd-create-card h3 { margin: 0 0 0.5rem; font-size: 1.05rem; }
-.prd-create-card p, .prd-existing-info span { margin: 0; font-size: 0.88rem; line-height: 1.6; color: rgba(255,255,255,0.5); font-weight: 300; }
+.prd-create-card p, .prd-existing-info span { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); font-weight: 300; }
 .prd-existing-card { align-items: center; }
 .prd-existing-info { flex: 1; display: flex; flex-direction: column; gap: 0.15rem; }
-.prd-existing-info strong { color: var(--text-color, #d4d8dd); font-size: 0.9rem; }
+.prd-existing-info strong { color: var(--text-color); font-size: 0.9rem; }
 .prd-existing-info span { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
-.prd-agent-info { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: rgba(255,255,255,0.4) !important; }
-.prd-agent-warning { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: #e5a830 !important; display: flex; align-items: center; gap: 0.3rem; }
+.prd-agent-info { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: var(--text-muted) !important; }
+.prd-agent-warning { margin-top: 0.5rem !important; font-size: 0.82rem !important; color: #b87f0e !important; display: flex; align-items: center; gap: 0.3rem; }
 
 /* Context selectors */
 .dm-context-selectors { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
 .dm-context-field { display: flex; flex-direction: column; gap: 0.2rem; }
-.dm-context-label { font-size: 0.72rem; font-weight: 600; color: rgba(255,255,255,0.4); }
+.dm-context-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); }
 .dm-context-select {
-  padding: 0.4rem 0.5rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 5px;
-  background: #0A1220; color: var(--text-color, #d4d8dd); font-size: 0.82rem; cursor: pointer; outline: none;
+  padding: 0.4rem 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;
+  background: var(--bg-color); color: var(--text-color); font-size: 0.82rem; cursor: pointer; outline: none;
 }
 .dm-context-select:focus { border-color: #6dd4a0; }
 
@@ -424,8 +424,8 @@ export default {
 .prd-btn-primary { background: #6dd4a0; color: #0A1220; }
 .prd-btn-primary:hover:not(:disabled) { background: #86efac; }
 .prd-btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-.prd-btn-secondary { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); }
-.prd-btn-secondary:hover { background: rgba(255,255,255,0.12); }
+.prd-btn-secondary { background: var(--secondary-color); color: var(--text-color); }
+.prd-btn-secondary:hover { background: var(--border-color); }
 .prd-btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
 .prd-btn-danger { background: #e06060; color: #fff; }
 .prd-btn-danger:hover { background: #c94040; }
@@ -439,8 +439,8 @@ export default {
 .prd-terminal-agent { background: rgba(109,212,160,0.12); color: #6dd4a0; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
 .prd-terminal-spacer { flex: 1; }
 .prd-split-pane { flex: 1; display: flex; overflow: hidden; }
-.prd-skill-panel { display: flex; flex-direction: column; overflow: hidden; background: #0d1720; border-right: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
-.prd-skill-selector { padding: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+.prd-skill-panel { display: flex; flex-direction: column; overflow: hidden; background: var(--card-bg); border-right: 1px solid var(--border-color); flex-shrink: 0; color: var(--text-color); }
+.prd-skill-selector { padding: 0.75rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
 .prd-skill-label { display: block; font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #6dd4a0; margin-bottom: 0.4rem; }
 .prd-skill-preview { flex: 1; overflow-y: auto; padding: 1rem; }
 .prd-resize-handle { width: 6px; cursor: col-resize; background: transparent; flex-shrink: 0; position: relative; }
@@ -454,10 +454,10 @@ export default {
 
 /* Confirm modal */
 .prd-confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.prd-confirm-dialog { background: #1e2535; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 2rem; width: 400px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+.prd-confirm-dialog { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; width: 400px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
 .prd-confirm-icon { margin-bottom: 0.75rem; }
-.prd-confirm-icon .mdi { font-size: 2.5rem; color: #e5a830; }
-.prd-confirm-dialog h3 { margin: 0 0 0.6rem; font-size: 1.1rem; color: rgba(255,255,255,0.9); }
-.prd-confirm-dialog p { margin: 0 0 1.5rem; font-size: 0.88rem; line-height: 1.6; color: rgba(255,255,255,0.5); }
+.prd-confirm-icon .mdi { font-size: 2.5rem; color: #b87f0e; }
+.prd-confirm-dialog h3 { margin: 0 0 0.6rem; font-size: 1.1rem; color: var(--text-color); }
+.prd-confirm-dialog p { margin: 0 0 1.5rem; font-size: 0.88rem; line-height: 1.6; color: var(--text-muted); }
 .prd-confirm-actions { display: flex; justify-content: center; gap: 0.75rem; }
 </style>

@@ -295,18 +295,19 @@ function buildDraftArgsFromTemplate(templateArgs, draftPrompt, projectRoot, { mo
 
   // Find the '--' separator; everything after it is the prompt to replace
   const separatorIdx = args.indexOf('--');
-  // Check if template uses stdin for prompt (Claude with --print)
-  const hasStdinPrompt = args.includes('--print');
+  // Stdin-based templates: caller passes draftPrompt=null and delivers the
+  // prompt via stdin instead (Claude --print, Codex exec, etc.). In that case
+  // there is no trailing prompt arg to strip — keep all args as-is.
+  const usesStdin = draftPrompt == null || draftPrompt === '';
+  const hasStdinPrintFlag = args.includes('--print');
   let flagArgs;
   if (separatorIdx >= 0) {
     // Keep flags + separator, drop original prompt
     flagArgs = args.slice(0, separatorIdx + 1);
-  } else if (hasStdinPrompt) {
-    // Stdin-based templates (Claude): prompt goes via stdin, keep ALL args
+  } else if (usesStdin || hasStdinPrintFlag) {
     flagArgs = [...args];
   } else {
-    // No separator: for codex-style (exec --sandbox ... <prompt>) or kimi (--prompt <prompt>),
-    // the last arg is the prompt — drop it
+    // Inline-prompt templates (e.g. kimi --prompt <prompt>): drop the last arg
     flagArgs = args.slice(0, -1);
   }
 

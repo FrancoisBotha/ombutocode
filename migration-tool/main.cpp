@@ -66,8 +66,11 @@ static const std::vector<std::wstring> kNewSkills = {
 static const std::vector<std::wstring> kOverwriteFiles = {
     L".ombutocode\\buildandrun.bat",
     L".ombutocode\\buildandrun",
+    L".ombutocode\\initombuto",       // bash logic — the .bat is just a wrapper
+    L".ombutocode\\initombuto.bat",
     L".ombutocode\\codingagents\\codingagents.yml",
-    L".ombutocode\\codingagent-templates.json"
+    L".ombutocode\\codingagent-templates.json",
+    L".ombutocode\\OMBUTOCODE_ENGINEERING_GUIDE.md"
 };
 
 // ── Globals (just window handles) ──────────────────────────────────────────

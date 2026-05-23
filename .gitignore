@@ -39,6 +39,11 @@ Thumbs.db
 # JeffPlan temp (ported, no longer needed)
 .jeffplan-temp/
 
+# Migration tool build intermediates (the .exe is committed)
+migration-tool/*.obj
+migration-tool/*.pdb
+migration-tool/*.ilk
+
 # Claude
 .claude/
 

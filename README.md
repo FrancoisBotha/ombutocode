@@ -120,6 +120,38 @@ Then launch the app:
 bash .ombutocode/buildandrun         # macOS / Linux
 ```
 
+### Push your new project to GitHub
+
+The installer initialised a local Git repository and made an initial commit,
+but didn't push anywhere. Two ways to wire it up to a GitHub repo of your own:
+
+**With the GitHub CLI** ([`gh`](https://cli.github.com)) — one command:
+
+```bash
+gh repo create my-project --private --source=. --remote=origin --push
+```
+
+(`--public` instead of `--private` to make it open.)
+
+**Without `gh`** — create an empty repo on GitHub first:
+
+1. Open [github.com/new](https://github.com/new).
+2. Name the repo (e.g. `my-project`).
+3. **Do NOT** tick "Add a README", "Add .gitignore", or "Add a license" —
+   your scaffolded project already has those, and an initial commit on
+   GitHub would force you to merge histories before your first push.
+4. Click **Create repository**.
+5. Back in your project folder:
+
+   ```bash
+   git remote add origin <repo-url-from-github>
+   git branch -M main
+   git push -u origin main
+   ```
+
+After either path, see [the scaffolded project's own README](create-ombutocode/template/README.md)
+for what gets pushed vs what stays local (`.ombutocode/data/`, `logs/`, etc.).
+
 ### Manual Installation
 
 If you prefer to set things up manually:

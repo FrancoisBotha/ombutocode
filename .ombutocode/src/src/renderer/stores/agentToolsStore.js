@@ -13,9 +13,9 @@ const DEFAULT_TOOLS = [
     budgetLimit: 50.0,
     models: [
       {
-        id: 'opus-4.6',
-        name: 'Opus 4.6',
-        modelId: 'claude-opus-4-6',
+        id: 'opus-4.7',
+        name: 'Opus 4.7',
+        modelId: 'claude-opus-4-7',
         ratePerHour: 2,
         costPerRun: 0.5,
         enabled: true

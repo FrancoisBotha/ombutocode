@@ -120,7 +120,22 @@ function createTerminal(container, shellId) {
   });
   ro.observe(container);
 
-  return { term, fitAddon, ro, shellId };
+  // Right-click paste: read clipboard text and forward it to the PTY,
+  // matching the convention in Windows Terminal / PuTTY.
+  const onContextMenu = async (e) => {
+    e.preventDefault();
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        window.electron.ipcRenderer.invoke('workspace:writeShell', shellId, text);
+      }
+    } catch (err) {
+      console.warn('Clipboard paste failed:', err);
+    }
+  };
+  container.addEventListener('contextmenu', onContextMenu);
+
+  return { term, fitAddon, ro, shellId, container, onContextMenu };
 }
 
 /**
@@ -257,7 +272,12 @@ export default {
       if (refreshInterval) clearInterval(refreshInterval);
       if (resultTimeout) clearTimeout(resultTimeout);
       [terminal1, terminal2].forEach(t => {
-        if (t) { window.electron.ipcRenderer.invoke('workspace:killShell', t.shellId); t.ro.disconnect(); t.term.dispose(); }
+        if (t) {
+          window.electron.ipcRenderer.invoke('workspace:killShell', t.shellId);
+          t.ro.disconnect();
+          if (t.container && t.onContextMenu) t.container.removeEventListener('contextmenu', t.onContextMenu);
+          t.term.dispose();
+        }
       });
       if (removeDataListener) removeDataListener();
       if (removeExitListener) removeExitListener();

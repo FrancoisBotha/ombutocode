@@ -286,6 +286,58 @@ async function removeWorktreeRegistration({ projectRoot, worktreePath }) {
   }
 }
 
+// Remove a directory tree, retrying on transient Windows file locks.
+//
+// Symptom this guards against: .NET/Java/Node tooling commonly leaves
+// helper processes (MSBuild, VBCSCompiler, dotnet, node-pty children)
+// holding file handles for a few seconds after a build/test finishes.
+// On Windows `fs.rmSync` throws EBUSY / EPERM when it hits one of those
+// handles. The handle is usually released within seconds.
+//
+// If the tree is still locked after the retry budget is exhausted, fall
+// back to renaming it aside (`<path>.stale-<timestamp>`) so the caller
+// can proceed (create a fresh worktree at the original name). The stale
+// rename is best-effort cleanup deferred until the next time something
+// can actually delete it.
+function removeDirSyncWithRetry(targetPath) {
+  if (!fsSync.existsSync(targetPath)) return { removed: false, renamed: null };
+  const delays = [0, 250, 500, 1000, 2000, 4000]; // ms — total ~7.75s
+  let lastError = null;
+  for (const delay of delays) {
+    if (delay > 0) {
+      // Synchronous sleep — we're already inside a sync call chain that
+      // can't yield to a Promise here, and the worktree cleanup is rare.
+      const until = Date.now() + delay;
+      while (Date.now() < until) { /* spin */ }
+    }
+    try {
+      fsSync.rmSync(targetPath, { recursive: true, force: true });
+      return { removed: true, renamed: null };
+    } catch (err) {
+      lastError = err;
+      // Only retry on the known transient-lock errors. Anything else
+      // (ENOENT, EACCES on a non-lock cause, etc.) bubbles immediately.
+      const code = err && err.code;
+      if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'ENOTEMPTY') break;
+    }
+  }
+
+  // Rename aside so the caller can move on. The stale dir gets garbage-
+  // collected by the next init/cleanup that runs after the lock releases.
+  try {
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const stalePath = `${targetPath}.stale-${stamp}`;
+    fsSync.renameSync(targetPath, stalePath);
+    return { removed: false, renamed: stalePath };
+  } catch (renameErr) {
+    // Rename failed too — Windows occasionally locks the dir itself, not
+    // just contents. Re-throw the original error so callers see the real
+    // diagnostic (EBUSY on `src/OmbutoBinder` etc.).
+    if (lastError) throw lastError;
+    throw renameErr;
+  }
+}
+
 function removeWorktreeRegistrationSync({ projectRoot, worktreePath }) {
   const removeResult = runGitSync({
     cwd: projectRoot,
@@ -294,7 +346,10 @@ function removeWorktreeRegistrationSync({ projectRoot, worktreePath }) {
   });
 
   if (removeResult.code !== 0) {
-    fsSync.rmSync(worktreePath, { recursive: true, force: true });
+    const result = removeDirSyncWithRetry(worktreePath);
+    if (result.renamed) {
+      console.warn(`[Worktree] Could not remove ${worktreePath} after retries; renamed to ${result.renamed} to unblock pipeline.`);
+    }
   }
 }
 

@@ -130,7 +130,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 
 let termInstance = null;
 let fitAddon = null;
@@ -142,6 +142,10 @@ let sessionCounter = 0;
 export default {
   name: 'PlanDataModelView',
   emits: ['change-view'],
+  props: {
+    // App.vue toggles this via v-show so the agent terminal survives navigation.
+    visible: { type: Boolean, default: true },
+  },
   setup(props, { emit }) {
     const sessionActive = ref(false);
     const terminalContainer = ref(null);
@@ -348,6 +352,13 @@ export default {
       checkExistingDoc();
       loadDefaultAgent();
       loadContextFiles();
+    });
+
+    // Refit xterm when this view re-appears (xterm can't measure while display:none).
+    watch(() => props.visible, (isVisible) => {
+      if (isVisible && fitAddon) {
+        requestAnimationFrame(() => { try { fitAddon.fit(); } catch (_) {} });
+      }
     });
 
     onBeforeUnmount(() => {

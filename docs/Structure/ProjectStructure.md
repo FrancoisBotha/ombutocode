@@ -1,3 +1,12 @@
+---
+structure:
+  - system: "System"
+    subsystems:
+      - name: "test"
+        components:
+          - "dasf"
+---
+
 # Project Structure
 
 ## My Application

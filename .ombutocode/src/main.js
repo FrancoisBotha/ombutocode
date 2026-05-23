@@ -179,6 +179,10 @@ const settingsStore = new Store({
       type: 'string',
       enum: ['light', 'dark'],
       default: 'light'
+    },
+    titlebar_color: {
+      type: 'string',
+      default: ''
     }
   }
 });
@@ -616,9 +620,9 @@ agentRuntime = new AgentRuntime({
     writeRunOutputFiles(logPaths, run);
     let keepRunLogs = run.state !== 'completed';
 
-    // Automatic git commit for successful implementation runs (per feature_GIT_WORKTREES.md)
-    // Eval and test runs do NOT commit - they only validate. Implementation runs commit their changes.
-    let implementationCommitted = false;
+    // Automatic git commit for successful implementation runs (per feature_GIT_WORKTREES.md).
+    // Fallback only: most agents now commit during the run, so this is usually a no-op.
+    // Eval and test runs do NOT commit — they only validate.
     if (!run.isEval && !run.isTest && run.state === 'completed' && run.exitCode === 0 && run.workingDirectory) {
       try {
         const commitResult = commitWorktreeChangesSync(run.ticketId, {
@@ -628,14 +632,16 @@ agentRuntime = new AgentRuntime({
         });
 
         if (commitResult.committed) {
-          implementationCommitted = true;
           console.log(
-            `[${logPrefix}] Auto-committed changes to ticket branch: ${commitResult.commitSha}`
+            `[${logPrefix}] Auto-committed leftover changes to ticket branch: ${commitResult.commitSha}`
           );
           logSchedulerEvent('autocommit.success', 'info', `Auto-committed changes: ${commitResult.commitSha}`, { ticketId: run.ticketId, runId: run.runId, agentName: run.agentName });
         } else {
+          // Expected for agents that committed during the run (e.g. Claude with
+          // --dangerously-skip-permissions). Do NOT treat this as "no changes" —
+          // see the longer note further down where the old guard used to live.
           console.log(
-            `[${logPrefix}] No changes to commit (${commitResult.message})`
+            `[${logPrefix}] Working tree clean — agent already committed (${commitResult.message})`
           );
         }
       } catch (commitError) {
@@ -894,17 +900,24 @@ agentRuntime = new AgentRuntime({
         }
       }
 
-      // Guard: if implementation run produced no commits, don't promote to test
+      // NOTE: a "no code changes" guard used to live here that flipped the
+      // ticket back to `todo` whenever `implementationCommitted` was false.
+      // That was a false-positive engine: agents that run with
+      // `--dangerously-skip-permissions` (Claude) and many Codex/Kimi flows
+      // commit during the run, so by the time the post-run
+      // `commitWorktreeChangesSync` helper above runs there's nothing left to
+      // commit — the helper returns `committed: false` even though real
+      // commits exist on the ticket branch. The check was removed in the
+      // sibling code path at `coreCallbacks.js:497-501` for the same reason
+      // but had been left here, out of sync. The downstream test/eval phase
+      // is the authoritative empty-implementation detector — if an agent
+      // genuinely shipped nothing, tests will fail and the ticket will go
+      // back to `todo` via that path. Do not reinstate this guard.
+
+      // The fail-count tracking block below still needs to know whether the
+      // ticket was in an implementation phase, so keep the boolean even
+      // though the guard that originally introduced it is gone.
       const isImplementationPhase = previousStatus === 'in_progress' || previousStatus === 'building';
-      if (isImplementationPhase && evalOutcome.nextStatus === 'test' && !implementationCommitted) {
-        evalOutcome = {
-          nextStatus: 'todo',
-          verdict: 'fail',
-          reasons: ['Implementation run completed but produced no code changes.']
-        };
-        appendTicketNote(ticket, 'Implementation produced no code changes.');
-        logSchedulerEvent('implementation.empty', 'warn', `Implementation run for ${ticket.id} produced no changes`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName });
-      }
 
       ticket.status = evalOutcome.nextStatus;
 
@@ -1067,7 +1080,7 @@ agentRuntime = new AgentRuntime({
       }
 
       if (verdict === 'PASS') {
-        // Update feature file status to complete
+        // Update epic file status to DONE (matches NEW → TICKETS → BUILDING → DONE lifecycle)
         try {
           const featurePath = path.join(EPICS_DIR, featureEvalInfo.fileName);
           const content = fs.readFileSync(featurePath, 'utf-8');
@@ -1078,7 +1091,7 @@ agentRuntime = new AgentRuntime({
           let updatedSet = false;
           for (let i = 0; i < fLines.length; i++) {
             if (fLines[i].startsWith('Status:')) {
-              fLines[i] = 'Status: complete';
+              fLines[i] = 'Status: DONE';
               statusSet = true;
             }
             if (fLines[i].startsWith('Last Updated:')) {
@@ -1088,7 +1101,7 @@ agentRuntime = new AgentRuntime({
           }
           if (!statusSet) {
             const titleIdx = fLines.findIndex(l => l.startsWith('# '));
-            fLines.splice(titleIdx >= 0 ? titleIdx + 1 : 0, 0, 'Status: complete');
+            fLines.splice(titleIdx >= 0 ? titleIdx + 1 : 0, 0, 'Status: DONE');
           }
           if (!updatedSet) {
             const createdIdx = fLines.findIndex(l => l.startsWith('Created:'));
@@ -2808,12 +2821,22 @@ ipcMain.handle('epics:read', async () => {
     // Handle "Status: X", "**Status:** X", "- **Status:** X" formats
     const statusLine = lines.find((line) => /status:/i.test(line)) || '';
     const statusMatch = statusLine.match(/status:\*?\*?\s*(.*)/i);
+    // Parse `Depends On: epic_NN_FOO, epic_NN_BAR` (case-insensitive). Same
+    // parsing the scheduler uses — kept inline here to avoid pulling another
+    // module into the renderer-facing IPC layer.
+    const depsLine = lines.find((line) => /^depends on:/i.test(line)) || '';
+    const depsMatch = depsLine.match(/^depends on:\s*(.+)$/i);
+    const depends_on = depsMatch
+      ? depsMatch[1].split(',').map(s => s.trim()).filter(Boolean)
+          .map(s => s.replace(/^docs[\\/]Epics[\\/]/i, '').replace(/\.md$/i, ''))
+      : [];
 
     return {
       id: fileName.replace(/\.md$/i, ''),
       fileName,
       title: titleLine.replace(/^#\s*/, '').trim() || fileName,
       status: statusMatch ? statusMatch[1].replace(/\*\*/g, '').trim() : '',
+      depends_on,
       content
     };
   });
@@ -2897,17 +2920,20 @@ ipcMain.handle('epics:start', async (_, { fileName }) => {
     const lines = content.split(/\r?\n/);
     const statusLine = lines.find(l => l.startsWith('Status:'));
     const currentStatus = statusLine ? statusLine.replace(/^Status:\s*/, '').trim() : '';
-    if (!currentStatus || currentStatus === 'draft' || currentStatus === 'planned') {
+    // Promote to BUILDING from any pre-build state (NEW, TICKETS, draft, planned, empty).
+    // Already-BUILDING or DONE epics keep their status.
+    const upper = currentStatus.toUpperCase();
+    if (upper !== 'BUILDING' && upper !== 'DONE') {
       const today = new Date().toISOString().split('T')[0];
       let statusSet = false;
       let updatedSet = false;
       for (let i = 0; i < lines.length; i++) {
-        if (lines[i].startsWith('Status:')) { lines[i] = 'Status: in_progress'; statusSet = true; }
+        if (lines[i].startsWith('Status:')) { lines[i] = 'Status: BUILDING'; statusSet = true; }
         if (lines[i].startsWith('Last Updated:')) { lines[i] = `Last Updated: ${today}`; updatedSet = true; }
       }
       if (!statusSet) {
         const titleIdx = lines.findIndex(l => l.startsWith('# '));
-        lines.splice(titleIdx >= 0 ? titleIdx + 1 : 0, 0, 'Status: in_progress');
+        lines.splice(titleIdx >= 0 ? titleIdx + 1 : 0, 0, 'Status: BUILDING');
       }
       if (!updatedSet) {
         const createdIdx = lines.findIndex(l => l.startsWith('Created:'));
@@ -3171,7 +3197,8 @@ ipcMain.handle('settings:read', async () => {
       app_refresh_interval: settingsStore.get('app_refresh_interval', 30),
       enable_review_notification_sound: settingsStore.get('enable_review_notification_sound', true),
       max_eval_retries: settingsStore.get('max_eval_retries', 2),
-      theme: settingsStore.get('theme', 'light')
+      theme: settingsStore.get('theme', 'light'),
+      titlebar_color: settingsStore.get('titlebar_color', '')
     };
     return { success: true, data: settings };
   } catch (error) {
@@ -3299,6 +3326,16 @@ ipcMain.handle('settings:write', async (_, payload) => {
       }
     }
 
+    // Validate titlebar_color: empty string (= use default) or a 6-digit hex color.
+    if ('titlebar_color' in payload) {
+      const value = payload.titlebar_color;
+      if (typeof value !== 'string' || (value !== '' && !/^#[0-9a-fA-F]{6}$/.test(value))) {
+        errors.push('titlebar_color must be an empty string or a 6-digit hex color (e.g. #d32f2f)');
+      } else {
+        updates.titlebar_color = value;
+      }
+    }
+
     if (errors.length > 0) {
       return {
         success: false,
@@ -3330,7 +3367,8 @@ ipcMain.handle('settings:write', async (_, payload) => {
       app_refresh_interval: settingsStore.get('app_refresh_interval'),
       enable_review_notification_sound: settingsStore.get('enable_review_notification_sound'),
       max_eval_retries: settingsStore.get('max_eval_retries'),
-      theme: settingsStore.get('theme', 'light')
+      theme: settingsStore.get('theme', 'light'),
+      titlebar_color: settingsStore.get('titlebar_color', '')
     };
 
     return { success: true, data: updatedSettings };
@@ -3669,6 +3707,72 @@ ipcMain.handle('agent:spawnInteractive', async (event, shellId, command, args) =
   });
 
   return { success: true };
+});
+
+// ── Ticket Doctor ──
+// Spawn an interactive agent inside the ticket's existing git worktree (so the
+// doctor agent works on the same branch the failing runs committed to). Falls
+// back to PROJECT_ROOT if the worktree doesn't exist — the agent can decide
+// whether to create one or work in-place.
+ipcMain.handle('doctor:spawn', async (event, shellId, ticketId, command, args) => {
+  if (!shellId || !ticketId || !command) {
+    return { success: false, error: 'shellId, ticketId, and command are required' };
+  }
+
+  // Resolve the ticket's worktree path using the same convention worktreeManager
+  // uses: `<parentDir>/<projectName>-worktrees/<ticketId>`.
+  const worktreesRoot = path.join(
+    path.dirname(PROJECT_ROOT),
+    `${path.basename(PROJECT_ROOT)}-worktrees`
+  );
+  const worktreePath = path.join(worktreesRoot, ticketId);
+  let cwd = PROJECT_ROOT;
+  let usedWorktree = false;
+  try {
+    if (fs.existsSync(worktreePath) && fs.statSync(worktreePath).isDirectory()) {
+      cwd = worktreePath;
+      usedWorktree = true;
+    }
+  } catch (_) { /* fall through to PROJECT_ROOT */ }
+
+  const pty = require('node-pty');
+  const isWin = process.platform === 'win32';
+  let resolvedCmd = command;
+  if (isWin) {
+    const { execSync } = require('child_process');
+    try {
+      const lines = execSync(`where ${command}`, { encoding: 'utf8' }).split('\n').map(l => l.trim()).filter(Boolean);
+      resolvedCmd = lines.find(l => l.endsWith('.cmd')) || lines.find(l => l.endsWith('.exe')) || lines[0] || command + '.cmd';
+    } catch (_) {
+      resolvedCmd = command + '.cmd';
+    }
+  }
+
+  const proc = pty.spawn(resolvedCmd, args || [], {
+    name: 'xterm-256color',
+    cols: 120,
+    rows: 30,
+    cwd,
+    env: process.env,
+  });
+
+  activeShells.set(shellId, proc);
+  const win = BrowserWindow.fromWebContents(event.sender);
+
+  proc.onData((data) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('workspace:shellData', { shellId, data });
+    }
+  });
+
+  proc.onExit(({ exitCode }) => {
+    activeShells.delete(shellId);
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('workspace:shellExit', { shellId, code: exitCode });
+    }
+  });
+
+  return { success: true, cwd, usedWorktree };
 });
 
 // ── Plan: File tree operations ──

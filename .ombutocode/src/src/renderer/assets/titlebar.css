@@ -4,7 +4,9 @@
   align-items: center;
   justify-content: space-between;
   height: 32px;
-  background-color: #2c6aad;
+  /* --titlebar-bg is set on :root by App.vue from settings.titlebar_color.
+     Falls back to the per-theme default when the user hasn't picked a color. */
+  background-color: var(--titlebar-bg, #2c6aad);
   color: #fff;
   -webkit-app-region: drag;
   user-select: none;
@@ -92,9 +94,9 @@
   background-color: #e81123;
 }
 
-/* Dark theme overrides */
+/* Dark theme override — same fallback chain: explicit color wins, otherwise per-theme default. */
 [data-theme="dark"] .window-controls {
-  background-color: #1a2a3a;
+  background-color: var(--titlebar-bg, #1a2a3a);
 }
 
 /* Platform-specific visibility */

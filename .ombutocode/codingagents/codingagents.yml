@@ -9,9 +9,9 @@ tools:
     enabled: true
     budget_limit: 0
     models:
-      - id: opus-4.6
-        name: Opus 4.6
-        model_id: claude-opus-4-6
+      - id: opus-4.7
+        name: Opus 4.7
+        model_id: claude-opus-4-7
         rate_per_hour: 0
         cost_per_run: 0
         enabled: true

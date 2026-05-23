@@ -32,12 +32,8 @@
       <HelpView v-else-if="activeView === 'help'" />
 
       <PlanDashboardView v-else-if="activeView === 'plan-dashboard'" />
-      <PlanPrdView v-else-if="activeView === 'plan-prd'" @change-view="handleChangeView" />
       <PlanArchitectureView v-else-if="activeView === 'plan-architecture'" @change-view="handleChangeView" />
       <PlanStyleGuideView v-else-if="activeView === 'plan-style-guide'" @change-view="handleChangeView" />
-      <PlanDataModelView v-else-if="activeView === 'plan-data-model'" @change-view="handleChangeView" />
-      <PlanEpicsView v-else-if="activeView === 'plan-epics'" @change-view="handleChangeView" />
-      <PlanTicketGenView v-else-if="activeView === 'plan-ticket-gen'" @change-view="handleChangeView" />
       <PlanArtifactsView v-else-if="activeView === 'plan-artifacts'" />
       <PlanTreeView v-else-if="activeView === 'plan-tree'" />
       <PlanMockupsView v-else-if="activeView === 'plan-mockups'" />
@@ -59,6 +55,15 @@
       <PlanArtifactDetailView v-else-if="activeView === 'plan-artifact-detail'" :file-path="planFilePath" :key="'ad-' + planFilePath" />
       <PlanSkillsView v-else-if="activeView === 'plan-skills'" />
       <WorkspaceView v-show="activeView === 'workspace'" :visible="activeView === 'workspace'" />
+
+      <!-- These views host long-lived agent terminal (PTY) sessions. They use
+           v-show (not v-if) so the terminal, fitAddon, and shell process all
+           survive navigation between Plan views — same pattern as WorkspaceView. -->
+      <PlanPrdView v-show="activeView === 'plan-prd'" :visible="activeView === 'plan-prd'" @change-view="handleChangeView" />
+      <PlanDataModelView v-show="activeView === 'plan-data-model'" :visible="activeView === 'plan-data-model'" @change-view="handleChangeView" />
+      <PlanEpicsView v-show="activeView === 'plan-epics'" :visible="activeView === 'plan-epics'" @change-view="handleChangeView" />
+      <PlanTicketGenView v-show="activeView === 'plan-ticket-gen'" :visible="activeView === 'plan-ticket-gen'" @change-view="handleChangeView" />
+      <PlanInitiateStackView v-show="activeView === 'plan-initiate-stack'" :visible="activeView === 'plan-initiate-stack'" @change-view="handleChangeView" />
 
     </div>
 
@@ -163,6 +168,7 @@ import PlanStyleGuideView from '@/components/PlanStyleGuideView.vue';
 import PlanDataModelView from '@/components/PlanDataModelView.vue';
 import PlanEpicsView from '@/components/PlanEpicsView.vue';
 import PlanTicketGenView from '@/components/PlanTicketGenView.vue';
+import PlanInitiateStackView from '@/components/PlanInitiateStackView.vue';
 import PlanArtifactsView from '@/views/ArtifactListView.vue';
 import PlanTreeView from '@/views/TreeView.vue';
 import PlanMockupsView from '@/views/MockupsView.vue';
@@ -208,6 +214,7 @@ export default {
     PlanDataModelView,
     PlanEpicsView,
     PlanTicketGenView,
+    PlanInitiateStackView,
     PlanArtifactsView,
     PlanTreeView,
     PlanMockupsView,
@@ -357,6 +364,16 @@ export default {
     const theme = computed(() => settingsStore.settings.theme || 'light');
     watch(theme, (newTheme) => {
       document.documentElement.setAttribute('data-theme', newTheme);
+    }, { immediate: true });
+
+    // Apply titlebar color (set as CSS variable so titlebar.css can fall back to per-theme defaults).
+    const titlebarColor = computed(() => settingsStore.settings.titlebar_color || '');
+    watch(titlebarColor, (color) => {
+      if (color) {
+        document.documentElement.style.setProperty('--titlebar-bg', color);
+      } else {
+        document.documentElement.style.removeProperty('--titlebar-bg');
+      }
     }, { immediate: true });
 
     onMounted(() => {

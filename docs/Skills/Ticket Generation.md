@@ -16,8 +16,9 @@ The output is a set of tickets added to the project backlog, each linked back to
 - **Read the engineering guide** (`.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md`) to understand ticket conventions
 - **One ticket = one deliverable** — each ticket should produce a testable, reviewable change
 - **Order matters** — infrastructure and setup tickets come before feature tickets
-- **Do not create separate test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket
+- **Do not create per-criterion unit-test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket. (The mandatory closeout regression-test ticket described below is a separate, project-level concern — that one IS required.)
 - **Size tickets appropriately** — aim for 3-8 tickets per epic, each completable in one agent session
+- **Always append the three mandatory closeout tickets** described in the section below — every epic ends with epic-eval, regression-tests, and help-docs. Non-negotiable.
 - **Always confirm** with the user before writing to the backlog
 
 ## Ticket Structure
@@ -92,6 +93,59 @@ This ensures the agent implements the UI to match the approved mockup designs.
 - User-facing help content
 - Architecture decision records
 
+## Mandatory Closeout Tickets (always end every epic with these three)
+
+Every epic breakdown MUST end with three additional tickets, in this exact order, **after** all feature/setup/UI tickets you have proposed. They are the safety net that turns "feature code shipped" into "feature genuinely complete and discoverable". Skip them and the breakdown is rejected.
+
+Give each closeout ticket the same `<EPIC_PREFIX>-NNN` numbering as the rest of the epic (i.e. continue the sequence — don't use a separate suffix). Each one's `dependencies` MUST include every preceding feature ticket in the epic, plus the previous closeout ticket where applicable. They run last because they verify, lock in, and document the work the earlier tickets did.
+
+### Closeout #1 — Epic-level evaluation (`<PREFIX>-NN`)
+
+```
+title: "Evaluate epic and address unmet acceptance criteria"
+dependencies: [all preceding feature tickets in this epic]
+acceptance_criteria:
+  - [ ] Re-read every acceptance criterion across all preceding tickets in this epic and verify each is met by the actual implementation (not just by the per-ticket test phase)
+  - [ ] Re-read the epic spec's §9 Acceptance Criteria and verify the epic-level requirements are met holistically
+  - [ ] For each unmet criterion, either implement the fix directly (if small) or surface it as a new ticket with rationale
+  - [ ] Report which criteria were verified, which were fixed, and which (if any) remain open
+notes: "This is the LAST chance to catch gaps before regression tests and docs lock the epic in. Be strict — passing per-ticket tests does NOT prove the epic-level criteria are met."
+```
+
+### Closeout #2 — Regression tests (`<PREFIX>-NN`)
+
+```
+title: "Add regression tests covering this epic's behaviour to the project test suite"
+dependencies: [the closeout-eval ticket above]
+acceptance_criteria:
+  - [ ] Identify the key user-facing behaviours and integration points introduced by this epic
+  - [ ] Add automated tests for those behaviours in the project's existing test suite (matching the language, framework, and conventions of the codebase — do NOT introduce a new test framework)
+  - [ ] Tests must run as part of the standard test command for the affected layer (e.g. `node --test test/*.test.js` for .ombutocode/src)
+  - [ ] Tests must pass against the current main branch (they're regression tests — not currently failing — they're guards against future regressions)
+  - [ ] Use realistic fixtures; avoid mocks for things that have real implementations available
+notes: "These are PROJECT-LEVEL regression tests, distinct from the per-ticket automated test phase. The goal is that if a future ticket accidentally breaks this epic's behaviour, the project test suite catches it."
+```
+
+### Closeout #3 — Help docs update (`<PREFIX>-NN`)
+
+```
+title: "Update help.html with the features delivered by this epic"
+dependencies: [the regression-tests ticket above]
+acceptance_criteria:
+  - [ ] Locate the project's help.html (search the codebase if the path isn't obvious — common locations include `public/help.html`, `docs/help.html`, or the renderer's static assets)
+  - [ ] Add or update sections describing each user-facing feature this epic delivers
+  - [ ] Match the existing voice, structure, and formatting of the file
+  - [ ] Include any new UI controls, settings, keyboard shortcuts, or workflows introduced by the epic
+  - [ ] If help.html does not yet exist, create one at the conventional location for the project and seed it with a sensible structure that this epic's content fits into
+notes: "Users discover features through help docs. An epic that doesn't update them is half-shipped. Keep entries scoped to user-visible behaviour — internal architecture changes do not belong here."
+```
+
+### Why these three (in this order)
+
+- **Eval first** so the breakdown gets a final correctness check before tests lock current behaviour in. If eval finds a gap, the regression tests should cover the *fixed* behaviour, not the broken one.
+- **Regression tests second** so the documented behaviour is the verified behaviour. Writing docs against tested code prevents "the docs say X but the code does Y" drift on day one.
+- **Help docs last** because at this point the feature is correct (eval passed) and locked in (tests passed) — only then is it safe to tell users about it.
+
 ## Acceptance Criteria Guidelines
 
 Good acceptance criteria are:
@@ -158,12 +212,13 @@ Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticke
 2. **Check existing tickets** — run `node .ombutocode/tools/db-query.js tickets` to see current backlog and avoid ID collisions
 3. **Identify** the logical work units
 4. **Order** them by dependency (setup → core → integration → UI)
-5. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
-6. **Propose** a summary table with: ID, Title, Type, Dependencies — and confirm the chosen epic-derived prefix
-7. **Wait** for user confirmation
-8. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.js` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
-9. **Verify** — run `node .ombutocode/tools/db-query.js tickets --status backlog` to confirm the tickets were inserted correctly
-10. **Update** the epic status from `NEW` to `TICKETS`
+5. **Append** the three mandatory closeout tickets (epic-eval → regression-tests → help-docs) at the END of the list, after all feature work. See the "Mandatory Closeout Tickets" section above. Skipping them is a workflow error.
+6. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
+7. **Propose** a summary table with: ID, Title, Type, Dependencies — and confirm the chosen epic-derived prefix. The closeout tickets MUST appear in this table as the last three rows.
+8. **Wait** for user confirmation
+9. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.js` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
+10. **Verify** — run `node .ombutocode/tools/db-query.js tickets --status backlog` to confirm the tickets were inserted correctly
+11. **Update** the epic status from `NEW` to `TICKETS`
 
 ## Writing Tickets to the Database
 
@@ -238,6 +293,11 @@ Confirm the schema round-trips through `backlogDb.deserializeTicket` (in `.ombut
 | 3 | AUTH-003 | Create login and register API endpoints | Core | AUTH-002 |
 | 4 | AUTH-004 | Add authentication middleware for protected routes | Core | AUTH-002 |
 | 5 | AUTH-005 | Create login and registration UI components | UI | AUTH-003 |
+| 6 | AUTH-006 | Evaluate epic and address unmet acceptance criteria | Closeout — Eval | AUTH-001, AUTH-002, AUTH-003, AUTH-004, AUTH-005 |
+| 7 | AUTH-007 | Add regression tests covering this epic's behaviour to the project test suite | Closeout — Regression | AUTH-006 |
+| 8 | AUTH-008 | Update help.html with the features delivered by this epic | Closeout — Docs | AUTH-007 |
+
+Note: the final three rows are the **mandatory closeout tickets** — they appear at the end of every epic breakdown, regardless of the epic's subject. See the "Mandatory Closeout Tickets" section for full acceptance criteria.
 
 ### Example Ticket Object
 

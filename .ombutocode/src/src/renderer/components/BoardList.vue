@@ -571,6 +571,7 @@ export default {
       { view: 'plan-dashboard', label: 'Dashboard', icon: 'mdi-view-dashboard' },
       { view: 'plan-prd', label: 'PRD', icon: 'mdi-file-document-outline' },
       { view: 'plan-architecture', label: 'Architecture', icon: 'mdi-layers-outline' },
+      { view: 'plan-initiate-stack', label: 'Initiate Stack', icon: 'mdi-cog-play-outline' },
       { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
       { view: 'plan-use-cases', label: 'Use Cases', icon: 'mdi-text-box-multiple-outline' },
       { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },
@@ -586,6 +587,7 @@ export default {
         items: [
           { view: 'plan-prd', label: 'PRD' },
           { view: 'plan-architecture', label: 'Architecture' },
+          { view: 'plan-initiate-stack', label: 'Initiate Stack' },
           { view: 'plan-epics', label: 'Epic Creation' },
           { view: 'plan-ticket-gen', label: 'Ticket Generation' },
         ]

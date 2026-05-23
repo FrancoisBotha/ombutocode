@@ -1,22 +1,30 @@
 #!/usr/bin/env bash
 # Initialise Ombuto Code — reset project data and create starter content.
-# Clears databases, logs, features, requests, run output, and backlog.
-# Then populates docs/ with sample starter data (skips existing files).
+# Clears databases, logs, features, requests, run output, backlog AND docs/
+# by default. Then populates docs/ with sample starter data.
 #
-# Usage: ./initombuto [--clear] [/path/to/project]
-#   --clear   Delete all docs/ content before creating starter data
+# Usage: ./initombuto [--keep-docs] [/path/to/project]
+#   --keep-docs   Preserve existing docs/ content (only reset DB / runtime
+#                 state). Use this when you've already authored real
+#                 requirements and just want to clear scheduler state.
+#   --clear       Alias for the default behaviour (kept for backwards
+#                 compatibility with older invocations). Has no effect
+#                 since the wipe is now the default.
 #   If no path given, uses the parent of this script's directory.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CLEAR_DOCS=false
+# Default: wipe docs/ so the project is genuinely "ready for a new project".
+# Authoring real specs over time? Pass --keep-docs to preserve them.
+CLEAR_DOCS=true
 
 # Parse arguments
 POSITIONAL=()
 for arg in "$@"; do
   case "$arg" in
     --clear) CLEAR_DOCS=true ;;
+    --keep-docs) CLEAR_DOCS=false ;;
     *) POSITIONAL+=("$arg") ;;
   esac
 done
@@ -37,7 +45,10 @@ fi
 
 echo "Initialising Ombuto Code in: $PROJECT_ROOT"
 if [ "$CLEAR_DOCS" = true ]; then
-  echo "  (--clear: docs/ content will be deleted and recreated)"
+  echo "  docs/ content will be DELETED and recreated from starter templates."
+  echo "  (Pass --keep-docs to preserve existing docs/ instead.)"
+else
+  echo "  --keep-docs: existing docs/ will be left untouched."
 fi
 echo ""
 
@@ -47,15 +58,32 @@ echo ""
 
 echo "── Resetting data ──"
 
-# 1. Delete database files
-for db in "$OMBUTOCODE_DIR"/data/*.db "$OMBUTOCODE_DIR"/planning/archive.db; do
+# 1. Delete database files and their auto-generated backup variants.
+#    Patterns covered: *.db (canonical DBs), *.db.backup (rotation backups
+#    from the app), *.db.before-* (pre-write snapshots from ticket-write
+#    and similar tools), *.before-* (legacy plain-name snapshots like
+#    `ombutocode.db.before-review-update`). Without this, repeated init
+#    runs accumulate megabytes of stale snapshot files.
+for db in "$OMBUTOCODE_DIR"/data/*.db \
+          "$OMBUTOCODE_DIR"/data/*.db.* \
+          "$OMBUTOCODE_DIR"/data/*.before-* \
+          "$OMBUTOCODE_DIR"/planning/archive.db \
+          "$OMBUTOCODE_DIR"/planning/*.db.*; do
   if [ -f "$db" ]; then
     echo "  Removing $(basename "$db")"
     rm "$db"
   fi
 done
 
-# 2. Delete migration artifacts
+# 2. Delete per-ticket JSON files written by ticketFileManager. These mirror
+#    the backlog DB and would survive a fresh init otherwise, making the new
+#    project look like it inherited the donor project's tickets.
+if [ -d "$OMBUTOCODE_DIR/data/tickets" ]; then
+  echo "  Clearing data/tickets/"
+  rm -f "$OMBUTOCODE_DIR"/data/tickets/*.json
+fi
+
+# 3. Delete migration artifacts
 for migrated in "$OMBUTOCODE_DIR"/planning/*.migrated; do
   if [ -f "$migrated" ]; then
     echo "  Removing $(basename "$migrated")"
@@ -63,28 +91,43 @@ for migrated in "$OMBUTOCODE_DIR"/planning/*.migrated; do
   fi
 done
 
-# 3. Clear logs
+# 4. Clear logs
 if [ -d "$OMBUTOCODE_DIR/logs" ]; then
   echo "  Clearing logs/"
   rm -f "$OMBUTOCODE_DIR"/logs/*
 fi
 
-# 4. Clear run output
+# 5. Clear run output
 if [ -d "$OMBUTOCODE_DIR/run-output" ]; then
   echo "  Clearing run-output/"
   rm -f "$OMBUTOCODE_DIR"/run-output/*
 fi
 
-# 5. Delete feature specs
+# 6. Delete feature specs
 if [ -d "$OMBUTOCODE_DIR/features" ]; then
   echo "  Clearing features/"
   rm -f "$OMBUTOCODE_DIR"/features/*.md
 fi
 
-# 6. Delete agent state
+# 7. Delete agent state
 if [ -f "$OMBUTOCODE_DIR/codingagent-state.json" ]; then
   echo "  Removing codingagent-state.json"
   rm "$OMBUTOCODE_DIR/codingagent-state.json"
+fi
+
+# 8. Remove the per-project single-instance lockfile, if a previous run
+#    of the app left one behind after a hard kill.
+if [ -f "$OMBUTOCODE_DIR/.instance.lock" ]; then
+  echo "  Removing .instance.lock"
+  rm "$OMBUTOCODE_DIR/.instance.lock"
+fi
+
+# 9. Remove sibling worktrees directory (created by the build pipeline).
+#    Path mirrors the convention in worktreeManager: <parent>/<name>-worktrees.
+WORKTREES_DIR="$(dirname "$PROJECT_ROOT")/$(basename "$PROJECT_ROOT")-worktrees"
+if [ -d "$WORKTREES_DIR" ]; then
+  echo "  Removing $(basename "$WORKTREES_DIR")/"
+  rm -rf "$WORKTREES_DIR"
 fi
 
 # 7. Reset backlog to empty

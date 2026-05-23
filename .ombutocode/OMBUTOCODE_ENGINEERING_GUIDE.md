@@ -106,7 +106,16 @@ Rule:
 
 ## 2. Mandatory Workflow
 
-Agents operate in TWO distinct modes:
+The project lifecycle has three planning-side phases — **Define**, **Bootstrap**, **Decompose** — followed by execution. Agents operate in TWO distinct modes within those phases.
+
+### Project lifecycle
+
+1. **Define** — author the PRD (`docs/Product Requirements Document/PRD.md`) and the Architecture (`docs/Architecture/Architecture.md`). Done once, then iterated as the product evolves.
+2. **Bootstrap (Initiate Stack)** — run the **Plan → Initiate Stack** workflow. Reads the PRD + Architecture, scaffolds the source tree, installs dependencies, extends `.gitignore` with stack-appropriate patterns, and writes/updates `docs/Test Strategy/test-strategy.md` — the authoritative playbook the test phase reads on every ticket. Safe to re-run later in **refresh mode** when the architecture evolves; refresh mode only proposes deltas and never overwrites existing source.
+3. **Decompose** — Epic Generation breaks the PRD into epic spec files in `docs/Epics/`. Ticket Generation breaks each epic into atomic tickets in the backlog database.
+4. **Execute** — the scheduler dispatches tickets through `todo → building → eval → review → done`.
+
+If you find yourself generating epics or tickets against a repository that has no source tree, no manifest files, and no `docs/Test Strategy/test-strategy.md`, **stop and run Initiate Stack first** — the work you generate downstream will land in a broken environment otherwise.
 
 ### Planning Mode
 Triggered when the backlog has no tickets or epic specs change.

@@ -5,6 +5,14 @@
       <span class="task-count">{{ tasks.length }}</span>
     </div>
 
+    <!-- Ticket Doctor dialog: opened from the stethoscope button on stuck todo tickets -->
+    <TicketDoctorDialog
+      v-if="doctorTicket"
+      :ticket="doctorTicket"
+      @close="closeDoctor"
+      @moved-to-review="closeDoctor"
+    />
+
     <!-- Ticket Detail Modal -->
     <div v-if="selectedTask" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
@@ -337,6 +345,14 @@
             Remove
           </button>
           <button
+            v-if="columnId === 'todo' && needsDoctor(task)"
+            class="doctor-btn"
+            @click.stop="openDoctor(task)"
+            title="Ticket Doctor — diagnose and fix with an AI agent"
+          >
+            <span class="mdi mdi-stethoscope"></span>
+          </button>
+          <button
             v-if="columnId === 'in_progress' && isProcessStale(task)"
             class="stale-badge"
             disabled
@@ -466,9 +482,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useBacklogStore } from '@/stores/backlogStore';
 import { useAgentToolsStore } from '@/stores/agentToolsStore';
+import { useSettingsStore } from '@/stores/settingsStore';
+import TicketDoctorDialog from './TicketDoctorDialog.vue';
 
 export default {
   name: 'KanbanColumn',
+  components: { TicketDoctorDialog },
   props: {
     title: {
       type: String,
@@ -486,6 +505,18 @@ export default {
   setup(props) {
     const backlogStore = useBacklogStore();
     const agentToolsStore = useAgentToolsStore();
+    const settingsStore = useSettingsStore();
+    // Ticket Doctor state: stuck tickets (fail_count >= max_eval_retries while in todo)
+    // get a stethoscope button that opens a dialog hosting an interactive agent.
+    const doctorTicket = ref(null);
+    function needsDoctor(task) {
+      if (task?.status !== 'todo') return false;
+      const failCount = Number(task?.fail_count) || 0;
+      const threshold = Number(settingsStore.maxEvalRetries) || 2;
+      return failCount >= threshold;
+    }
+    function openDoctor(task) { doctorTicket.value = task; }
+    function closeDoctor() { doctorTicket.value = null; }
     const pickingUpId = ref(null);
     const approvingId = ref(null);
     const rejectingId = ref(null);
@@ -1312,6 +1343,7 @@ export default {
       isCriterionChecked,
       toggleCriterion,
       moveHumanToReview,
+      doctorTicket, needsDoctor, openDoctor, closeDoctor,
       startAssignedTicket,
       removeTodoToBacklog,
       skipEvalToReview,
@@ -1553,6 +1585,26 @@ export default {
   color: #a5adba;
   cursor: not-allowed;
 }
+
+/* Ticket Doctor stethoscope button — appears on stuck todo tickets */
+.doctor-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+  background-color: rgba(229, 168, 48, 0.18);
+  color: #b87f0e;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.doctor-btn .mdi { font-size: 0.95rem; }
+.doctor-btn:hover { background-color: rgba(229, 168, 48, 0.32); transform: scale(1.05); }
+[data-theme="dark"] .doctor-btn {
+  background-color: rgba(229, 168, 48, 0.18);
+  color: #e5a830;
+}
+[data-theme="dark"] .doctor-btn:hover { background-color: rgba(229, 168, 48, 0.32); }
 
 .approve-btn {
   display: flex;

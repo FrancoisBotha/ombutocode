@@ -48,7 +48,7 @@
         <button class="save-btn" type="button" @click="onSave" :disabled="saving || !dirty">
           {{ saving ? 'Saving...' : 'Save' }}
         </button>
-        <button class="cancel-btn" type="button" @click="onCancel">Cancel</button>
+        <button class="cancel-btn" type="button" @click="onCancel">Back</button>
       </div>
     </header>
 

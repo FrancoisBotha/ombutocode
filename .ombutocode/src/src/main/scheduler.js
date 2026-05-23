@@ -10,6 +10,7 @@ const {
   rebaseTicketBranchSync: rebaseTicketBranch,
   updateTicketBranchSync: updateTicketBranch
 } = require('./worktreeManager');
+const { readEpics, createEpicReadinessGate } = require('./epicReader');
 
 const DEFAULT_QUEUE_ESTIMATE_INTERVAL_MS = 30000; // 30 seconds
 const LIMIT_SIGNAL_PATTERN = /\b(rate[_\s-]?limit(?:ed)?\b|session[_\s-]?limit\b|too many requests|quota exceeded|(?:status|code|error|http)[:\s]*429|429[:\s]*(?:too many|rate|limit)|out of (?:.*\s)?messages|hit (?:.*\s)?limit|usage (?:limit|cap)|message limit|messages remaining:\s*0)\b/i;
@@ -472,6 +473,10 @@ function createScheduler(deps) {
     readRefreshInterval = null,
     agentRuntime,
     projectRoot,
+    // Where epic markdown files live (so we can parse epic-to-epic deps).
+    // Defaults to `<projectRoot>/docs/Epics`; pass explicitly to override
+    // (e.g. tests). Pass `null` to disable epic-level gating entirely.
+    epicsDir = projectRoot ? path.join(projectRoot, 'docs', 'Epics') : null,
     createTicketWorktree = createWorktree,
     createEvalTrialMerge = prepareEvalTrialMerge,
     cleanupEvalTrial = cleanupEvalTrialMerge,
@@ -493,6 +498,25 @@ function createScheduler(deps) {
 
   // Rolling window tracker for usage counting and auto-pause/resume
   const windowTracker = createWindowTracker({ projectRoot });
+
+  /**
+   * Read the epic markdown files and build a readiness gate. Returns an object
+   * with `isTicketAllowed(ticket)` that the per-tick transition / dispatch
+   * loops can use alongside the existing `hasResolvedDependencies` check.
+   * Reads from disk each call (cheap — a small directory of small files) so
+   * the scheduler picks up `Status:` / `Depends On:` edits without a restart.
+   * Falls back to an always-allow gate if epicsDir is unset or unreadable.
+   */
+  function buildEpicGate() {
+    if (!epicsDir) return { isTicketAllowed: () => true };
+    try {
+      const epics = readEpics(epicsDir);
+      return createEpicReadinessGate(epics, { satisfiedStatuses: ['DONE'] });
+    } catch (e) {
+      console.warn('[Scheduler] Failed to build epic readiness gate:', e.message);
+      return { isTicketAllowed: () => true };
+    }
+  }
 
   function isRunning() {
     return running;
@@ -613,6 +637,7 @@ function createScheduler(deps) {
     const enabledCombos = getEnabledCombos();
     // Seed with existing building tickets so they count against capacity
     const buildingCountByTool = countBuildingTicketsByTool(tickets, enabledCombos);
+    const epicGate = buildEpicGate();
     const timestamp = new Date().toISOString();
     let changed = false;
 
@@ -621,6 +646,7 @@ function createScheduler(deps) {
       if (ticket.agent?.state === 'merge_failed' || ticket.agent?.state === 'merge_aborted') continue; // These go to merging, not building
       if (!hasExplicitAssignee(ticket)) continue;
       if (!hasResolvedDependencies(ticket, ticketStatusById)) continue;
+      if (!epicGate.isTicketAllowed(ticket)) continue; // parent epic still blocked by an unfinished prerequisite epic
       if (!hasAssigneeCapacity(ticket, enabledCombos, ticketStatusById, buildingCountByTool)) continue;
 
       ticket.status = 'building';
@@ -1102,6 +1128,7 @@ function createScheduler(deps) {
       const ticketStatusByIdForTransition = createTicketStatusIndex(backlog);
       // Seed with existing building tickets so they count against capacity
       const buildingCountByTool = countBuildingTicketsByTool(allTicketsForTransition, enabledCombos);
+      const epicGate = buildEpicGate();
       let transitionChanged = false;
       const transitionTimestamp = new Date().toISOString();
 
@@ -1118,6 +1145,7 @@ function createScheduler(deps) {
           continue;
         }
         if (!hasResolvedDependencies(ticket, ticketStatusByIdForTransition)) continue;
+        if (!epicGate.isTicketAllowed(ticket)) continue; // parent epic still blocked
         if (!hasAssigneeCapacity(ticket, enabledCombos, ticketStatusByIdForTransition, buildingCountByTool)) continue;
 
         ticket.status = 'building';
@@ -1723,6 +1751,7 @@ function createScheduler(deps) {
         .filter(Boolean)
     );
     const ticketStatusById = createTicketStatusIndex(backlog);
+    const epicGate = buildEpicGate();
 
     const queueBaseMs = Date.now();
     const nextTickets = queuedTickets
@@ -1734,6 +1763,11 @@ function createScheduler(deps) {
           : ticket.assignee
       }))
       .filter((ticket) => hasResolvedDependencies(ticket, ticketStatusById))
+      // Don't count tickets whose parent epic is still blocked by an unfinished
+      // prerequisite epic — they will be skipped at dispatch, so the queue ETA
+      // shouldn't promise them either. `eval`-status tickets are exempt: their
+      // parent epic was already cleared when they entered the build pipeline.
+      .filter((ticket) => ticket.status === 'eval' || epicGate.isTicketAllowed(ticket))
       .filter((ticket) => hasExplicitAssignee({ assignee: ticket.queueAssignee }))
       .map((ticket, index) => ({
         id: ticket.id,

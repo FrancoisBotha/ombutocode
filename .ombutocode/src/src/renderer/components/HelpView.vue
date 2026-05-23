@@ -167,6 +167,14 @@
             <em>See "Define your Architecture" below.</em>
           </li>
           <li>
+            <strong>Initiate the stack</strong> — Go to <strong>Plan > Initiate Stack</strong> and
+            click <strong>Initialise Stack</strong>. The AI reads your PRD + Architecture, scaffolds
+            the source/test directory layout, installs dependencies, writes a stack-appropriate
+            <code>.gitignore</code>, and authors <code>docs/Test Strategy/test-strategy.md</code> —
+            the playbook every future test-phase agent will read.
+            <em>See "Initiate the Stack" below.</em>
+          </li>
+          <li>
             <strong>Create epics</strong> — Go to <strong>Plan > Epic Creation</strong> and click
             <strong>Create Initial Epics</strong>. The AI breaks your PRD into deliverable milestones.
             <em>See "Create Epics" below.</em>
@@ -305,6 +313,147 @@
             <strong>Tip:</strong> Create your PRD first, then Architecture. Each subsequent
             document builds on the previous ones. The AI reads related documents automatically,
             so your architecture will be grounded in your product requirements.
+          </p>
+        </div>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-cog-play-outline"></span> Initiate the Stack</h2>
+        <p>
+          With your PRD and Architecture in place, the next step is to turn those documents
+          into a working project skeleton — folders, dependencies, a stack-appropriate
+          <code>.gitignore</code>, and a test playbook the rest of the pipeline can rely on.
+          The <strong>Initiate Stack</strong> view does this in a single AI session.
+        </p>
+
+        <h3>Why it matters</h3>
+        <p>
+          Every subsequent run — Ticket Generation, implementation, test, eval — operates
+          against the project skeleton. If the skeleton doesn't exist, agents either fail
+          early or improvise inconsistently. Initiate Stack guarantees a known starting
+          state, and writes <code>docs/Test Strategy/test-strategy.md</code> so the test
+          phase always knows the exact commands to run for your stack.
+        </p>
+
+        <h3>Running Initiate Stack</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Go to Plan > Initiate Stack</strong> — sits just below Architecture
+            in the Plan sidebar.
+          </li>
+          <li>
+            <strong>Confirm the context documents</strong> — the PRD and Architecture
+            selectors are auto-populated if there is exactly one of each. Data Model
+            and Style Guide are optional and only used if you've authored them.
+          </li>
+          <li>
+            <strong>Click "Initialise Stack"</strong> — launches your default coding
+            agent with the <em>Initiate Stack</em> skill pre-loaded. The agent's first
+            action is always to state which stack it read from the architecture document
+            and ask you to confirm before scaffolding anything.
+          </li>
+          <li>
+            <strong>Walk through the seven steps</strong> with the agent in the terminal:
+            <ul>
+              <li>State detection (what already exists in the repo)</li>
+              <li>Stack confirmation (language, framework, test framework, deployment target)</li>
+              <li>Source tree creation using idiomatic commands (<code>dotnet new sln</code>,
+                  <code>cargo new</code>, <code>npm init</code>, etc.)</li>
+              <li>Dependency installation</li>
+              <li><code>.gitignore</code> extension with stack-appropriate patterns</li>
+              <li><code>docs/Test Strategy/test-strategy.md</code> — the 9-section test playbook</li>
+              <li>Build + test runner verification, then a single commit</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Review the report</strong> — when the agent finishes, it lists every
+            file it created or modified, every dependency installed, every
+            <code>.gitignore</code> pattern added, and the exact build + test commands
+            that pass on this machine right now.
+          </li>
+        </ol>
+
+        <h3>First run vs refresh</h3>
+        <p>
+          The skill auto-detects which mode to run in — you don't pick.
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <h4>First-run mode</h4>
+            <p>
+              Detected when the repo is empty or near-empty. Agent scaffolds the source
+              tree, writes <code>.gitignore</code> and <code>test-strategy.md</code> from
+              scratch, installs deps, and verifies the build.
+            </p>
+          </div>
+          <div class="help-feature">
+            <h4>Refresh mode</h4>
+            <p>
+              Detected when source files / manifests already exist. Agent compares the
+              architecture against what's on disk and proposes <em>only the deltas</em> —
+              never overwrites existing source, never replaces user-authored prose in
+              <code>.gitignore</code> or <code>test-strategy.md</code>. You confirm every
+              change before it's written.
+            </p>
+          </div>
+        </div>
+
+        <h3>What gets written and where</h3>
+        <ul class="help-bullets">
+          <li>
+            <strong>Source tree</strong> at the repo root (e.g. <code>src/</code>,
+            <code>tests/</code>) matching the architecture's intended layout.
+          </li>
+          <li>
+            <strong>Build manifests</strong> at conventional locations — <code>*.csproj</code>,
+            <code>package.json</code>, <code>Cargo.toml</code>, <code>go.mod</code>,
+            <code>pyproject.toml</code>, <code>build.gradle</code>, etc.
+          </li>
+          <li>
+            <strong><code>.gitignore</code></strong> — extended (never replaced) with patterns
+            for the chosen stack, under a clearly labelled section header so future readers
+            can tell agent additions from manual entries.
+          </li>
+          <li>
+            <strong><code>docs/Test Strategy/test-strategy.md</code></strong> — 9 mandatory
+            sections covering: stack &amp; frameworks, test directory layout, single-file
+            test commands, full-suite command, lint &amp; type-check commands, coverage
+            approach, naming conventions, what NOT to unit-test (e.g. e2e flows), and known
+            platform pitfalls (file-handle locks, env var requirements, etc.).
+          </li>
+        </ul>
+
+        <h3>How the test phase uses this</h3>
+        <p>
+          The test phase template now reads <code>docs/Test Strategy/test-strategy.md</code>
+          as its first step. The exact commands you (or the agent) recorded there become
+          the authoritative playbook for every ticket's test phase — no more guessing at
+          layer paths or inferring from manifests. If the file is missing (e.g. you haven't
+          run Initiate Stack yet), the test phase falls back to generic stack inference.
+        </p>
+
+        <h3>When to re-run</h3>
+        <p>
+          Designed to be safely re-run at any point. Typical reasons:
+        </p>
+        <ul class="help-bullets">
+          <li>The architecture was updated with a new component or service — re-run to scaffold it.</li>
+          <li>A new dependency was added to the architecture and you want it installed + manifested.</li>
+          <li>You added integration / browser / load tests and want them documented in <code>test-strategy.md</code>.</li>
+          <li>You're auditing whether <code>.gitignore</code> still covers everything the build produces.</li>
+        </ul>
+        <p>
+          Refresh mode never deletes or overwrites — it only proposes additive changes with your
+          confirmation. For destructive operations (framework swap, directory restructure, dep
+          removal) use a dedicated migration epic instead.
+        </p>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> Run Initiate Stack <em>before</em> generating your first epic.
+            Tickets created against a working scaffold and a populated test playbook give
+            agents the deterministic environment they need.
           </p>
         </div>
       </section>

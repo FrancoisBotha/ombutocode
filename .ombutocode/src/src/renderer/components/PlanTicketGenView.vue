@@ -124,7 +124,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 
 let termInstance = null;
 let fitAddon = null;
@@ -136,6 +136,13 @@ let sessionCounter = 0;
 export default {
   name: 'PlanTicketGenView',
   emits: ['change-view'],
+  props: {
+    // App.vue toggles this when navigating between Plan views. The component
+    // stays mounted (v-show) so the agent terminal session survives — we just
+    // need to refit xterm when the view becomes visible again, since xterm
+    // can't measure its container while display:none.
+    visible: { type: Boolean, default: true },
+  },
   setup(props, { emit }) {
     const sessionActive = ref(false);
     const agentRunning = ref(false);
@@ -392,6 +399,20 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
     }
 
     onMounted(() => { loadEpics(); loadDefaultAgent(); loadSkills(); });
+
+    // When the view becomes visible: refit the terminal AND refresh the epic
+    // list. Because this view stays mounted across Plan navigation (so the
+    // agent terminal session survives), onMounted only fires once — without
+    // this watcher, an epic created in Plan → Epics never appears here until
+    // the whole app is reloaded.
+    watch(() => props.visible, (isVisible) => {
+      if (!isVisible) return;
+      if (fitAddon) {
+        requestAnimationFrame(() => { try { fitAddon.fit(); } catch (_) {} });
+      }
+      loadEpics();
+    });
+
     onBeforeUnmount(() => {
       if (currentShellId.value) window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
       cleanup();

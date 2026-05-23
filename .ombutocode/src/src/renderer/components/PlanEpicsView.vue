@@ -58,8 +58,14 @@
             No default agent configured. Go to Settings &gt; Coding Agents to set one up.
           </p>
         </div>
-        <button class="epics-btn epics-btn-primary" :disabled="!defaultAgent || !selectedPrd" @click="startSession">
-          <span class="mdi mdi-robot-outline"></span> {{ epics.length ? 'Create Epic' : 'Create Initial Epics' }}
+        <button
+          class="epics-btn epics-btn-primary"
+          :disabled="!defaultAgent || !selectedPrd"
+          :title="epics.length ? 'Ask the agent to propose one additional epic that fits the existing set' : 'Ask the agent to break the PRD into the initial epic set'"
+          @click="startSession(epics.length ? 'single' : 'bulk')"
+        >
+          <span class="mdi mdi-robot-outline"></span>
+          {{ epics.length ? 'Create One Epic with AI' : 'Create Initial Epics' }}
         </button>
       </div>
 
@@ -100,6 +106,14 @@
               <td class="col-status"><span class="epic-status-badge" :class="'status-' + (epic.status || 'NEW').toLowerCase()">{{ epic.status || 'NEW' }}</span></td>
               <td class="col-path">{{ epic.path }}</td>
               <td class="col-actions">
+                <button
+                  class="epics-refine-btn"
+                  :disabled="!defaultAgent || !selectedPrd"
+                  :title="defaultAgent && selectedPrd ? 'Refine this epic with AI' : 'Select a PRD (and configure an agent) to refine'"
+                  @click.stop="startSession('refine', epic.path)"
+                >
+                  <span class="mdi mdi-robot-outline"></span> Refine
+                </button>
                 <button class="epics-delete-btn" @click.stop="deleteEpic(epic)" title="Delete epic">
                   <span class="mdi mdi-delete-outline"></span>
                 </button>
@@ -143,6 +157,13 @@
               <span class="mdi mdi-palette-outline epics-ctx-icon"></span>
               <span>{{ selectedStyleGuide }}</span>
             </div>
+            <div class="epics-field-group" style="margin-top: 0.75rem;">
+              <label class="epics-panel-label">Skill</label>
+              <select class="epics-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent">
+                <option value="">— No skill —</option>
+                <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              </select>
+            </div>
             <div class="epics-prompt-section">
               <div class="epics-panel-label" style="margin-top: 0.75rem;">System Prompt</div>
               <p class="epics-prompt-text">{{ sessionPrompt }}</p>
@@ -159,7 +180,7 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 
 let termInstance = null;
 let fitAddon = null;
@@ -272,6 +293,10 @@ Estimated total effort:
 export default {
   name: 'PlanEpicsView',
   emits: ['change-view'],
+  props: {
+    // App.vue toggles this via v-show so the agent terminal survives navigation.
+    visible: { type: Boolean, default: true },
+  },
   setup(props, { emit }) {
     const sessionActive = ref(false);
     const terminalContainer = ref(null);
@@ -289,6 +314,11 @@ export default {
     const selectedDataModel = ref('');
     const styleGuideFiles = ref([]);
     const selectedStyleGuide = ref('');
+
+    // Skill selection (Epic Generation skill from docs/Skills/)
+    const skillFiles = ref([]);
+    const selectedSkill = ref('');
+    const selectedSkillContent = ref('');
 
     const showNewInput = ref(false);
     const newName = ref('');
@@ -422,8 +452,25 @@ export default {
       }
     }
 
-    async function startSession() {
+    // Session "mode" decides what we ask the agent to do:
+    //   'bulk'    — propose the initial epic set (no epics exist yet)
+    //   'single'  — add ONE new epic that complements the existing set
+    //   'refine'  — open the named epic file and propose a refined version
+    async function startSession(mode = 'bulk', targetEpicPath = null) {
       if (!defaultAgent.value || !selectedPrd.value) return;
+
+      // Pick the most appropriate skill for the chosen mode. Bulk uses the
+      // whole-PRD breakdown skill; single/refine uses the focused per-epic
+      // skill. Fall back to whatever's currently selected if neither match
+      // exists (user may have a custom skill set).
+      const preferredSkillKeyword = (mode === 'refine' || mode === 'single') ? 'refinement' : 'generation';
+      const skillMatch = skillFiles.value.find(s => s.name.toLowerCase().includes(`epic ${preferredSkillKeyword}`))
+        || skillFiles.value.find(s => s.name.toLowerCase().includes(preferredSkillKeyword));
+      if (skillMatch && skillMatch.path !== selectedSkill.value) {
+        selectedSkill.value = skillMatch.path;
+        await loadSelectedSkillContent();
+      }
+
       sessionActive.value = true;
 
       await nextTick();
@@ -453,47 +500,32 @@ export default {
       if (selectedDataModel.value) contextParts.push(`the Data Model at "docs/${selectedDataModel.value}"`);
       if (selectedStyleGuide.value) contextParts.push(`the Style Guide at "docs/${selectedStyleGuide.value}"`);
 
-      const prompt = `${contextParts.join(', and ')}. Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the project conventions and ticket workflow.
+      const skillPrefix = selectedSkillContent.value ? selectedSkillContent.value + '\n\n---\n\n' : '';
+      const baseContext = `${contextParts.join(', and ')}. Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the project conventions and ticket workflow.`;
 
-Break the requirements down into epics. Each epic represents a deliverable milestone that can be independently developed and verified. For each epic:
+      // List of existing epic stems so the agent doesn't duplicate work.
+      const existingEpicLines = epics.value.length
+        ? epics.value.map(e => `- ${e.name.replace(/\.md$/, '')} (${e.status || 'NEW'})`).join('\n')
+        : '(none yet)';
 
-1. Create a separate Markdown file in "docs/Epics/" with the naming convention "epic_EPIC_NAME.md"
-2. Each epic file MUST follow this structure with numbered sections:
-   - Title: # Epic: Name
-   - Status: NEW, Owner: human, Created/Last Updated dates
-   - §1. Purpose — what this epic delivers and why
-   - §2. User Story — As a [role], I want [capability], So that [benefit]
-   - §3. Scope — In Scope / Out of Scope lists
-   - §4. Functional Requirements — numbered specific requirements
-   - §5. Non-Functional Requirements — performance, security, etc.
-   - §6. UI/UX Notes — key UI elements, layouts, interactions
-   - §7. Data Model Impact — entities, fields, migrations
-   - §8. Integration Impact — affected systems, APIs, services
-   - §9. Acceptance Criteria — checklist with [ ] markers
-   - §10. Risks & Unknowns
-   - §11. Dependencies — other epics or external dependencies
-   - §12. References — linking back to project documents:
-     - prd: docs/Product Requirements Document/PRD.md
-     - architecture: docs/Architecture/Architecture.md (if exists)
-     - data_model: docs/Data Model/Schema.ddl (if exists)
-     - style_guide: docs/Style Guide/StyleGuide.md (if exists)
-   - §13. Implementation Notes — suggested ticket breakdown, complexity estimate
+      let instruction;
+      if (mode === 'refine' && targetEpicPath) {
+        instruction = `Refine the epic at "docs/${targetEpicPath}". First, read that file in full. Then propose specific edits to tighten its purpose, scope, acceptance criteria, FR/NFR cross-references, dependencies, and any other section that needs work. Ask me to confirm each significant edit before writing changes. Keep the existing numeric prefix and \`Status:\` value untouched unless I explicitly ask to change them.
 
-3. Epics should be sized so that each can be broken into 3-8 development tickets
-4. Follow the conventions in the engineering guide for naming and structure
-5. Epic statuses follow: NEW → TICKETS → BUILDING → DONE
+Existing epics for context (do not duplicate scope across them):
+${existingEpicLines}`;
+      } else if (mode === 'single') {
+        instruction = `Apply the Epic Generation skill above to propose ONE NEW epic that fills a gap in the existing set. Do NOT redo the whole epic breakdown. Identify what's missing relative to the source documents above, then propose a single epic with title + one-line summary and ask me to confirm before creating the file. Pick the next available numeric prefix (continue from the highest \`epic_NN_\` already in use).
 
-6. IMPORTANT — Functional and Non-Functional Requirements cross-referencing:
-   - When an epic contains functional requirements, add each one as a row in "docs/Functional Requirements/FunctionalRequirements.md"
-   - Use the table format: | ID | Sub-System | Description | Status | Epic |
-   - The Epic column should reference the epic file (e.g. epic_USER_AUTH)
-   - Assign sequential FR IDs (FR-001, FR-002, etc.) — continue from existing IDs if the file already has entries
-   - Similarly, when an epic contains non-functional requirements, add them to "docs/Non-Functional Requirements/NonFunctionalRequirements.md"
-   - Use the same table format with NFR IDs (NFR-001, NFR-002, etc.)
-   - Read both files first to check existing entries and avoid duplicates
-   - Each requirement in the epic should include its FR/NFR ID for traceability
+Existing epics (do not duplicate scope):
+${existingEpicLines}`;
+      } else {
+        instruction = `Apply the Epic Generation skill above to produce the initial epic set. Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
+      }
 
-Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
+      const prompt = `${skillPrefix}${baseContext}
+
+${instruction}`;
 
       sessionPrompt.value = prompt;
 
@@ -564,10 +596,72 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
       document.addEventListener('mouseup', onUp);
     }
 
+    async function loadSkills() {
+      try {
+        const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
+        if (tree && tree.children) {
+          const folder = tree.children.find(c => c.name === 'Skills');
+          if (folder && folder.children) {
+            skillFiles.value = folder.children
+              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
+              .map(f => ({ path: f.path, name: f.name, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
+            // Default to Epic Generation on mount — it's the right starting point
+            // for the bulk-create flow on a fresh project. startSession() switches
+            // to Epic Refinement when the user picks the single/refine mode.
+            const match = skillFiles.value.find(s => s.name.toLowerCase().includes('epic generation'))
+              || skillFiles.value.find(s => s.name.toLowerCase().includes('epic'));
+            if (match) {
+              selectedSkill.value = match.path;
+              await loadSelectedSkillContent();
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function loadSelectedSkillContent() {
+      if (!selectedSkill.value) { selectedSkillContent.value = ''; return; }
+      try {
+        const content = await window.electron.ipcRenderer.invoke('filetree:readFile', selectedSkill.value);
+        selectedSkillContent.value = content.replace(/^---\s*\n[\s\S]*?\n---\s*\n/, '').trim();
+      } catch (_) { selectedSkillContent.value = ''; }
+    }
+
     onMounted(() => {
       loadEpics();
       loadContextFiles();
       loadDefaultAgent();
+      loadSkills();
+    });
+
+    // Refit xterm when this view re-appears (xterm can't measure while display:none).
+    // Also pick up a refine handoff set by FilePreviewView's "Refine with AI" button:
+    // if `window.__planEpicsRefinePath` is set, launch a refine session for that
+    // epic and clear the flag so it fires once per click.
+    watch(() => props.visible, (isVisible) => {
+      if (!isVisible) return;
+      if (fitAddon) {
+        requestAnimationFrame(() => { try { fitAddon.fit(); } catch (_) {} });
+      }
+      // The view stays mounted across Plan navigation (v-show), so onMounted
+      // only fires once. Refresh the epic list on every visit so newly-created
+      // epics (e.g. from FilePreview or external file changes) show up.
+      loadEpics();
+      const refinePath = window.__planEpicsRefinePath;
+      if (refinePath) {
+        window.__planEpicsRefinePath = null;
+        // If a refine session is already running, leave the user where they are.
+        if (sessionActive.value) return;
+        // Defer to next tick so loadEpics() / loadContextFiles() have a chance
+        // to populate selectedPrd from defaults on first visit.
+        nextTick(() => {
+          if (defaultAgent.value && selectedPrd.value) {
+            startSession('refine', refinePath);
+          } else {
+            console.warn('[PlanEpicsView] Refine handoff received but agent or PRD not yet configured; ignoring.');
+          }
+        });
+      }
     });
 
     onBeforeUnmount(() => {
@@ -578,6 +672,7 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
     return {
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
       epics, prdFiles, archFiles, dataModelFiles, styleGuideFiles, selectedPrd, selectedArch, selectedDataModel, selectedStyleGuide,
+      skillFiles, selectedSkill, loadSelectedSkillContent,
       showNewInput, newName, newNameInput,
       openEpic, deleteEpic, onNewEpic, createManualEpic,
       startSession, stopSession, startResize,
@@ -658,7 +753,17 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 /* Dark mode: restore brand-exact green — readable on its dark background. */
 [data-theme="dark"] .status-building { background: rgba(109,212,160,0.15); color: #6dd4a0; }
 .status-done { background: rgba(109,212,160,0.25); color: #2aa05f; }
-.col-actions { width: 40px; text-align: right; }
+.col-actions { width: 180px; text-align: right; white-space: nowrap; }
+.epics-refine-btn {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  background: transparent; border: 1px solid var(--border-color); color: var(--text-muted);
+  cursor: pointer; padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.78rem;
+  margin-right: 0.4rem; opacity: 0; transition: all 0.15s;
+}
+.epics-refine-btn .mdi { font-size: 0.95rem; }
+.epics-row:hover .epics-refine-btn { opacity: 1; }
+.epics-refine-btn:hover:not(:disabled) { color: #6dd4a0; border-color: #6dd4a0; background: rgba(109,212,160,0.08); }
+.epics-refine-btn:disabled { cursor: not-allowed; opacity: 0.3; }
 .epics-delete-btn {
   background: transparent; border: none; color: var(--text-muted); cursor: pointer;
   padding: 0.2rem; border-radius: 4px; opacity: 0; transition: all 0.15s;
@@ -693,6 +798,12 @@ Start by proposing the list of epics with a one-line summary for each. Ask me to
 .epics-ctx-icon { font-size: 1rem; color: #6dd4a0; }
 .epics-prompt-text { font-size: 0.78rem; line-height: 1.55; color: rgba(255,255,255,0.4); font-weight: 300; margin: 0.3rem 0 0; }
 
+.epics-skill-select {
+  width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--border-color); border-radius: 5px;
+  background: var(--bg-color); color: var(--text-color); font-size: 0.82rem; cursor: pointer; outline: none; margin-top: 0.3rem;
+}
+.epics-skill-select:focus { border-color: #6dd4a0; }
+.epics-field-group .epics-panel-label { display: block; }
 .epics-resize-handle { width: 6px; cursor: col-resize; background: transparent; flex-shrink: 0; position: relative; }
 .epics-resize-handle::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: rgba(255,255,255,0.06); transition: background 0.15s; }
 .epics-resize-handle:hover::after { background: #6dd4a0; }

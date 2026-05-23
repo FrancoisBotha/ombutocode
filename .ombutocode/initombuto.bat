@@ -2,8 +2,11 @@
 REM Initialise Ombuto Code — reset project data and create starter content.
 REM Delegates to the bash script via Git Bash.
 REM
-REM Usage: initombuto.bat [--clear] [C:\path\to\project]
-REM   --clear   Delete all docs/ content before creating starter data
+REM Usage: initombuto.bat [--keep-docs] [C:\path\to\project]
+REM   By default, docs/ is wiped and re-seeded so the project is genuinely
+REM   ready for a new project.
+REM   --keep-docs   Preserve existing docs/ content (only reset DB / runtime)
+REM   --clear       Backwards-compatible alias for the default wipe behaviour
 
 setlocal
 

@@ -62,6 +62,36 @@
               </div>
             </div>
           </div>
+
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-name">Title Bar Color</span>
+              <span class="setting-hint">Tint the window title bar to distinguish multiple instances</span>
+            </div>
+            <div class="setting-control">
+              <div class="titlebar-color-picker">
+                <button
+                  class="titlebar-swatch titlebar-swatch-default"
+                  :class="{ active: currentTitlebarColor === '' }"
+                  :disabled="loading"
+                  title="Default (theme)"
+                  @click="updateTitlebarColor('')"
+                >
+                  <span class="mdi mdi-close"></span>
+                </button>
+                <button
+                  v-for="c in titlebarPalette"
+                  :key="c.value"
+                  class="titlebar-swatch"
+                  :class="{ active: currentTitlebarColor === c.value }"
+                  :disabled="loading"
+                  :title="c.name"
+                  :style="{ backgroundColor: c.value }"
+                  @click="updateTitlebarColor(c.value)"
+                ></button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -637,6 +667,22 @@ export default {
     // Local state for theme
     const currentTheme = ref('light');
 
+    // Local state for titlebar color (empty string = use per-theme default)
+    const currentTitlebarColor = ref('');
+    // 10-color palette for distinguishing multiple Ombuto Code instances.
+    const titlebarPalette = [
+      { name: 'Red',    value: '#d32f2f' },
+      { name: 'Pink',   value: '#c2185b' },
+      { name: 'Purple', value: '#7b1fa2' },
+      { name: 'Indigo', value: '#303f9f' },
+      { name: 'Blue',   value: '#1976d2' },
+      { name: 'Cyan',   value: '#0097a7' },
+      { name: 'Teal',   value: '#00796b' },
+      { name: 'Green',  value: '#388e3c' },
+      { name: 'Orange', value: '#e64a19' },
+      { name: 'Brown',  value: '#5d4037' }
+    ];
+
     // Local state for project name
     const projectNameInput = ref('');
 
@@ -684,6 +730,12 @@ export default {
     const theme = computed(() => settingsStore.theme);
     watch(theme, (newValue) => {
       currentTheme.value = newValue || 'light';
+    }, { immediate: true });
+
+    // Sync titlebar color with store value
+    const titlebarColor = computed(() => settingsStore.titlebarColor);
+    watch(titlebarColor, (newValue) => {
+      currentTitlebarColor.value = typeof newValue === 'string' ? newValue : '';
     }, { immediate: true });
 
     // Sync projectNameInput with store value when it loads
@@ -787,6 +839,21 @@ export default {
         setTimeout(() => {
           settingsStore.clearSaveStatus();
         }, 5000);
+      }
+    }
+
+    // Update titlebar color setting
+    async function updateTitlebarColor(value) {
+      if (currentTitlebarColor.value === value) return;
+      const previous = currentTitlebarColor.value;
+      try {
+        currentTitlebarColor.value = value;
+        await settingsStore.setTitlebarColor(value);
+        setTimeout(() => settingsStore.clearSaveStatus(), 3000);
+      } catch (err) {
+        console.error('[SettingsView] Failed to save titlebar color:', err);
+        currentTitlebarColor.value = previous;
+        setTimeout(() => settingsStore.clearSaveStatus(), 5000);
       }
     }
 
@@ -1084,6 +1151,9 @@ export default {
     return {
       currentTheme,
       updateTheme,
+      currentTitlebarColor,
+      titlebarPalette,
+      updateTitlebarColor,
       projectNameInput,
       appRefreshInterval,
       loading,
@@ -1930,6 +2000,56 @@ export default {
 
 .theme-btn .mdi {
   font-size: 1rem;
+}
+
+/* Titlebar color picker */
+.titlebar-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.titlebar-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: transform 0.1s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.titlebar-swatch:hover:not(:disabled):not(.active) {
+  transform: scale(1.08);
+}
+
+.titlebar-swatch.active {
+  border-color: var(--text-color);
+  box-shadow: 0 0 0 2px var(--bg-color), 0 0 0 4px var(--text-color);
+}
+
+.titlebar-swatch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.titlebar-swatch-default {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  color: var(--text-muted);
+}
+
+.titlebar-swatch-default .mdi {
+  font-size: 1rem;
+}
+
+.titlebar-swatch-default.active {
+  border-style: solid;
 }
 
 /* About section */

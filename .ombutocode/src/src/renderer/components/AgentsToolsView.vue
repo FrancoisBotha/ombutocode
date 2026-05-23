@@ -173,7 +173,7 @@
                   v-model="getModelDraft(tool.id).modelId"
                   type="text"
                   required
-                  placeholder="claude-opus-4-6"
+                  placeholder="claude-opus-4-7"
                 />
               </label>
               <label>

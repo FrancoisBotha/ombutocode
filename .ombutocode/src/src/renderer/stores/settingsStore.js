@@ -11,7 +11,8 @@ function createDefaultSettings() {
     app_refresh_interval: 30,
     enable_review_notification_sound: true,
     max_eval_retries: 2,
-    theme: 'dark'
+    theme: 'dark',
+    titlebar_color: ''
   };
 }
 
@@ -33,6 +34,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const enableReviewNotificationSound = computed(() => _settings.value.enable_review_notification_sound);
   const maxEvalRetries = computed(() => _settings.value.max_eval_retries);
   const theme = computed(() => _settings.value.theme);
+  const titlebarColor = computed(() => _settings.value.titlebar_color);
   const loading = computed(() => _loading.value);
   const error = computed(() => _error.value);
   const saveStatus = computed(() => _saveStatus.value);
@@ -69,7 +71,10 @@ export const useSettingsStore = defineStore('settings', () => {
       max_eval_retries: Number.isFinite(payload.max_eval_retries) && payload.max_eval_retries >= 0
         ? payload.max_eval_retries
         : 2,
-      theme: payload.theme === 'dark' ? 'dark' : 'light'
+      theme: payload.theme === 'dark' ? 'dark' : 'light',
+      titlebar_color: typeof payload.titlebar_color === 'string' && /^(#[0-9a-fA-F]{6})?$/.test(payload.titlebar_color)
+        ? payload.titlebar_color
+        : ''
     };
   }
 
@@ -245,6 +250,17 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * Update titlebar color setting.
+   * @param {string} value - empty string (use default) or 6-digit hex color (e.g. "#d32f2f")
+   */
+  async function setTitlebarColor(value) {
+    if (typeof value !== 'string' || (value !== '' && !/^#[0-9a-fA-F]{6}$/.test(value))) {
+      throw new Error('titlebar_color must be an empty string or a 6-digit hex color');
+    }
+    return saveSettings({ titlebar_color: value });
+  }
+
+  /**
    * Clear save status (e.g., after showing success/error message)
    */
   function clearSaveStatus() {
@@ -278,6 +294,7 @@ export const useSettingsStore = defineStore('settings', () => {
     enableReviewNotificationSound,
     maxEvalRetries,
     theme,
+    titlebarColor,
     loading,
     error,
     saveStatus,
@@ -294,6 +311,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setEnableReviewNotificationSound,
     setMaxEvalRetries,
     setTheme,
+    setTitlebarColor,
     clearSaveStatus,
     resetToDefaults,
     treeSortMode,

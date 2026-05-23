@@ -96,6 +96,7 @@ const validChannels = [
   'agent:testConnectivity',
   'agent:spawnInteractive',
   'agent:getStartupResults',
+  'doctor:spawn',
   'app:noAgentsConnected',
   'filetree:scan',
   'filetree:createFolder',

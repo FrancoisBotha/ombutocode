@@ -142,14 +142,29 @@
 
       <!-- Description section -->
       <div class="description-section">
-        <h3>Description</h3>
-        <div v-if="!editingDescription" class="description-body" @dblclick="editingDescription = true">
-          <p v-if="!description" class="empty">Double-click to add a description.</p>
-          <div v-else class="desc-text">{{ description }}</div>
+        <div class="description-header">
+          <h3>Description</h3>
+          <button v-if="!editingDescription" class="tool-btn" @click="startEditDescription">
+            <span class="mdi mdi-pencil-outline"></span> Modify
+          </button>
+        </div>
+        <p class="description-hint">
+          A free-text project description in Markdown. Use headings, lists, and links to document the architecture, conventions, or anything that helps a new contributor get oriented.
+        </p>
+        <div v-if="!editingDescription" class="description-body">
+          <p v-if="!description" class="empty">No description yet. Click <strong>Modify</strong> to add one in Markdown.</p>
+          <div v-else class="desc-rendered markdown-body" v-html="renderedDescription"></div>
         </div>
         <div v-else class="description-editor">
-          <textarea v-model="description" class="desc-textarea" rows="6"></textarea>
-          <button class="tool-btn" @click="editingDescription = false">Done</button>
+          <textarea v-model="description" class="desc-textarea" rows="10"></textarea>
+          <div class="description-editor-actions">
+            <button class="tool-btn tool-btn-primary" @click="saveDescription">
+              <span class="mdi mdi-check"></span> Save
+            </button>
+            <button class="tool-btn" @click="cancelDescriptionEdit">
+              <span class="mdi mdi-close"></span> Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -157,7 +172,8 @@
 </template>
 
 <script>
-import { ref, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { marked } from 'marked';
 
 const FILE_PATH = 'Structure/ProjectStructure.md';
 
@@ -268,6 +284,26 @@ export default {
     const systems = ref([]);
     const description = ref('');
     const editingDescription = ref(false);
+    // Snapshot taken when entering edit mode so Cancel can revert in-place edits.
+    let descriptionEditSnapshot = '';
+    const renderedDescription = computed(() =>
+      description.value ? marked(description.value, { breaks: true, gfm: true }) : ''
+    );
+
+    function startEditDescription() {
+      descriptionEditSnapshot = description.value;
+      editingDescription.value = true;
+    }
+    function saveDescription() {
+      // Mark dirty (which schedules the auto-save) so the description change
+      // gets flushed to disk along with structure edits.
+      if (description.value !== descriptionEditSnapshot) markDirty();
+      editingDescription.value = false;
+    }
+    function cancelDescriptionEdit() {
+      description.value = descriptionEditSnapshot;
+      editingDescription.value = false;
+    }
 
     // Selection
     const selectedKey = ref(null);
@@ -454,9 +490,24 @@ export default {
 
     // ── File I/O ──
 
+    // Auto-save debounce: structure mutations call markDirty(), which schedules
+    // a save 500ms after the last change. Coalesces rapid edits (typing a name,
+    // back-to-back drops) into a single write.
+    let autoSaveTimer = null;
+    const AUTO_SAVE_DELAY_MS = 500;
+
+    function scheduleAutoSave() {
+      if (autoSaveTimer) clearTimeout(autoSaveTimer);
+      autoSaveTimer = setTimeout(() => {
+        autoSaveTimer = null;
+        if (dirty.value && !saving.value) onSave();
+      }, AUTO_SAVE_DELAY_MS);
+    }
+
     function markDirty() {
       dirty.value = true;
       saved.value = false;
+      scheduleAutoSave();
     }
 
     async function loadFile() {
@@ -509,12 +560,19 @@ export default {
 
     onUnmounted(() => {
       if (savedTimeout) clearTimeout(savedTimeout);
+      // Flush any pending auto-save so leaving the view never loses an edit.
+      if (autoSaveTimer) {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = null;
+        if (dirty.value && !saving.value) onSave();
+      }
       window.removeEventListener('keydown', onKeyDown);
     });
 
     return {
       loading, saving, saved, dirty,
       systems, description, editingDescription,
+      renderedDescription, startEditDescription, saveDescription, cancelDescriptionEdit,
       selectedKey, editingKey, editValue,
       get editEl() { return editEl; },
       set editEl(v) { editEl = v; },
@@ -762,10 +820,25 @@ export default {
   padding-top: 1rem;
 }
 
+.description-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.25rem;
+}
+
 .description-section h3 {
   color: var(--text-color);
   font-size: 1rem;
-  margin: 0 0 0.5rem;
+  margin: 0;
+}
+
+.description-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .description-body {
@@ -774,20 +847,47 @@ export default {
   border-radius: var(--border-radius);
   padding: 0.75rem 1rem;
   min-height: 60px;
-  cursor: pointer;
 }
 
-.desc-text {
+.desc-rendered {
   color: var(--text-color);
   font-size: 0.9rem;
-  white-space: pre-wrap;
   line-height: 1.6;
 }
+
+.desc-rendered :deep(h1) { font-size: 1.2rem; margin: 0.5rem 0 0.4rem; font-weight: 600; }
+.desc-rendered :deep(h2) { font-size: 1.05rem; margin: 0.85rem 0 0.4rem; font-weight: 600; }
+.desc-rendered :deep(h3) { font-size: 0.95rem; margin: 0.75rem 0 0.3rem; font-weight: 600; }
+.desc-rendered :deep(p) { margin: 0.4rem 0; }
+.desc-rendered :deep(ul), .desc-rendered :deep(ol) { margin: 0.3rem 0; padding-left: 1.5rem; }
+.desc-rendered :deep(li) { margin: 0.15rem 0; }
+.desc-rendered :deep(code) { background: var(--secondary-color); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.82rem; }
+.desc-rendered :deep(pre) { background: var(--secondary-color); padding: 0.6rem 0.8rem; border-radius: 5px; overflow-x: auto; margin: 0.5rem 0; }
+.desc-rendered :deep(pre code) { background: none; padding: 0; }
+.desc-rendered :deep(a) { color: var(--primary-color); }
+.desc-rendered :deep(blockquote) { margin: 0.4rem 0; padding-left: 0.75rem; border-left: 3px solid var(--border-color); color: var(--text-muted); }
+.desc-rendered :deep(hr) { border: none; border-top: 1px solid var(--border-color); margin: 0.75rem 0; }
 
 .description-editor {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.description-editor-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tool-btn-primary {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+}
+
+.tool-btn-primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 .desc-textarea {
@@ -796,7 +896,7 @@ export default {
   border-radius: var(--border-radius);
   color: var(--text-color);
   font-size: 0.9rem;
-  font-family: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   padding: 0.6rem 0.8rem;
   outline: none;
   resize: vertical;

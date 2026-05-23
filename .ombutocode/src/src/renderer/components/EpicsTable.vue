@@ -48,6 +48,18 @@
       <div v-if="selectedEpic" class="epics-detail-container" :style="detailPanelStyle">
         <aside class="epics-detail">
           <h3 class="detail-title">{{ selectedEpic.title }}</h3>
+          <!-- Blocked-by badge: shown when the selected epic depends on another
+               epic that isn't DONE yet. Matches the scheduler gate — its tickets
+               will stay in `todo` until every listed blocker reaches DONE. -->
+          <div v-if="selectedEpicBlockers.length" class="epic-blocked-badge">
+            <span class="mdi mdi-lock-outline"></span>
+            <span class="epic-blocked-label">Blocked by</span>
+            <span
+              v-for="stem in selectedEpicBlockers"
+              :key="stem"
+              class="epic-blocker-chip"
+            >{{ stem }}</span>
+          </div>
           <div class="detail-actions">
             <button
               v-if="showStartButton"
@@ -59,7 +71,7 @@
               {{ starting ? 'Starting...' : 'Start Epic' }}
             </button>
             <button
-              v-if="selectedEpic.status && ['BUILDING', 'DONE', 'building', 'done'].includes(selectedEpic.status)"
+              v-if="selectedEpic.status && ['TICKETS', 'BUILDING', 'DONE', 'tickets', 'building', 'done'].includes(selectedEpic.status)"
               class="btn-evaluate"
               :disabled="evaluating"
               @click="evaluateSelectedFeature"
@@ -169,6 +181,22 @@ export default {
     const renderedContent = computed(() => {
       if (!selectedEpic.value?.content) return '';
       return marked(selectedEpic.value.content, { breaks: true, gfm: true });
+    });
+
+    // For the selected epic, return the list of dep-epic stems that are not yet
+    // satisfied (i.e. the dep's own status isn't DONE). Mirrors the scheduler's
+    // gate rule so what the user sees matches what the scheduler does.
+    // Dep stems that don't resolve to a loaded epic are treated as satisfied,
+    // same as the scheduler (fail-open).
+    const selectedEpicBlockers = computed(() => {
+      const epic = selectedEpic.value;
+      if (!epic || !Array.isArray(epic.depends_on) || epic.depends_on.length === 0) return [];
+      const byId = new Map(features.value.map(e => [e.id, e]));
+      return epic.depends_on.filter((stem) => {
+        const dep = byId.get(stem);
+        if (!dep) return false; // unknown stem — fail-open
+        return String(dep.status || '').toUpperCase() !== 'DONE';
+      });
     });
 
     // Track currently selected row for manual highlighting
@@ -400,6 +428,7 @@ export default {
       searchQuery,
       resultCountText,
       renderedContent,
+      selectedEpicBlockers,
       selectEpic: (id) => epicStore.selectEpic(id),
       startSelectedFeature,
       evaluateSelectedFeature,
@@ -602,6 +631,40 @@ export default {
 .btn-evaluate:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Blocked-by badge (shown when the selected epic has unfinished prerequisite epics). */
+.epic-blocked-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 5px;
+  background-color: #fff7e6;
+  border: 1px solid #f4d18a;
+  color: #8a5a00;
+  font-size: 0.8rem;
+}
+.epic-blocked-badge .mdi { font-size: 1rem; }
+.epic-blocked-label { font-weight: 600; }
+.epic-blocker-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.74rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 10px;
+  background-color: rgba(138, 90, 0, 0.12);
+  color: #8a5a00;
+}
+[data-theme="dark"] .epic-blocked-badge {
+  background-color: rgba(229, 168, 48, 0.12);
+  border-color: rgba(229, 168, 48, 0.35);
+  color: #e5a830;
+}
+[data-theme="dark"] .epic-blocker-chip {
+  background-color: rgba(229, 168, 48, 0.18);
+  color: #e5a830;
 }
 
 /* Eval result banners */

@@ -496,6 +496,12 @@ ${postProcessHexCodes(body)}
     }
 
     function refineEpicWithAi() {
+      // Hand the currently-open epic to PlanEpicsView so it can launch a refine
+      // session for this specific file. PlanEpicsView reads & clears the global
+      // when it becomes visible.
+      if (activePath.value && activePath.value.startsWith('Epics/')) {
+        window.__planEpicsRefinePath = activePath.value;
+      }
       if (window.__planNavigate) window.__planNavigate('plan-epics');
     }
 

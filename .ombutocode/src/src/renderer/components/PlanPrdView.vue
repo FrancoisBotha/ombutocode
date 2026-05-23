@@ -104,7 +104,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { marked } from 'marked';
 
 let termInstance = null;
@@ -127,6 +127,8 @@ export default {
     createInstruction: { type: String, default: '' },
     refineInstruction: { type: String, default: '' },
     contextFiles: { type: Array, default: () => [] },
+    // App.vue toggles this via v-show so the agent terminal survives navigation.
+    visible: { type: Boolean, default: true },
   },
   setup(props, { emit }) {
     const sessionActive = ref(false);
@@ -182,12 +184,19 @@ export default {
     }
 
     function autoSelectSkill() {
+      // Prefer the canonical, non-BASIC skill on mount so existing users keep
+      // the rich-template behaviour. Users can switch to a BASIC variant (e.g.
+      // PRD-BASIC) via the dropdown if they want something lighter-weight.
       const match = props.skillMatch.toLowerCase();
-      const prdSkill = availableSkills.value.find(s =>
+      const candidates = availableSkills.value.filter(s =>
         s.name.toLowerCase().includes(match) || s.displayName.toLowerCase().includes(match)
       );
-      if (prdSkill) {
-        selectedSkillPath.value = prdSkill.path;
+      // Skip explicit BASIC variants when picking the default, then fall back
+      // to any match if the only available skill IS the BASIC one.
+      const preferred = candidates.find(s => !/\bbasic\b/i.test(s.displayName) && !/\bbasic\b/i.test(s.name))
+        || candidates[0];
+      if (preferred) {
+        selectedSkillPath.value = preferred.path;
         loadSelectedSkill();
       }
     }
@@ -402,6 +411,13 @@ export default {
       loadDefaultAgent();
       await loadAvailableSkills();
       autoSelectSkill();
+    });
+
+    // Refit xterm when this view re-appears (xterm can't measure while display:none).
+    watch(() => props.visible, (isVisible) => {
+      if (isVisible && fitAddon) {
+        requestAnimationFrame(() => { try { fitAddon.fit(); } catch (_) {} });
+      }
     });
 
     onBeforeUnmount(() => {

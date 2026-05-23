@@ -183,6 +183,7 @@ for dir in \
   "Mockups" \
   "References" \
   "Skills" \
+  "Test Strategy" \
   "ScratchPad"
 do
   if [ ! -d "$DOCS/$dir" ]; then
@@ -513,7 +514,7 @@ if [ -d "$MOCKUP_TEMPLATES" ]; then
 fi
 
 # ── .gitkeep for empty folders ──
-for dir in Epics References; do
+for dir in Epics References "Test Strategy"; do
   [ -f "$DOCS/$dir/.gitkeep" ] || touch "$DOCS/$dir/.gitkeep"
 done
 

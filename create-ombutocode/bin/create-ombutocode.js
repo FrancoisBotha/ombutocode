@@ -8,7 +8,7 @@ const REPO_URL = 'https://github.com/FrancoisBotha/ombutocode.git';
 // Installer version is kept in lockstep with the workbench version
 // (.ombutocode/src/package.json) — every workbench release bumps both
 // to the same number. See DeployInstructions.md §3 and §3.0.
-const VERSION = '0.1.2';
+const VERSION = '0.2.0';
 
 // Pinned Ombuto Code workbench release to clone.
 //
@@ -20,7 +20,7 @@ const VERSION = '0.1.2';
 //   2. Bump CLONE_REF below to the new tag
 //   3. Bump this installer's VERSION (above) and the package.json version
 //   4. `npm publish` the installer (see DeployInstructions.md §3)
-const CLONE_REF = 'v0.1.2';
+const CLONE_REF = 'v0.2.0';
 
 // Files and directories at the repo root that belong to the Ombuto Code
 // upstream project and should be removed from a scaffolded user project.
@@ -52,6 +52,9 @@ const UPSTREAM_FILES_TO_STRIP = [
   'vite.config.js',
   'eslint.config.js',
   'tsconfig.json',
+
+  // Maintainer-only tooling — not part of what a user's new project needs
+  'migration-tool',
 ];
 
 // Files in create-ombutocode/template/ that are copied into the scaffolded

@@ -1,0 +1,23 @@
+# Force LF line endings for shell scripts regardless of platform autocrlf
+# setting. Bash refuses to run scripts with CRLF endings (you get cryptic
+# `$'\r': command not found` errors). Pin them to LF on every checkout.
+
+.ombutocode/initombuto       text eol=lf
+.ombutocode/buildandrun      text eol=lf
+*.sh                         text eol=lf
+
+# Windows scripts always want CRLF.
+*.bat                        text eol=crlf
+*.cmd                        text eol=crlf
+
+# Binary assets — don't touch.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.svg  binary
+*.exe  binary
+*.dll  binary
+*.pdb  binary
+*.db   binary

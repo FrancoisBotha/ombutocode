@@ -13,18 +13,30 @@ setlocal
 set "SCRIPT_DIR=%~dp0"
 set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
 
-REM Try Git Bash
+REM cd into the script directory and invoke bash with a relative path.
+REM Avoids a known Git-Bash quirk where Windows-style paths containing a
+REM leading-dot folder (e.g. .ombutocode) aren't always auto-translated,
+REM producing a misleading "No such file or directory" against a file
+REM that's actually there.
+pushd "%SCRIPT_DIR%"
+
+REM Try Git Bash on PATH
 where bash >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
-    bash "%SCRIPT_DIR%\initombuto" %*
-    exit /b %ERRORLEVEL%
+    bash ./initombuto %*
+    set "RC=%ERRORLEVEL%"
+    popd
+    exit /b %RC%
 )
 
 REM Try Git for Windows default location
 if exist "C:\Program Files\Git\bin\bash.exe" (
-    "C:\Program Files\Git\bin\bash.exe" "%SCRIPT_DIR%\initombuto" %*
-    exit /b %ERRORLEVEL%
+    "C:\Program Files\Git\bin\bash.exe" ./initombuto %*
+    set "RC=%ERRORLEVEL%"
+    popd
+    exit /b %RC%
 )
 
+popd
 echo Error: bash not found. Please install Git for Windows.
 exit /b 1

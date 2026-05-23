@@ -50,8 +50,12 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 ## Features
 
 ### Plan Mode
-- Interactive **PRD creation** guided by AI coding agents
-- **Project Structure** editor for systems, subsystems, and components
+- Interactive **PRD creation** guided by AI coding agents — full and lightweight (PRD-BASIC) skill variants
+- **Architecture authoring** with full and lightweight (Architecture-BASIC) skill variants
+- **Initiate Stack** — bootstrap the source tree, install deps, write `.gitignore`, and author `docs/Test Strategy/test-strategy.md` from the PRD + Architecture in a single AI session. Safely re-runnable in refresh mode as the architecture evolves
+- **Epic Creation** — bulk PRD-to-epic breakdown, single-epic add, and per-epic refine-with-AI; epics support epic-to-epic dependencies (`Depends On:` line) that the scheduler enforces
+- **Ticket Generation** with mandatory closeout tickets (epic-level eval, regression tests, help docs update) appended automatically
+- **Project Structure** editor for systems, subsystems, and components, with auto-save and Markdown-rendered descriptions
 - **Use Case** document editor with Markdown preview and version history
 - **Use Case Diagram** visual editor (actors, use cases, associations, extends, includes)
 - **Class Diagram** visual editor (classes, attributes, operations, relationships)
@@ -63,17 +67,22 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 - **Version history** for all documents via Git integration
 
 ### Build Mode
-- **Workspace** with Git status, commit graph, and integrated terminal
+- **Workspace** with Git status, commit graph, and integrated terminal (right-click in terminal to paste)
 - **Kanban Board** for ticket workflow (backlog, todo, in-progress, review, done)
+- **Ticket Doctor** &mdash; stethoscope icon on tickets that exceeded the retry threshold; opens an AI session using the Fix Ticket skill to diagnose, repair, and emit a `TICKET_DOCTOR_RESULT: SUCCESS` marker that unlocks "Move to Review"
+- **Test-Driven Development workflow** baked into agent prompts &mdash; impl phase writes failing tests first, then implementation; test phase reads `docs/Test Strategy/test-strategy.md` for the project's exact test commands (stack-agnostic)
+- **Epic-level dependencies** &mdash; epics can declare `Depends On: epic_NN_...` and the scheduler holds downstream tickets until prerequisite epics reach `DONE`
 - **Backlog** management with ticket creation and dependency tracking
-- **Coding Agents** &mdash; configure Claude, Codex, and Kimi with model selection
-- **Automated Scheduler** &mdash; assigns agents to todo tickets, manages concurrency and rate limits
+- **Coding Agents** &mdash; configure Claude (Opus 4.7, Sonnet 4.6, Haiku 4.5), Codex, and Kimi with per-agent model selection
+- **Automated Scheduler** &mdash; assigns agents to todo tickets, manages concurrency, rate limits, and provider-pause detection
 - **Automation** dashboard with active runs and evaluation queue
 - **Logs** viewer with filtering by severity, event type, and ticket ID
 - **Archive** for completed tickets
 
 ### General
-- Dark mode by default with green accent theme
+- **Light and dark themes** with green accent &mdash; switch any time from Settings
+- **Multi-instance support** &mdash; run several projects side by side, each with its own `userData` directory and per-project single-instance lockfile
+- **Custom title bar colour** &mdash; pick one of 10 swatches per project (or default) to distinguish multiple running instances at a glance
 - Collapsible sidebar with Plan/Build tab switching
 - Settings with agent connectivity testing
 - Help page with comprehensive documentation
@@ -124,14 +133,15 @@ cd ombutocode
 cd .ombutocode/src
 npm install
 
-# Initialise with sample data (resets DB + creates docs/ starter content)
+# Initialise with sample data. By default this WIPES docs/ and recreates
+# the starter content, alongside resetting the DB and runtime caches.
 cd ../..
 .ombutocode/initombuto.bat          # Windows
 # or
 bash .ombutocode/initombuto          # macOS / Linux
 
-# For a complete reset (wipes docs/ and recreates):
-.ombutocode/initombuto.bat --clear
+# To reset DB / runtime state but preserve existing docs/ content:
+.ombutocode/initombuto.bat --keep-docs
 ```
 
 ### Running
@@ -174,8 +184,11 @@ ombutocode/
     data/                      # SQLite database
     templates/                 # Backlog, skill & mockup templates
     planning/                  # Backlog YAML
-    tools/                     # CLI tools for agents (db-query, svg-to-png)
-    initombuto                 # Project initialisation script
+    tools/                     # CLI tools for agents (db-query, ticket-write, svg-to-png)
+    scripts/                   # One-shot maintenance scripts (template rewriters, etc.)
+    initombuto                 # Project initialisation script (defaults to wiping docs/)
+    initombuto.bat             # Windows wrapper for initombuto
+    OMBUTOCODE_ENGINEERING_GUIDE.md  # Mandatory agent operating manual
   docs/                        # Requirements documents (Plan mode)
     Product Requirements Document/
     Architecture/
@@ -189,9 +202,12 @@ ombutocode/
     Non-Functional Requirements/
     Data Model/
     Mockups/
-    Skills/
+    Skills/                    # Per-skill markdown that the Plan views auto-load
+    Test Strategy/             # test-strategy.md written by the Initiate Stack flow
     ScratchPad/
   create-ombutocode/           # npx installer package
+  migration-tool/              # Win32 C++ migrator that updates an existing
+                               # project's .ombutocode/ from a newer repo
 ```
 
 ## Tech Stack

@@ -70,7 +70,7 @@
             <span class="mdi mdi-close-circle"></span>
             <span>Doctor reported <strong>FAIL</strong>. Read its diagnosis and decide next steps.</span>
           </div>
-          <div class="doctor-terminal" ref="terminalContainer" @contextmenu="onPasteFromClipboard"></div>
+          <div class="doctor-terminal" ref="terminalContainer"></div>
         </div>
       </div>
 
@@ -98,6 +98,8 @@
 
 <script>
 import { ref, onMounted, onBeforeUnmount, nextTick, computed } from 'vue';
+import { collectSkillFiles } from '@/utils/skills';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useBacklogStore } from '@/stores/backlogStore';
 
@@ -138,9 +140,8 @@ export default {
     async function loadSkill() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
-        const skills = tree?.children?.find(c => c.name === 'Skills');
-        const fixTicket = skills?.children?.find(f =>
-          f.type === 'file' && /^fix[ _-]?ticket\.md$/i.test(f.name)
+        const fixTicket = collectSkillFiles(tree).find(f =>
+          /^fix[ _-]?ticket\.md$/i.test(f.name)
         );
         if (fixTicket) {
           const content = await window.electron.ipcRenderer.invoke('filetree:readFile', fixTicket.path);
@@ -207,6 +208,7 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
         term.loadAddon(fitAddon);
         term.open(terminalContainer.value);
         fitAddon.fit();
+        enableTerminalPaste(term);
         termInstance = term;
 
         const shellId = 'doctor-' + props.ticket.id + '-' + (++shellCounter);
@@ -294,19 +296,6 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
       emit('close');
     }
 
-    async function onPasteFromClipboard(e) {
-      e.preventDefault();
-      if (!currentShellId.value) return;
-      try {
-        const text = await navigator.clipboard.readText();
-        if (text) {
-          window.electron.ipcRenderer.invoke('workspace:writeShell', currentShellId.value, text);
-        }
-      } catch (err) {
-        console.warn('Clipboard paste failed:', err);
-      }
-    }
-
     onMounted(async () => {
       await Promise.all([settingsStore.loadSettings().catch(() => {}), loadSkill()]);
     });
@@ -316,7 +305,7 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
       sessionStarted, starting, movingToReview,
       terminalContainer, defaultAgent, maxRetries,
       skillLoaded, doctorResult,
-      startSession, moveToReview, onCloseRequest, onPasteFromClipboard,
+      startSession, moveToReview, onCloseRequest,
     };
   },
 };

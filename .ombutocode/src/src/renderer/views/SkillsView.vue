@@ -15,6 +15,9 @@
             @keyup.enter="createSkill"
             @keyup.escape="showNewInput = false"
           />
+          <select v-model="newCategory" class="new-skill-category" title="Category">
+            <option v-for="c in categories" :key="c" :value="c">{{ c }}</option>
+          </select>
           <button class="skills-btn skills-btn-primary" @click="createSkill" :disabled="!newName.trim()">Create</button>
           <button class="skills-btn skills-btn-secondary" @click="showNewInput = false">Cancel</button>
         </div>
@@ -32,32 +35,38 @@
       <p class="skills-empty-hint">
         Skills are Markdown documents in <code>docs/Skills/</code> that capture reusable knowledge —
         coding standards, design patterns, architecture decisions, onboarding guides, and more.
+        Category sub-folders (PRD, Architecture, Styling, Epics, BDD, Ticket Generation,
+        Diagnostics, Bootstrapping, Other) keep them organised.
       </p>
     </div>
 
     <div v-else class="skills-list">
-      <div
-        v-for="skill in skills"
-        :key="skill.path"
-        class="skill-card"
-        @click="openSkill(skill)"
-      >
-        <span class="mdi skill-icon" :class="skill.isSystem ? 'mdi-shield-check-outline' : 'mdi-file-document-outline'"></span>
-        <div class="skill-info">
-          <span class="skill-name">{{ skill.displayName }}</span>
-          <span class="skill-path">{{ skill.path }}</span>
+      <section v-for="group in skillGroups" :key="group.category" class="skill-group">
+        <h2 class="skill-group-heading">{{ group.category }}</h2>
+        <div
+          v-for="skill in group.skills"
+          :key="skill.path"
+          class="skill-card"
+          @click="openSkill(skill)"
+        >
+          <span class="mdi skill-icon" :class="skill.isSystem ? 'mdi-shield-check-outline' : 'mdi-file-document-outline'"></span>
+          <div class="skill-info">
+            <span class="skill-name">{{ skill.displayName }}</span>
+            <span class="skill-path">{{ skill.path }}</span>
+          </div>
+          <span v-if="skill.isSystem" class="skill-system-badge">System</span>
+          <button v-else class="skill-delete-btn" @click.stop="deleteSkill(skill)" title="Delete skill">
+            <span class="mdi mdi-delete-outline"></span>
+          </button>
         </div>
-        <span v-if="skill.isSystem" class="skill-system-badge">System</span>
-        <button v-else class="skill-delete-btn" @click.stop="deleteSkill(skill)" title="Delete skill">
-          <span class="mdi mdi-delete-outline"></span>
-        </button>
-      </div>
+      </section>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, computed, onMounted, nextTick } from 'vue';
+import { SKILL_CATEGORIES, collectSkillFiles, groupSkillFiles } from '@/utils/skills';
 
 export default {
   name: 'SkillsView',
@@ -66,7 +75,11 @@ export default {
     const loading = ref(true);
     const showNewInput = ref(false);
     const newName = ref('');
+    const newCategory = ref('Other');
     const newNameInput = ref(null);
+
+    const categories = SKILL_CATEGORIES;
+    const skillGroups = computed(() => groupSkillFiles(skills.value));
 
     const SKILLS_DIR = 'Skills';
 
@@ -99,33 +112,21 @@ _Describe the purpose and scope of this skill._
       loading.value = true;
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
-        if (tree && tree.children) {
-          const folder = tree.children.find(c => c.name === SKILLS_DIR);
-          if (folder && folder.children) {
-            const files = folder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
-            const loaded = [];
-            for (const f of files) {
-              let isSystem = false;
-              try {
-                const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
-                // Parse simple frontmatter check for system: true
-                const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-                if (fmMatch) {
-                  isSystem = /^system:\s*true/m.test(fmMatch[1]);
-                }
-              } catch (_) {}
-              loaded.push({
-                name: f.name,
-                path: f.path,
-                displayName: f.name.replace('.md', '').replace(/_/g, ' '),
-                isSystem,
-              });
+        const files = collectSkillFiles(tree);
+        const loaded = [];
+        for (const f of files) {
+          let isSystem = false;
+          try {
+            const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
+            // Parse simple frontmatter check for system: true
+            const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+            if (fmMatch) {
+              isSystem = /^system:\s*true/m.test(fmMatch[1]);
             }
-            skills.value = loaded;
-          } else {
-            skills.value = [];
-          }
+          } catch (_) {}
+          loaded.push({ ...f, isSystem });
         }
+        skills.value = loaded;
       } catch (e) {
         console.error('Failed to load skills:', e);
       } finally {
@@ -144,7 +145,8 @@ _Describe the purpose and scope of this skill._
       const name = newName.value.trim();
       if (!name) return;
       const safeName = name.replace(/[<>:"/\\|?*]/g, '_');
-      const filePath = SKILLS_DIR + '/' + safeName + '.md';
+      const category = categories.includes(newCategory.value) ? newCategory.value : 'Other';
+      const filePath = SKILLS_DIR + '/' + category + '/' + safeName + '.md';
       const content = TEMPLATE.replace('{NAME}', name);
       try {
         await window.electron.ipcRenderer.invoke('filetree:writeFile', filePath, content);
@@ -179,7 +181,7 @@ _Describe the purpose and scope of this skill._
     onMounted(loadSkills);
 
     return {
-      skills, loading, showNewInput, newName, newNameInput,
+      skills, skillGroups, categories, loading, showNewInput, newName, newCategory, newNameInput,
       onNewSkill, createSkill, openSkill, deleteSkill,
     };
   },
@@ -233,6 +235,21 @@ h1 {
 }
 
 .new-skill-input:focus {
+  border-color: #6dd4a0;
+}
+
+.new-skill-category {
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--border-color, #373d45);
+  border-radius: 6px;
+  background: var(--card-bg, #21262d);
+  color: var(--text-color, #d4d8dd);
+  font-size: 0.85rem;
+  outline: none;
+  cursor: pointer;
+}
+
+.new-skill-category:focus {
   border-color: #6dd4a0;
 }
 
@@ -321,7 +338,22 @@ h1 {
 .skills-list {
   display: flex;
   flex-direction: column;
+  gap: 1.25rem;
+}
+
+.skill-group {
+  display: flex;
+  flex-direction: column;
   gap: 0.4rem;
+}
+
+.skill-group-heading {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted, #8b929a);
 }
 
 .skill-card {

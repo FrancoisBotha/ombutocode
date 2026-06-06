@@ -158,6 +158,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { marked } from 'marked';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github.css';
 import { EditorState } from '@codemirror/state';
@@ -547,6 +548,7 @@ ${postProcessHexCodes(body)}
       term.loadAddon(aiFitAddon);
       term.open(aiPreviewTermContainer.value);
       aiFitAddon.fit();
+      enableTerminalPaste(term);
       aiTermInstance = term;
 
       const shellId = 'sg-preview-' + (++aiSessionCount);

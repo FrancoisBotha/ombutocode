@@ -62,6 +62,37 @@
             <span class="mdi mdi-alert-outline"></span>
             No default agent configured. Go to Settings &gt; Coding Agents to set one up.
           </p>
+
+          <!-- Skill picker surfaced on the landing card so the user can choose
+               and preview the skill BEFORE launching the agent. The in-session
+               selector switches the skill for the next launch, not the current
+               run, which was confusing — this avoids that. -->
+          <div class="init-skill-picker">
+            <label class="init-skill-picker-label">Skill / system prompt</label>
+            <select
+              class="init-skill-picker-select"
+              v-model="selectedSkill"
+              @change="loadSelectedSkillContent"
+            >
+              <option value="">-- None --</option>
+              <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              </optgroup>
+            </select>
+            <button
+              v-if="selectedSkillContent"
+              class="init-skill-toggle"
+              type="button"
+              @click="showSkillPreview = !showSkillPreview"
+            >
+              <span class="mdi" :class="showSkillPreview ? 'mdi-chevron-up' : 'mdi-chevron-down'"></span>
+              {{ showSkillPreview ? 'Hide' : 'Show' }} preview
+            </button>
+          </div>
+          <pre
+            v-if="selectedSkillContent && showSkillPreview"
+            class="init-skill-preview-inline"
+          >{{ selectedSkillContent }}</pre>
         </div>
         <button
           class="init-btn init-btn-primary"
@@ -69,7 +100,8 @@
           :title="!selectedArch ? 'Select an architecture document — the stack is read from it' : 'Start the AI bootstrap session'"
           @click="startSession"
         >
-          <span class="mdi mdi-robot-outline"></span> Initialise Stack
+          <span class="mdi mdi-robot-outline"></span>
+          Initialise Stack{{ selectedSkillContent ? ' with selected skill' : '' }}
         </button>
       </div>
     </div>
@@ -111,7 +143,9 @@
               <label class="init-panel-label">Skill</label>
               <select class="init-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent">
                 <option value="">— No skill —</option>
-                <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+                <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                  <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+                </optgroup>
               </select>
             </div>
             <div class="init-prompt-section">
@@ -130,7 +164,9 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { collectSkillFiles, filterSkillsByCategory, groupSkillFiles } from '@/utils/skills';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 
 // Module-scoped so the watchers below can refit / clean up without
 // threading them through props.
@@ -166,8 +202,11 @@ export default {
     const selectedStyleGuide = ref('');
 
     const skillFiles = ref([]);
+    const skillGroups = computed(() => groupSkillFiles(skillFiles.value));
     const selectedSkill = ref('');
     const selectedSkillContent = ref('');
+    // Toggle for the landing-card inline skill preview.
+    const showSkillPreview = ref(false);
 
     async function loadContextFiles() {
       try {
@@ -218,12 +257,7 @@ export default {
     async function loadSkills() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
-        if (!tree || !tree.children) return;
-        const folder = tree.children.find(c => c.name === 'Skills');
-        if (!folder || !folder.children) return;
-        skillFiles.value = folder.children
-          .filter(f => f.type === 'file' && f.name.endsWith('.md'))
-          .map(f => ({ path: f.path, name: f.name, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
+        skillFiles.value = filterSkillsByCategory(collectSkillFiles(tree), 'Bootstrapping');
         // Auto-select the Initiate Stack skill — this view exists to drive
         // exactly that flow. Fall back to the first skill if not present.
         const match = skillFiles.value.find(s => /initiate[ _-]?stack/i.test(s.name))
@@ -263,6 +297,7 @@ export default {
       term.loadAddon(fitAddon);
       term.open(terminalContainer.value);
       fitAddon.fit();
+      enableTerminalPaste(term);
       termInstance = term;
 
       const shellId = 'init-stack-' + (++sessionCounter);
@@ -383,7 +418,7 @@ Start by stating what stack you read from the architecture document, then ask me
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
       prdFiles, archFiles, dataModelFiles, styleGuideFiles,
       selectedPrd, selectedArch, selectedDataModel, selectedStyleGuide,
-      skillFiles, selectedSkill, loadSelectedSkillContent,
+      skillFiles, skillGroups, selectedSkill, selectedSkillContent, showSkillPreview, loadSelectedSkillContent,
       startSession, stopSession, startResize,
     };
   },
@@ -428,6 +463,63 @@ Start by stating what stack you read from the architecture document, then ask me
 .init-context-select:focus { border-color: #6dd4a0; }
 
 .init-agent-info { font-size: 0.82rem; color: var(--text-muted); }
+
+/* Skill picker on the landing card (matches PlanPrdView pattern) */
+.init-skill-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+.init-skill-picker-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.init-skill-picker-select {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+.init-skill-picker-select:focus { border-color: #6dd4a0; }
+.init-skill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.init-skill-toggle:hover { color: var(--text-color); border-color: #6dd4a0; }
+.init-skill-preview-inline {
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--text-color);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 .init-agent-warning { display: flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; color: #b87f0e; }
 [data-theme="dark"] .init-agent-warning { color: #e5a830; }
 

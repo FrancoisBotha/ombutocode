@@ -59,11 +59,12 @@
       <!-- These views host long-lived agent terminal (PTY) sessions. They use
            v-show (not v-if) so the terminal, fitAddon, and shell process all
            survive navigation between Plan views — same pattern as WorkspaceView. -->
-      <PlanPrdView v-show="activeView === 'plan-prd'" :visible="activeView === 'plan-prd'" @change-view="handleChangeView" />
+      <PlanPrdView v-show="activeView === 'plan-prd'" :visible="activeView === 'plan-prd'" skill-category="PRD" @change-view="handleChangeView" />
       <PlanDataModelView v-show="activeView === 'plan-data-model'" :visible="activeView === 'plan-data-model'" @change-view="handleChangeView" />
       <PlanEpicsView v-show="activeView === 'plan-epics'" :visible="activeView === 'plan-epics'" @change-view="handleChangeView" />
       <PlanTicketGenView v-show="activeView === 'plan-ticket-gen'" :visible="activeView === 'plan-ticket-gen'" @change-view="handleChangeView" />
       <PlanInitiateStackView v-show="activeView === 'plan-initiate-stack'" :visible="activeView === 'plan-initiate-stack'" @change-view="handleChangeView" />
+      <PlanBddUseCasesView v-show="activeView === 'plan-bdd-use-cases'" :visible="activeView === 'plan-bdd-use-cases'" @change-view="handleChangeView" />
 
     </div>
 
@@ -169,6 +170,7 @@ import PlanDataModelView from '@/components/PlanDataModelView.vue';
 import PlanEpicsView from '@/components/PlanEpicsView.vue';
 import PlanTicketGenView from '@/components/PlanTicketGenView.vue';
 import PlanInitiateStackView from '@/components/PlanInitiateStackView.vue';
+import PlanBddUseCasesView from '@/components/PlanBddUseCasesView.vue';
 import PlanArtifactsView from '@/views/ArtifactListView.vue';
 import PlanTreeView from '@/views/TreeView.vue';
 import PlanMockupsView from '@/views/MockupsView.vue';
@@ -215,6 +217,7 @@ export default {
     PlanEpicsView,
     PlanTicketGenView,
     PlanInitiateStackView,
+    PlanBddUseCasesView,
     PlanArtifactsView,
     PlanTreeView,
     PlanMockupsView,
@@ -361,7 +364,7 @@ export default {
     }
 
     // Apply theme to document element reactively
-    const theme = computed(() => settingsStore.settings.theme || 'light');
+    const theme = computed(() => settingsStore.settings.theme || 'dark');
     watch(theme, (newTheme) => {
       document.documentElement.setAttribute('data-theme', newTheme);
     }, { immediate: true });

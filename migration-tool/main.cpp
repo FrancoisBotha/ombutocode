@@ -6,14 +6,16 @@
 //   - Overwrites .ombutocode/src/ (skipping node_modules + dist)
 //   - Overwrites buildandrun.bat / buildandrun / codingagents.yml /
 //     codingagent-templates.json
-//   - Adds any new skills (e.g. Epic Generation, Fix Ticket, PRD-BASIC) to
-//     both .ombutocode/templates/skills/ and docs/Skills/ if missing
+//   - Migrates skills to the v0.2.4 category layout: moves flat files in
+//     docs/Skills/ and .ombutocode/templates/skills/ into their category
+//     sub-folder (PRD, Architecture, Styling, ...), and adds any skills the
+//     target is missing
 //   - Removes target's node_modules + dist so next launch does a clean
 //     npm install + vite build
 //
 // What is NOT touched: target's .ombutocode/data/ (the SQLite DBs), logs/,
-// run-output/, planning/, and the existing docs/ tree (other than additive
-// new-skill files).
+// run-output/, planning/, and the existing docs/ tree (other than the skill
+// moves/additions above).
 //
 // Build:  see build.bat in this folder.
 
@@ -51,15 +53,29 @@ constexpr int IDC_MIGRATE_BTN   = 106;
 constexpr int IDC_LOG           = 107;
 constexpr int IDC_CLEAR_BTN     = 108;
 
-// New skills that the migration adds (additively — only if missing in
-// target). Keep in sync with the actual files in docs/Skills/.
-static const std::vector<std::wstring> kNewSkills = {
-    L"Epic Generation.md",
-    L"Epic Refinement.md",
-    L"Fix Ticket.md",
-    L"PRD-BASIC Skill.md",
-    L"Architecture-BASIC Skill.md",
-    L"Initiate Stack.md"
+// Canonical skills and their category sub-folders under docs/Skills/.
+// v0.2.4 introduced skill categories as a one-level folder structure
+// (PRD, Architecture, Styling, Epics, BDD, Ticket Generation, Diagnostics,
+// Bootstrapping, Other). The migration moves a target's existing flat
+// skill files into their category folder and additively copies any skills
+// the target is missing. Keep in sync with docs/Skills/ in the repo.
+struct SkillEntry { const wchar_t* category; const wchar_t* file; };
+static const std::vector<SkillEntry> kSkills = {
+    { L"PRD",               L"PRD Skill.md" },
+    { L"PRD",               L"PRD-BASIC Skill.md" },
+    { L"Architecture",      L"Architecture_Guide.md" },
+    { L"Architecture",      L"Architecture-BASIC Skill.md" },
+    { L"Styling",           L"Style Guide.md" },
+    { L"Styling",           L"Style Guide - Simple.md" },
+    { L"Styling",           L"Mockup Generator.md" },
+    { L"Epics",             L"Epic Generation.md" },
+    { L"Epics",             L"Epic Refinement.md" },
+    { L"BDD",               L"Simple BDD Use Case.md" },
+    { L"BDD",               L"BDD Ticket Generation.md" },
+    { L"Ticket Generation", L"Ticket Generation.md" },
+    { L"Diagnostics",       L"Fix Ticket.md" },
+    { L"Bootstrapping",     L"Initiate Stack.md" },
+    { L"Other",             L"Coding_Standards.md" },
 };
 
 // Single-file overwrites (relative to project root).
@@ -194,6 +210,36 @@ static size_t removeTree(const fs::path& p) {
     return fs::remove_all(p);
 }
 
+// Migrate one skill within a root folder (docs/Skills or templates/skills):
+// move a flat pre-0.2.4 copy into its category sub-folder, otherwise copy
+// the file from the source when missing entirely. With apply=false this is
+// a dry run that only reports what would happen.
+static std::wstring migrateSkillAt(const fs::path& srcFile, const fs::path& root,
+                                   const SkillEntry& sk, bool apply) {
+    auto categorized = root / sk.category / sk.file;
+    auto flat        = root / sk.file;
+
+    if (fs::exists(categorized)) {
+        // Never delete a flat duplicate — it may carry user edits.
+        return fs::exists(flat) ? L"keep (flat duplicate left in place)" : L"keep";
+    }
+    if (fs::exists(flat)) {
+        if (apply) {
+            fs::create_directories(categorized.parent_path());
+            fs::rename(flat, categorized);
+        }
+        return L"move into category";
+    }
+    if (fs::exists(srcFile)) {
+        if (apply) {
+            fs::create_directories(categorized.parent_path());
+            fs::copy_file(srcFile, categorized);
+        }
+        return L"add";
+    }
+    return L"missing in source";
+}
+
 // ── Preview ────────────────────────────────────────────────────────────────
 
 static void doPreview(const fs::path& src, const fs::path& tgt) {
@@ -215,16 +261,15 @@ static void doPreview(const fs::path& src, const fs::path& tgt) {
     }
 
     appendLog(L"");
-    appendLog(L"New skills (copied additively if missing in target):");
-    for (auto& sk : kNewSkills) {
-        auto from = src / L"docs" / L"Skills" / sk;
-        if (!fs::exists(from)) { appendLog(L"  (missing in source) " + sk); continue; }
-        auto tgtDocs = tgt / L"docs" / L"Skills" / sk;
-        auto tgtTpl  = tgt / L".ombutocode" / L"templates" / L"skills" / sk;
-        std::wstring marks = (fs::exists(tgtDocs) ? L"docs:keep" : L"docs:add");
-        marks += L" / ";
-        marks += (fs::exists(tgtTpl)  ? L"tpl:keep"  : L"tpl:add");
-        appendLog(L"  [" + marks + L"] " + sk);
+    appendLog(L"Skills (moved into category folders / added if missing):");
+    for (auto& sk : kSkills) {
+        auto from = src / L"docs" / L"Skills" / sk.category / sk.file;
+        auto docsRoot = tgt / L"docs" / L"Skills";
+        auto tplRoot  = tgt / L".ombutocode" / L"templates" / L"skills";
+        std::wstring docsState = migrateSkillAt(from, docsRoot, sk, /*apply=*/false);
+        std::wstring tplState  = migrateSkillAt(from, tplRoot,  sk, /*apply=*/false);
+        appendLog(L"  [docs:" + docsState + L" / tpl:" + tplState + L"] "
+                  + std::wstring(sk.category) + L"\\" + sk.file);
     }
 
     appendLog(L"");
@@ -284,16 +329,17 @@ static void doMigrate(const fs::path& src, const fs::path& tgt) {
             }
         }
 
-        // 4. Additive: new skills
-        for (auto& sk : kNewSkills) {
-            auto from = src / L"docs" / L"Skills" / sk;
-            if (!fs::exists(from)) continue;
-            // Copy to templates/skills/ (for future inits)
-            auto toTpl = tgt / L".ombutocode" / L"templates" / L"skills" / sk;
-            if (copyIfMissing(from, toTpl)) appendLog(L"Added template skill: " + sk);
-            // Copy to docs/Skills/ (active for this project right now)
-            auto toDocs = tgt / L"docs" / L"Skills" / sk;
-            if (copyIfMissing(from, toDocs)) appendLog(L"Added active skill:   " + sk);
+        // 4. Skills: move flat copies into category folders, add missing ones
+        for (auto& sk : kSkills) {
+            auto from = src / L"docs" / L"Skills" / sk.category / sk.file;
+            auto docsRoot = tgt / L"docs" / L"Skills";
+            auto tplRoot  = tgt / L".ombutocode" / L"templates" / L"skills";
+            std::wstring docsState = migrateSkillAt(from, docsRoot, sk, /*apply=*/true);
+            std::wstring tplState  = migrateSkillAt(from, tplRoot,  sk, /*apply=*/true);
+            if (docsState != L"keep" || tplState != L"keep") {
+                appendLog(L"Skill " + std::wstring(sk.category) + L"\\" + sk.file
+                          + L"  [docs:" + docsState + L" / tpl:" + tplState + L"]");
+            }
         }
 
         // 5. Remove target's node_modules + dist so the next launch rebuilds cleanly
@@ -308,7 +354,10 @@ static void doMigrate(const fs::path& src, const fs::path& tgt) {
         appendLog(L"── DONE ──");
         appendLog(L"Next steps in the target project:");
         appendLog(L"  1. Run .ombutocode\\buildandrun.bat (it will npm install + build + launch)");
-        appendLog(L"  2. If your Opus model selection broke, re-pick it in Settings (id changed 4.6 -> 4.7)");
+        appendLog(L"  2. Skills now live in category sub-folders under docs\\Skills\\ — your existing");
+        appendLog(L"     skill files were moved automatically; custom skills stay where they are and");
+        appendLog(L"     appear under the 'Other' category until you move them into a folder.");
+        appendLog(L"  3. The requests database migrates itself on first launch (feature_ref -> epic_ref).");
     } catch (const std::exception& e) {
         std::string what = e.what();
         std::wstring wwhat(what.begin(), what.end());

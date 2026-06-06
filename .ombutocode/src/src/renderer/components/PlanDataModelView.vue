@@ -131,6 +131,7 @@
 
 <script>
 import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 
 let termInstance = null;
 let fitAddon = null;
@@ -259,6 +260,7 @@ export default {
       term.loadAddon(fitAddon);
       term.open(terminalContainer.value);
       fitAddon.fit();
+      enableTerminalPaste(term);
       termInstance = term;
 
       const shellId = 'dm-agent-' + (++sessionCounter);

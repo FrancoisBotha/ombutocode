@@ -6,24 +6,65 @@
 
       <div class="prd-create">
         <div class="prd-create-card">
-          <span class="mdi mdi-file-document-plus-outline prd-create-icon"></span>
-          <div>
-            <h3>Create a new {{ docShortName }}</h3>
-            <p>
-              Launch an interactive AI session that guides you through defining your product's
-              vision, goals, target users, features, and success metrics.
-            </p>
-            <p class="prd-agent-info" v-if="defaultAgent">
-              Using <strong>{{ defaultAgent }}</strong> as the coding agent.
-            </p>
-            <p class="prd-agent-warning" v-else>
-              <span class="mdi mdi-alert-outline"></span>
-              No default agent configured. Go to Settings > Coding Agents to set one up.
-            </p>
+          <div class="prd-create-row">
+            <span class="mdi mdi-file-document-plus-outline prd-create-icon"></span>
+            <div class="prd-create-text">
+              <h3>Create a new {{ docShortName }}</h3>
+              <p>
+                Launch an interactive AI session that guides you through defining your product's
+                vision, goals, target users, features, and success metrics.
+              </p>
+              <p class="prd-agent-info" v-if="defaultAgent">
+                Using <strong>{{ defaultAgent }}</strong> as the coding agent.
+              </p>
+              <p class="prd-agent-warning" v-else>
+                <span class="mdi mdi-alert-outline"></span>
+                No default agent configured. Go to Settings > Coding Agents to set one up.
+              </p>
+            </div>
           </div>
-          <button class="prd-btn prd-btn-primary" :disabled="!defaultAgent" @click="confirmCreate">
-            <span class="mdi mdi-robot-outline"></span> Create {{ docShortName }}
-          </button>
+
+          <!-- Skill picker — surfaced BEFORE the session starts so the user
+               can choose the skill (and read its preview) before the agent
+               is launched with it. -->
+          <div class="prd-skill-picker">
+            <label class="prd-skill-picker-label">Skill / system prompt</label>
+            <select
+              class="prd-skill-picker-select"
+              v-model="selectedSkillPath"
+              @change="loadSelectedSkill"
+            >
+              <option value="">-- None --</option>
+              <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              </optgroup>
+            </select>
+            <button
+              v-if="selectedSkillContent"
+              class="prd-skill-toggle"
+              type="button"
+              @click="showSkillPreview = !showSkillPreview"
+            >
+              <span class="mdi" :class="showSkillPreview ? 'mdi-chevron-up' : 'mdi-chevron-down'"></span>
+              {{ showSkillPreview ? 'Hide' : 'Show' }} preview
+            </button>
+          </div>
+          <div
+            v-if="selectedSkillContent && showSkillPreview"
+            class="prd-skill-preview-inline markdown-body"
+            v-html="renderedSkillHtml"
+          ></div>
+
+          <div class="prd-create-actions">
+            <button
+              class="prd-btn prd-btn-primary"
+              :disabled="!defaultAgent"
+              @click="confirmCreate"
+            >
+              <span class="mdi mdi-robot-outline"></span>
+              Create {{ docShortName }}{{ selectedSkillContent ? ' with selected skill' : '' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -33,6 +74,9 @@
           <div class="prd-existing-info">
             <strong>{{ docShortName }} exists</strong>
             <span>{{ existingDoc }}</span>
+            <span class="prd-existing-skill-hint" v-if="selectedSkillContent">
+              Refine will use the skill selected above.
+            </span>
           </div>
           <button class="prd-btn prd-btn-secondary" @click="viewExistingDoc">
             <span class="mdi mdi-eye-outline"></span> View
@@ -61,7 +105,9 @@
             <label class="prd-skill-label">Skill / System Prompt</label>
             <select class="prd-skill-select" v-model="selectedSkillPath" @change="loadSelectedSkill">
               <option value="">-- None --</option>
-              <option v-for="s in availableSkills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              </optgroup>
             </select>
           </div>
           <div class="prd-skill-preview" v-if="selectedSkillContent">
@@ -105,6 +151,8 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { collectSkillFiles, filterSkillsByCategory, groupSkillFiles } from '@/utils/skills';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 import { marked } from 'marked';
 
 let termInstance = null;
@@ -124,6 +172,9 @@ export default {
     docFileName: { type: String, default: 'PRD.md' },
     docShortName: { type: String, default: 'PRD' },
     skillMatch: { type: String, default: 'prd' },
+    // Restrict the skill picker to one docs/Skills/<category>/ sub-folder
+    // (empty = show all categories).
+    skillCategory: { type: String, default: '' },
     createInstruction: { type: String, default: '' },
     refineInstruction: { type: String, default: '' },
     contextFiles: { type: Array, default: () => [] },
@@ -142,8 +193,12 @@ export default {
 
     // Skill panel
     const availableSkills = ref([]);
+    const skillGroups = computed(() => groupSkillFiles(availableSkills.value));
     const selectedSkillPath = ref('');
     const selectedSkillContent = ref('');
+    // Controls the inline preview panel on the pre-session create card.
+    // Closed by default — opens when the user clicks "Show preview".
+    const showSkillPreview = ref(false);
     const skillPanelWidth = ref(350);
 
     const renderedSkillHtml = computed(() => {
@@ -156,18 +211,7 @@ export default {
     async function loadAvailableSkills() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
-        if (tree && tree.children) {
-          const skillsFolder = tree.children.find(c => c.name === 'Skills');
-          if (skillsFolder && skillsFolder.children) {
-            availableSkills.value = skillsFolder.children
-              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
-              .map(f => ({
-                path: f.path,
-                name: f.name,
-                displayName: f.name.replace('.md', '').replace(/_/g, ' '),
-              }));
-          }
-        }
+        availableSkills.value = filterSkillsByCategory(collectSkillFiles(tree), props.skillCategory);
       } catch (_) {}
     }
 
@@ -184,16 +228,15 @@ export default {
     }
 
     function autoSelectSkill() {
-      // Prefer the canonical, non-BASIC skill on mount so existing users keep
-      // the rich-template behaviour. Users can switch to a BASIC variant (e.g.
-      // PRD-BASIC) via the dropdown if they want something lighter-weight.
+      // Prefer the BASIC variant on mount (e.g. PRD-BASIC, Architecture-BASIC) —
+      // it's the lighter-weight default for most sessions. Users can switch to
+      // the rich-template skill via the dropdown when they want more depth.
       const match = props.skillMatch.toLowerCase();
       const candidates = availableSkills.value.filter(s =>
         s.name.toLowerCase().includes(match) || s.displayName.toLowerCase().includes(match)
       );
-      // Skip explicit BASIC variants when picking the default, then fall back
-      // to any match if the only available skill IS the BASIC one.
-      const preferred = candidates.find(s => !/\bbasic\b/i.test(s.displayName) && !/\bbasic\b/i.test(s.name))
+      // Fall back to any match when no BASIC variant exists.
+      const preferred = candidates.find(s => /\bbasic\b/i.test(s.displayName) || /\bbasic\b/i.test(s.name))
         || candidates[0];
       if (preferred) {
         selectedSkillPath.value = preferred.path;
@@ -307,6 +350,7 @@ export default {
       term.loadAddon(fitAddon);
       term.open(terminalContainer.value);
       fitAddon.fit();
+      enableTerminalPaste(term);
       termInstance = term;
 
       const shellId = 'prd-agent-' + (++sessionCounter);
@@ -430,7 +474,7 @@ export default {
     return {
       sessionActive, terminalContainer, defaultAgent, existingDoc,
       sessionPrompt, promptCollapsed, sessionMode,
-      availableSkills, selectedSkillPath, selectedSkillContent, renderedSkillHtml,
+      availableSkills, skillGroups, selectedSkillPath, selectedSkillContent, showSkillPreview, renderedSkillHtml,
       skillPanelWidth, loadSelectedSkill, startResize,
       confirmCreate, showOverwriteConfirm, onConfirmOverwrite,
       viewExistingDoc, startSession, stopSession
@@ -471,10 +515,40 @@ export default {
   margin-top: 1rem;
 }
 
-.prd-create-card,
-.prd-existing-card {
+/* Create card: vertical layout — top row (icon + text), then skill picker,
+   optional skill preview, then the action button. The skill picker lives on
+   the landing card so the user can choose the skill BEFORE launching the
+   agent (the in-session selector switches it for the next run, not the
+   current one). */
+.prd-create-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  max-width: 100%;
+}
+
+.prd-create-row {
   display: flex;
   align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.prd-create-text { flex: 1; }
+
+.prd-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* Existing-doc card stays horizontal — icon + info + actions in one row. */
+.prd-existing-card {
+  display: flex;
+  align-items: center;
   gap: 1.25rem;
   padding: 1.5rem;
   border-radius: 8px;
@@ -489,6 +563,64 @@ export default {
   color: #6dd4a0;
   flex-shrink: 0;
   margin-top: 0.15rem;
+}
+
+/* Skill picker on the landing card */
+.prd-skill-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.prd-skill-picker-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.prd-skill-picker-select {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+.prd-skill-picker-select:focus { border-color: #6dd4a0; }
+.prd-skill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.prd-skill-toggle:hover { color: var(--text-color); border-color: #6dd4a0; }
+.prd-skill-preview-inline {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-color);
+}
+.prd-existing-skill-hint {
+  font-size: 0.72rem !important;
+  font-style: italic;
+  color: var(--text-muted) !important;
+  font-family: inherit !important;
 }
 
 .prd-create-card h3 {

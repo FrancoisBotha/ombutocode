@@ -76,10 +76,22 @@
       <div class="backlog-table-container">
         <div class="backlog-header">
           <h2 class="backlog-heading">Backlog</h2>
-          <button class="btn btn-primary btn-add-ticket" @click="openAddTicketModal">
-            <span class="mdi mdi-plus"></span>
-            Add Ticket
-          </button>
+          <div class="backlog-header-actions">
+            <button
+              v-if="backlogTickets.length > 0"
+              class="btn btn-secondary btn-promote-all"
+              :disabled="promotingAll"
+              title="Promote every backlog ticket to TODO, lowest ticket number first"
+              @click="promoteAll"
+            >
+              <span class="mdi" :class="promotingAll ? 'mdi-loading mdi-spin' : 'mdi-arrow-up-bold-box-outline'"></span>
+              {{ promotingAll ? 'Promoting...' : 'Promote All' }}
+            </button>
+            <button class="btn btn-primary btn-add-ticket" @click="openAddTicketModal">
+              <span class="mdi mdi-plus"></span>
+              Add Ticket
+            </button>
+          </div>
         </div>
 
         <div v-if="backlogTickets.length === 0" class="backlog-empty">
@@ -87,39 +99,14 @@
           <p>No backlog items found</p>
         </div>
 
-        <table v-else class="backlog-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Title</th>
-              <th>Dependencies</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(ticket, index) in backlogTickets"
-              :key="ticket.id"
-              :class="{ 'is-selected': ticket.id === selectedTicketId }"
-              tabindex="0"
-              @click="selectTicket(ticket.id)"
-              @keydown.up.prevent="selectPrevious(index)"
-              @keydown.down.prevent="selectNext(index)"
-            >
-              <td class="col-id">{{ ticket.id }}</td>
-              <td class="col-title">{{ ticket.title }}</td>
-              <td class="col-deps">{{ ticket.dependencies && ticket.dependencies.length ? ticket.dependencies.join(', ') : '—' }}</td>
-              <td class="col-actions">
-                <button class="btn-promote-sm" @click.stop="promote(ticket.id)" title="Promote to TODO">
-                  <span class="mdi mdi-arrow-up-bold"></span>
-                </button>
-                <button class="btn-delete-sm" @click.stop="deleteTicketHandler(ticket.id, ticket.title)" title="Delete ticket">
-                  <span class="mdi mdi-delete"></span>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div
+          v-show="backlogTickets.length > 0"
+          ref="tabulatorTable"
+          class="tabulator-table"
+          tabindex="0"
+          @keydown.up.prevent="selectPrevious"
+          @keydown.down.prevent="selectNext"
+        ></div>
       </div>
 
       <div
@@ -143,6 +130,8 @@
 import { computed, onMounted, onUnmounted, nextTick, ref, watch } from 'vue';
 import { useBacklogStore } from '@/stores/backlogStore';
 import BacklogDetail from '@/components/BacklogDetail.vue';
+import { TabulatorFull as Tabulator } from 'tabulator-tables';
+import 'tabulator-tables/dist/css/tabulator.min.css';
 
 const RESIZE_HANDLE_WIDTH = 10;
 const MIN_TABLE_WIDTH = 420;
@@ -157,6 +146,8 @@ export default {
   setup() {
     const backlogStore = useBacklogStore();
     const backlogViewRef = ref(null);
+    const tabulatorTable = ref(null);
+    const tabulatorInstance = ref(null);
     const detailWidth = ref(420);
     const isResizing = ref(false);
     const dragStartX = ref(0);
@@ -180,6 +171,129 @@ export default {
       width: `${detailWidth.value}px`
     }));
 
+    let currentSelectedRow = null;
+
+    function initTabulator() {
+      if (!tabulatorTable.value || tabulatorInstance.value) return;
+
+      tabulatorInstance.value = new Tabulator(tabulatorTable.value, {
+        data: backlogTickets.value,
+        index: 'id',
+        layout: 'fitColumns',
+        selectable: false,
+        columns: [
+          {
+            title: 'ID',
+            field: 'id',
+            width: 130,
+            headerSort: true,
+            cssClass: 'col-id'
+          },
+          {
+            title: 'Title',
+            field: 'title',
+            headerSort: true,
+            cssClass: 'col-title'
+          },
+          {
+            title: 'Dependencies',
+            field: 'dependencies',
+            width: 160,
+            headerSort: false,
+            formatter: function(cell) {
+              const deps = cell.getValue();
+              return Array.isArray(deps) && deps.length ? deps.join(', ') : '—';
+            },
+            cssClass: 'col-deps'
+          },
+          {
+            title: 'Actions',
+            field: 'actions',
+            width: 90,
+            headerSort: false,
+            hozAlign: 'center',
+            formatter: function() {
+              return (
+                '<button class="btn-promote-sm" title="Promote to TODO">' +
+                '<span class="mdi mdi-arrow-up-bold"></span></button>' +
+                '<button class="btn-delete-sm" title="Delete ticket">' +
+                '<span class="mdi mdi-delete"></span></button>'
+              );
+            },
+            cellClick: function(e, cell) {
+              const ticket = cell.getRow().getData();
+              if (e.target.closest('.btn-promote-sm')) {
+                promote(ticket.id);
+              } else if (e.target.closest('.btn-delete-sm')) {
+                deleteTicketHandler(ticket.id, ticket.title);
+              }
+            },
+            cssClass: 'col-actions'
+          }
+        ]
+      });
+
+      tabulatorInstance.value.on('cellClick', function(e, cell) {
+        // Action buttons handle their own clicks without changing selection
+        if (cell.getField() === 'actions') return;
+        const row = cell.getRow();
+        const ticket = row.getData();
+        if (ticket?.id) {
+          backlogStore.selectTicket(ticket.id);
+          highlightRow(row);
+        }
+      });
+
+      nextTick(() => {
+        if (selectedTicketId.value) {
+          selectRowById(selectedTicketId.value);
+        }
+      });
+    }
+
+    function highlightRow(row) {
+      if (currentSelectedRow && currentSelectedRow !== row) {
+        currentSelectedRow.getElement().classList.remove('selected-row');
+      }
+      row.getElement().classList.add('selected-row');
+      currentSelectedRow = row;
+    }
+
+    function selectRowById(id) {
+      if (!tabulatorInstance.value) return;
+      try {
+        const row = tabulatorInstance.value.getRow(id);
+        if (row) {
+          highlightRow(row);
+        }
+      } catch (e) {
+        // Row not found
+      }
+    }
+
+    function moveSelection(delta) {
+      if (!tabulatorInstance.value) return;
+      const rows = tabulatorInstance.value.getRows('active');
+      if (!rows.length) return;
+      const currentIndex = rows.findIndex((row) => row.getData().id === selectedTicketId.value);
+      const nextIndex = currentIndex === -1
+        ? 0
+        : Math.min(Math.max(currentIndex + delta, 0), rows.length - 1);
+      if (nextIndex === currentIndex) return;
+      const ticket = rows[nextIndex].getData();
+      backlogStore.selectTicket(ticket.id);
+      highlightRow(rows[nextIndex]);
+      rows[nextIndex].getElement().scrollIntoView({ block: 'nearest' });
+    }
+
+    function selectPrevious() {
+      moveSelection(-1);
+    }
+
+    function selectNext() {
+      moveSelection(1);
+    }
+
     onMounted(async () => {
       await backlogStore.loadBacklog();
       if (backlogTickets.value.length > 0 && !selectedTicketId.value) {
@@ -187,45 +301,43 @@ export default {
       }
       detailWidth.value = clampDetailWidth(detailWidth.value);
       window.addEventListener('resize', handleWindowResize);
+      await nextTick();
+      initTabulator();
     });
 
     onUnmounted(() => {
       window.removeEventListener('resize', handleWindowResize);
       stopResize();
+      if (tabulatorInstance.value) {
+        tabulatorInstance.value.destroy();
+        tabulatorInstance.value = null;
+      }
+      currentSelectedRow = null;
     });
-
-    function selectTicket(ticketId) {
-      backlogStore.selectTicket(ticketId);
-    }
-
-    function selectPrevious(currentIndex) {
-      if (currentIndex > 0) {
-        const prevTicket = backlogTickets.value[currentIndex - 1];
-        backlogStore.selectTicket(prevTicket.id);
-        nextTick(() => focusRow(currentIndex - 1));
-      }
-    }
-
-    function selectNext(currentIndex) {
-      if (currentIndex < backlogTickets.value.length - 1) {
-        const nextTicket = backlogTickets.value[currentIndex + 1];
-        backlogStore.selectTicket(nextTicket.id);
-        nextTick(() => focusRow(currentIndex + 1));
-      }
-    }
-
-    function focusRow(index) {
-      const rows = document.querySelectorAll('.backlog-table tbody tr');
-      if (rows[index]) {
-        rows[index].focus();
-      }
-    }
 
     async function promote(ticketId) {
       try {
         await backlogStore.promoteToTodo(ticketId);
       } catch (e) {
         console.error('Failed to promote ticket:', e);
+      }
+    }
+
+    const promotingAll = ref(false);
+
+    async function promoteAll() {
+      if (promotingAll.value) return;
+      const count = backlogTickets.value.length;
+      if (count === 0) return;
+      if (!confirm(`Promote all ${count} backlog ticket${count === 1 ? '' : 's'} to TODO?`)) return;
+
+      promotingAll.value = true;
+      try {
+        await backlogStore.promoteAllToTodo();
+      } catch (e) {
+        console.error('Failed to promote all tickets:', e);
+      } finally {
+        promotingAll.value = false;
       }
     }
 
@@ -316,10 +428,26 @@ export default {
       });
     });
 
-    // Clear selection when backlog becomes empty (e.g., after promoting last ticket)
+    // Sync table data and selection when the backlog changes
+    // (e.g., after promoting, deleting, or adding a ticket)
     watch(backlogTickets, (newTickets) => {
       if (newTickets.length === 0 && selectedTicketId.value) {
         backlogStore.selectTicket(null);
+      }
+      if (tabulatorInstance.value) {
+        currentSelectedRow = null;
+        tabulatorInstance.value.setData(newTickets).then(() => {
+          if (selectedTicketId.value) {
+            selectRowById(selectedTicketId.value);
+          }
+        });
+      }
+    });
+
+    // Keep the highlighted row in sync with external selection changes
+    watch(selectedTicketId, (newId) => {
+      if (newId && tabulatorInstance.value) {
+        selectRowById(newId);
       }
     });
 
@@ -340,6 +468,9 @@ export default {
 
     function handleWindowResize() {
       detailWidth.value = clampDetailWidth(detailWidth.value);
+      if (tabulatorInstance.value) {
+        tabulatorInstance.value.redraw();
+      }
     }
 
     function startResize(event) {
@@ -375,11 +506,13 @@ export default {
       error,
       detailPanelStyle,
       backlogViewRef,
+      tabulatorTable,
       isResizing,
-      selectTicket,
       selectPrevious,
       selectNext,
       promote,
+      promotingAll,
+      promoteAll,
       deleteTicketHandler,
       showDeleteModal,
       ticketToDelete,
@@ -443,7 +576,9 @@ export default {
 
 .backlog-table-container {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 1.5rem;
   min-width: 0;
 }
@@ -462,8 +597,21 @@ export default {
   color: #2c3e50;
 }
 
-.btn-add-ticket {
+.backlog-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-add-ticket,
+.btn-promote-all {
   padding: 0.45rem 0.9rem;
+}
+
+.btn-promote-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .resize-handle {
@@ -495,23 +643,35 @@ export default {
   height: 100%;
 }
 
-.backlog-table {
-  width: 100%;
-  border-collapse: collapse;
+.tabulator-table {
+  flex: 1;
   background-color: #ffffff;
   border-radius: 6px;
-  overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  min-height: 0;
+  outline: none;
 }
 
-.backlog-table thead {
+.tabulator-table:focus {
+  box-shadow: 0 0 0 2px #4a90e2;
+}
+
+/* Tabulator custom styles */
+:deep(.tabulator) {
+  border: none;
+  background-color: #ffffff;
+}
+
+:deep(.tabulator-header) {
   background-color: #f8f9fa;
   border-bottom: 2px solid #e1e4e8;
 }
 
-.backlog-table th {
-  padding: 0.75rem 1rem;
-  text-align: left;
+:deep(.tabulator-header .tabulator-col) {
+  background-color: #f8f9fa;
+}
+
+:deep(.tabulator-header .tabulator-col-title) {
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -519,59 +679,45 @@ export default {
   color: #6b778c;
 }
 
-.backlog-table td {
-  padding: 0.75rem 1rem;
+:deep(.tabulator-row) {
+  cursor: pointer;
+}
+
+:deep(.tabulator-row:hover) {
+  background-color: #f8f9fa;
+}
+
+:deep(.tabulator-row.selected-row) {
+  background-color: #e1e7ff !important;
+}
+
+:deep(.tabulator-cell) {
   font-size: 0.875rem;
   color: #2c3e50;
   border-bottom: 1px solid #f1f2f4;
 }
 
-.backlog-table tbody tr {
-  cursor: pointer;
-  transition: background-color 0.15s;
-  outline: none;
-}
-
-.backlog-table tbody tr:hover {
-  background-color: #f8f9fa;
-}
-
-.backlog-table tbody tr.is-selected {
-  background-color: #e1e7ff;
-}
-
-.backlog-table tbody tr:focus {
-  box-shadow: inset 0 0 0 2px #4a90e2;
-}
-
-.col-id {
+:deep(.col-id) {
   font-family: monospace;
   font-size: 0.8rem;
-  white-space: nowrap;
-  width: 120px;
 }
 
-.col-title {
-  min-width: 200px;
-}
-
-.col-deps {
+:deep(.col-deps) {
   color: #6b778c;
   font-size: 0.8rem;
-  white-space: nowrap;
-  width: 150px;
 }
 
-.col-actions {
-  width: 80px;
-  text-align: center;
-  display: flex;
-  flex-direction: row;
+:deep(.col-actions) {
+  /* inline-flex keeps the cell in Tabulator's inline-block row flow;
+     display: flex would break it onto its own line */
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
   justify-content: center;
 }
 
-.btn-promote-sm {
+:deep(.btn-promote-sm),
+:deep(.btn-delete-sm) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -585,28 +731,26 @@ export default {
   transition: all 0.15s;
 }
 
-.btn-promote-sm:hover {
+:deep(.btn-promote-sm:hover) {
   background-color: #4a90e2;
   color: white;
 }
 
-.btn-delete-sm {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 4px;
-  background-color: transparent;
-  color: #6b778c;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-delete-sm:hover {
+:deep(.btn-delete-sm:hover) {
   background-color: #e74c3c;
   color: white;
+}
+
+/* Generic dark tabulator theming (rows, header, cells, striping) lives in
+   assets/main.css and is shared with the Epics / Logs / Archive tables —
+   only backlog-specific pieces remain here. */
+[data-theme='dark'] .backlog-view .tabulator-table:focus {
+  box-shadow: 0 0 0 2px #5b9bd5;
+}
+
+[data-theme='dark'] .backlog-view :deep(.btn-promote-sm),
+[data-theme='dark'] .backlog-view :deep(.btn-delete-sm) {
+  color: var(--text-muted, #8b929a);
 }
 
 /* Delete Confirmation Modal Styles */

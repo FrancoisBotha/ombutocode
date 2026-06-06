@@ -56,6 +56,28 @@ export const useEpicStore = defineStore('feature', () => {
     }
   }
 
+  async function updateEpicStatus(feature, status) {
+    if (!feature?.fileName) {
+      throw new Error('Feature file is required');
+    }
+    if (!status) {
+      throw new Error('Status is required');
+    }
+
+    _error.value = null;
+    try {
+      await window.electron.ipcRenderer.invoke('epics:updateStatus', {
+        fileName: feature.fileName,
+        status
+      });
+      await loadEpics();
+      selectedEpicId.value = feature.id;
+    } catch (e) {
+      _error.value = e.message;
+      throw e;
+    }
+  }
+
   async function startEpic(feature) {
     if (!feature?.fileName) {
       throw new Error('Feature file is required');
@@ -169,6 +191,7 @@ export const useEpicStore = defineStore('feature', () => {
     evalOutput,
     loadEpics,
     completeEpic,
+    updateEpicStatus,
     startEpic,
     evaluateEpic,
     handleEvalComplete,

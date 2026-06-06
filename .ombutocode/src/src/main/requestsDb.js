@@ -59,6 +59,10 @@ async function initDb(dbPathOrInstance) {
   if (fs.existsSync(currentDbPath)) {
     const buffer = fs.readFileSync(currentDbPath);
     db = new SQL.Database(buffer);
+    // Run schema init on existing databases too — CREATE IF NOT EXISTS is a
+    // no-op for present tables, and the column migration below brings old
+    // databases up to the current schema.
+    initializeSchema();
   } else {
     db = new SQL.Database();
     initializeSchema();
@@ -93,6 +97,12 @@ function initializeSchema() {
     )
   `);
 
+  // Migration: CREATE TABLE IF NOT EXISTS never alters an existing table.
+  // Databases created before the feature→epic rename still have a
+  // 'feature_ref' column (or neither), so every INSERT naming epic_ref fails
+  // ("table requests has no column named epic_ref"). Bring them up to date.
+  migrateRequestsEpicRef();
+
   // Create indexes
   db.run(`CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_requests_created_at ON requests(created_at)`);
@@ -100,6 +110,39 @@ function initializeSchema() {
   // Initialize metadata with defaults (use prefixed keys)
   db.run(`INSERT OR IGNORE INTO metadata (key, value) VALUES ('${metadataPrefix}last_request_id', '0')`);
   db.run(`INSERT OR IGNORE INTO metadata (key, value) VALUES ('${metadataPrefix}version', '1')`);
+}
+
+/**
+ * Idempotent migration to the current requests schema:
+ * - legacy 'feature_ref' column → renamed to 'epic_ref' (data preserved)
+ * - column missing entirely → added
+ */
+function migrateRequestsEpicRef() {
+  const stmt = db.prepare(`PRAGMA table_info(requests)`);
+  const columns = [];
+  while (stmt.step()) {
+    columns.push(stmt.getAsObject().name);
+  }
+  stmt.free();
+
+  if (columns.length === 0 || columns.includes('epic_ref')) return;
+
+  if (columns.includes('feature_ref')) {
+    try {
+      db.run(`ALTER TABLE requests RENAME COLUMN feature_ref TO epic_ref`);
+      console.log('[RequestsDb] Migrated: renamed requests.feature_ref to epic_ref');
+      return;
+    } catch (_) {
+      // SQLite < 3.25 has no RENAME COLUMN — fall back to add + copy
+    }
+    db.run(`ALTER TABLE requests ADD COLUMN epic_ref TEXT DEFAULT NULL`);
+    db.run(`UPDATE requests SET epic_ref = feature_ref`);
+    console.log('[RequestsDb] Migrated: copied requests.feature_ref into new epic_ref column');
+    return;
+  }
+
+  db.run(`ALTER TABLE requests ADD COLUMN epic_ref TEXT DEFAULT NULL`);
+  console.log('[RequestsDb] Migrated: added missing column requests.epic_ref');
 }
 
 /**

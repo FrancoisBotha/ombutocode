@@ -6,6 +6,7 @@
     doc-file-name="StyleGuide.md"
     doc-short-name="Style Guide"
     skill-match="style guide"
+    skill-category="Styling"
     :context-files="['docs/Product Requirements Document/PRD.md', 'docs/Architecture/Architecture.md']"
     @change-view="$emit('change-view', $event)"
   />

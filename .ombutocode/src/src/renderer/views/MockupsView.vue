@@ -19,7 +19,9 @@
           <label>Skill</label>
           <select v-model="selectedSkill" class="mockup-gen-select" @change="loadSelectedSkillContent">
             <option value="">-- None --</option>
-            <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+            <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+              <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+            </optgroup>
           </select>
         </div>
         <div class="mockup-gen-field mockup-gen-field-sm">
@@ -201,7 +203,9 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import { collectSkillFiles, groupSkillFiles } from '@/utils/skills';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 
 let termInstance = null;
 let fitAddon = null;
@@ -226,6 +230,7 @@ export default {
     const epicFiles = ref([]);
     const frFiles = ref([]);
     const skillFiles = ref([]);
+    const skillGroups = computed(() => groupSkillFiles(skillFiles.value));
     const selectedEpic = ref('');
     const selectedFRs = ref([]);
     const selectedSkill = ref('');
@@ -281,19 +286,14 @@ export default {
               includeStyleGuide.value = true;
             }
           }
-          const skillsFolder = tree.children.find(c => c.name === 'Skills');
-          if (skillsFolder && skillsFolder.children) {
-            skillFiles.value = skillsFolder.children
-              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
-              .map(f => ({ name: f.name, path: f.path, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
-            // Auto-select mockup skill
-            const mockupSkill = skillFiles.value.find(s =>
-              s.name.toLowerCase().includes('mockup') || s.displayName.toLowerCase().includes('mockup')
-            );
-            if (mockupSkill) {
-              selectedSkill.value = mockupSkill.path;
-              loadSelectedSkillContent();
-            }
+          skillFiles.value = collectSkillFiles(tree);
+          // Auto-select mockup skill
+          const mockupSkill = skillFiles.value.find(s =>
+            s.name.toLowerCase().includes('mockup') || s.displayName.toLowerCase().includes('mockup')
+          );
+          if (mockupSkill) {
+            selectedSkill.value = mockupSkill.path;
+            loadSelectedSkillContent();
           }
         }
       } catch (_) {}
@@ -524,6 +524,7 @@ export default {
       term.loadAddon(fitAddon);
       term.open(terminalContainer.value);
       fitAddon.fit();
+      enableTerminalPaste(term);
       termInstance = term;
 
       const shellId = 'mockup-gen-' + (++sessionCounter);
@@ -648,7 +649,7 @@ Guidelines:
       showLinkDialog, linkingMockup, selectedLinkEpic, newEpicsForLink,
       openLinkDialog, confirmLink, unlinkMockup,
       showGenPanel, agents, selectedAgent, mockupDescription, mockupFilename,
-      epicFiles, frFiles, skillFiles, selectedEpic, selectedFRs, selectedSkill, loadSelectedSkillContent,
+      epicFiles, frFiles, skillFiles, skillGroups, selectedEpic, selectedFRs, selectedSkill, loadSelectedSkillContent,
       additionalInstructions, styleGuideFile, includeStyleGuide,
       sessionActive, terminalContainer, sessionPrompt, panelWidth,
       startGenSession, stopSession, startResize,

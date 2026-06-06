@@ -15,8 +15,9 @@
           to automated development and validation.
         </p>
         <p>
-          The application is split into two modes: <strong>Plan</strong> for requirements
-          engineering, and <strong>Build</strong> for automated development workflows.
+          The application is split into three modes: <strong>Plan</strong> for requirements
+          engineering, <strong>Build</strong> for automated development workflows, and
+          <strong>Review</strong> for inspecting outcomes — epics, logs, and archived tickets.
         </p>
       </section>
 
@@ -42,10 +43,12 @@
             </div>
           </div>
           <div class="help-feature">
-            <span class="mdi mdi-text-box-multiple-outline"></span>
+            <span class="mdi mdi-format-list-checks"></span>
             <div>
-              <strong>Use Cases</strong>
-              <p>Create use case documents with actors, flows, preconditions, and postconditions.</p>
+              <strong>BDD User Stories</strong>
+              <p>Lightweight As-A / I-Want / So-That stories with Given-When-Then acceptance scenarios.
+              Each story can generate 1-3 implementation tickets — a faster path than full epics for
+              single-capability work.</p>
             </div>
           </div>
           <div class="help-feature">
@@ -53,13 +56,6 @@
             <div>
               <strong>Use Case Diagrams</strong>
               <p>Visual editor for UML use case diagrams with actors, use cases, and relationships.</p>
-            </div>
-          </div>
-          <div class="help-feature">
-            <span class="mdi mdi-shape-outline"></span>
-            <div>
-              <strong>Class Diagrams</strong>
-              <p>Visual editor for UML class diagrams with attributes, operations, and associations.</p>
             </div>
           </div>
           <div class="help-feature">
@@ -73,7 +69,8 @@
             <span class="mdi mdi-image-multiple"></span>
             <div>
               <strong>Mockups</strong>
-              <p>View mockup images from <code>docs/Mockups/</code> in a lightbox gallery.</p>
+              <p>View mockup images from <code>docs/Mockups/</code> in a lightbox gallery. Part of the
+              <strong>Design</strong> group alongside Style Guide and Data Model.</p>
             </div>
           </div>
           <div class="help-feature">
@@ -127,13 +124,6 @@
               <p>Monitor the scheduler, active agent runs, and evaluation queue.</p>
             </div>
           </div>
-          <div class="help-feature">
-            <span class="mdi mdi-text-box-outline"></span>
-            <div>
-              <strong>Logs</strong>
-              <p>View event logs from agent runs, scheduler actions, and system events.</p>
-            </div>
-          </div>
         </div>
         <div class="help-tip">
           <span class="mdi mdi-lightbulb-outline"></span>
@@ -141,6 +131,37 @@
             <strong>Tip:</strong> Use the <strong>Auto</strong> toggle at the bottom of the sidebar
             to start/stop the scheduler, which automatically assigns agents to todo tickets.
           </p>
+        </div>
+      </section>
+
+      <section class="help-section">
+        <h2><span class="mdi mdi-clipboard-check-outline"></span> Review Mode</h2>
+        <p>
+          The Review tab gathers the pages used to inspect what has been built and what happened
+          along the way.
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <span class="mdi mdi-shape-outline"></span>
+            <div>
+              <strong>Epics</strong>
+              <p>Browse epic specifications, check their status, start or evaluate an epic.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-text-box-outline"></span>
+            <div>
+              <strong>Logs</strong>
+              <p>View event logs from agent runs, scheduler actions, and system events.</p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-archive"></span>
+            <div>
+              <strong>Archive</strong>
+              <p>Review completed tickets that have been archived off the board.</p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -244,6 +265,16 @@
           its content is prepended to the agent's instructions. You can create custom skills
           (e.g. "Healthcare PRD Template" or "Mobile App PRD Guide") to tailor the AI's approach
           for different project types.
+        </p>
+        <p>
+          Skills are organised into <strong>categories</strong> using simple sub-folders under
+          <code>docs/Skills/</code>: PRD, Architecture, Styling, Epics, BDD, Ticket Generation,
+          Diagnostics, Bootstrapping, and Other. Each page shows only the skills from its own
+          category — the PRD page lists PRD skills, Architecture lists Architecture skills,
+          Initiate Stack lists Bootstrapping skills, and so on (if a category is empty, all
+          skills are shown as a fallback). The <strong>Plan &gt; Skills</strong> page lets you
+          choose a category when creating a new skill. Files placed directly in
+          <code>docs/Skills/</code> appear under "Other".
         </p>
 
         <div class="help-tip">
@@ -846,11 +877,24 @@ export default { name: 'HelpView' };
 
 <style scoped>
 .help-view {
+  /* Light theme (default) */
+  --help-accent: #2f9e6e;
+  --help-surface: rgba(0, 0, 0, 0.03);
+  --help-surface-border: rgba(0, 0, 0, 0.07);
+  --help-code-bg: rgba(0, 0, 0, 0.06);
+
   flex: 1;
   overflow-y: auto;
-  background-color: var(--bg-color, #161a1f);
-  color: var(--text-color, #d4d8dd);
+  background-color: var(--bg-color, #ffffff);
+  color: var(--text-color, #2c3e50);
   padding: 2rem;
+}
+
+[data-theme="dark"] .help-view {
+  --help-accent: #6dd4a0;
+  --help-surface: rgba(255, 255, 255, 0.02);
+  --help-surface-border: rgba(255, 255, 255, 0.04);
+  --help-code-bg: rgba(255, 255, 255, 0.06);
 }
 
 .help-header {
@@ -884,29 +928,29 @@ export default { name: 'HelpView' };
   font-size: 1.1rem;
   font-weight: 600;
   margin: 0 0 0.75rem;
-  color: var(--text-color, #d4d8dd);
+  color: var(--text-color, #2c3e50);
 }
 
 .help-section h2 .mdi {
   font-size: 1.2rem;
-  color: #6dd4a0;
+  color: var(--help-accent);
 }
 
 .help-section > p {
   margin: 0 0 0.75rem;
   font-size: 0.88rem;
   line-height: 1.65;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted, #6b778c);
   font-weight: 300;
 }
 
 .help-section code {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--help-code-bg);
   padding: 0.15rem 0.4rem;
   border-radius: 3px;
   font-size: 0.82rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #6dd4a0;
+  color: var(--help-accent);
 }
 
 /* Feature grid */
@@ -922,13 +966,13 @@ export default { name: 'HelpView' };
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--help-surface);
+  border: 1px solid var(--help-surface-border);
 }
 
 .help-feature > .mdi {
   font-size: 1.25rem;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--text-muted, #6b778c);
   flex-shrink: 0;
   margin-top: 0.1rem;
 }
@@ -936,14 +980,14 @@ export default { name: 'HelpView' };
 .help-feature strong {
   display: block;
   font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-color, #2c3e50);
   margin-bottom: 0.15rem;
 }
 
 .help-feature p {
   margin: 0;
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--text-muted, #6b778c);
   line-height: 1.5;
   font-weight: 300;
 }
@@ -961,19 +1005,19 @@ export default { name: 'HelpView' };
 
 .help-tip > .mdi {
   font-size: 1.1rem;
-  color: #6dd4a0;
+  color: var(--help-accent);
   flex-shrink: 0;
 }
 
 .help-tip p {
   margin: 0;
   font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted, #6b778c);
   line-height: 1.5;
 }
 
 .help-tip strong {
-  color: #6dd4a0;
+  color: var(--help-accent);
 }
 
 /* Steps */
@@ -987,12 +1031,12 @@ export default { name: 'HelpView' };
   margin-bottom: 0.6rem;
   font-size: 0.85rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted, #6b778c);
   font-weight: 300;
 }
 
 .help-steps li strong {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-color, #2c3e50);
   font-weight: 500;
 }
 
@@ -1008,7 +1052,7 @@ export default { name: 'HelpView' };
   align-items: center;
   gap: 0.75rem;
   font-size: 0.82rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted, #6b778c);
 }
 
 /* Agent table */
@@ -1016,7 +1060,7 @@ export default { name: 'HelpView' };
   margin: 0.75rem 0;
   border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color, #e1e4e8);
 }
 
 .help-agent-table table {
@@ -1028,8 +1072,8 @@ export default { name: 'HelpView' };
 .help-agent-table th {
   text-align: left;
   padding: 0.5rem 0.65rem;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.5);
+  background: var(--help-surface);
+  color: var(--text-muted, #6b778c);
   font-weight: 600;
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -1038,32 +1082,35 @@ export default { name: 'HelpView' };
 
 .help-agent-table td {
   padding: 0.45rem 0.65rem;
-  color: rgba(255, 255, 255, 0.6);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-muted, #6b778c);
+  border-top: 1px solid var(--help-surface-border);
 }
 
 .help-section h3 {
   font-size: 0.92rem;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--text-color, #2c3e50);
   margin: 1.5rem 0 0.6rem;
 }
 
-.help-list {
+.help-list,
+.help-bullets {
   margin: 0;
   padding: 0 0 0 1.25rem;
 }
 
-.help-list li {
+.help-list li,
+.help-bullets li {
   margin-bottom: 0.35rem;
   font-size: 0.85rem;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted, #6b778c);
   font-weight: 300;
 }
 
-.help-list li strong {
-  color: rgba(255, 255, 255, 0.8);
+.help-list li strong,
+.help-bullets li strong {
+  color: var(--text-color, #2c3e50);
   font-weight: 500;
 }
 
@@ -1071,11 +1118,11 @@ kbd {
   display: inline-block;
   padding: 0.15rem 0.45rem;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--help-code-bg);
+  border: 1px solid var(--border-color, #e1e4e8);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-color, #2c3e50);
   min-width: 1.5rem;
   text-align: center;
 }
@@ -1088,15 +1135,15 @@ kbd {
   margin: 0.75rem 0;
   padding: 0.75rem;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--help-surface);
+  border: 1px solid var(--help-surface-border);
 }
 
 .help-code code {
   display: block;
   font-size: 0.78rem;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--text-muted, #6b778c);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   white-space: pre-wrap;
   word-break: break-all;

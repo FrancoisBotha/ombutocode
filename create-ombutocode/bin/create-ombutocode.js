@@ -8,7 +8,7 @@ const REPO_URL = 'https://github.com/FrancoisBotha/ombutocode.git';
 // Installer version is kept in lockstep with the workbench version
 // (.ombutocode/src/package.json) — every workbench release bumps both
 // to the same number. See DeployInstructions.md §3 and §3.0.
-const VERSION = '0.2.2';
+const VERSION = '0.2.4';
 
 // Pinned Ombuto Code workbench release to clone.
 //
@@ -20,7 +20,7 @@ const VERSION = '0.2.2';
 //   2. Bump CLONE_REF below to the new tag
 //   3. Bump this installer's VERSION (above) and the package.json version
 //   4. `npm publish` the installer (see DeployInstructions.md §3)
-const CLONE_REF = 'v0.2.2';
+const CLONE_REF = 'v0.2.4';
 
 // Files and directories at the repo root that belong to the Ombuto Code
 // upstream project and should be removed from a scaffolded user project.
@@ -234,8 +234,8 @@ if (fs.existsSync(initScript)) {
   const dirs = [
     'Structure', 'Product Requirements Document', 'Architecture',
     'Functional Requirements', 'Non-Functional Requirements', 'Epics',
-    'Use Cases', 'Use Case Diagrams', 'Class Diagrams', 'Data Model',
-    'Style Guide', 'Mockups', 'References', 'Skills', 'ScratchPad'
+    'BDD Use Cases', 'Use Cases', 'Use Case Diagrams', 'Class Diagrams',
+    'Data Model', 'Style Guide', 'Mockups', 'References', 'Skills', 'ScratchPad'
   ];
   for (const dir of dirs) {
     fs.mkdirSync(path.join(projectDir, 'docs', dir), { recursive: true });

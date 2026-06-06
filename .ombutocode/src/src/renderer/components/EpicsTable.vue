@@ -199,6 +199,9 @@ export default {
       });
     });
 
+    // Epic lifecycle statuses (see CLAUDE.md): NEW → TICKETS → BUILDING → DONE
+    const EPIC_STATUSES = ['NEW', 'TICKETS', 'BUILDING', 'DONE'];
+
     // Track currently selected row for manual highlighting
     let currentSelectedRow = null;
     let evalCompleteCleanup = null;
@@ -224,10 +227,50 @@ export default {
           {
             title: 'Status',
             field: 'status',
-            width: 120,
+            width: 130,
             headerSort: true,
             formatter: function(cell) {
-              return cell.getValue() || '—';
+              const current = cell.getValue() || '';
+              const select = document.createElement('select');
+              select.className = 'epic-status-select';
+              select.title = 'Change epic status';
+
+              // Canonical lifecycle plus the current value if it's something
+              // else (legacy lowercase statuses, 'implemented', etc.) so the
+              // dropdown always reflects what's actually in the file.
+              const options = [...EPIC_STATUSES];
+              if (current && !options.includes(current)) {
+                options.unshift(current);
+              }
+              if (!current) {
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = '—';
+                placeholder.disabled = true;
+                select.appendChild(placeholder);
+              }
+              for (const s of options) {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                select.appendChild(opt);
+              }
+              select.value = current;
+
+              select.addEventListener('change', async (e) => {
+                const epic = cell.getRow().getData();
+                const newStatus = e.target.value;
+                if (!newStatus || newStatus === epic.status) return;
+                try {
+                  await epicStore.updateEpicStatus(epic, newStatus);
+                } catch (err) {
+                  console.error('Failed to update epic status:', err);
+                  // Revert the dropdown — the store reload didn't happen
+                  e.target.value = epic.status || '';
+                }
+              });
+
+              return select;
             },
             cssClass: 'col-status'
           },
@@ -296,8 +339,13 @@ export default {
     // Watch for features data changes to update Tabulator
     watch(features, (newFeatures) => {
       if (tabulatorInstance.value) {
-        tabulatorInstance.value.setData(newFeatures);
-        applySearchFilter();
+        currentSelectedRow = null;
+        tabulatorInstance.value.setData(newFeatures).then(() => {
+          applySearchFilter();
+          if (selectedEpicId.value) {
+            selectRowById(selectedEpicId.value);
+          }
+        });
       }
     });
 
@@ -535,6 +583,33 @@ export default {
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   min-height: 0;
+}
+
+/* Status dropdown rendered by the Tabulator formatter (needs :deep) */
+:deep(.epic-status-select) {
+  width: 100%;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid #e1e4e8;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #2c3e50;
+  font-size: 0.78rem;
+  cursor: pointer;
+  outline: none;
+}
+
+:deep(.epic-status-select:focus) {
+  border-color: #4a90e2;
+}
+
+[data-theme='dark'] .epics-view :deep(.epic-status-select) {
+  background-color: #1a1e24;
+  border-color: var(--border-color, #373d45);
+  color: var(--text-color, #d4d8dd);
+}
+
+[data-theme='dark'] .epics-view :deep(.epic-status-select:focus) {
+  border-color: #5b9bd5;
 }
 
 .resize-handle {

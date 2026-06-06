@@ -157,14 +157,20 @@ If you prefer not to go through the npx installer:
 ```bash
 # From anywhere OUTSIDE your project
 cd /tmp
-git clone --depth 1 --branch v0.2.0 https://github.com/FrancoisBotha/ombutocode.git ombutocode-upgrade-scratch
+git clone --depth 1 --branch v0.2.4 https://github.com/FrancoisBotha/ombutocode.git ombutocode-upgrade-scratch
 
 # Then follow steps 2–6 from method A above, using the cloned
 # directory as the source instead of the npx scratch project.
 ```
 
-Replace `v0.2.0` with the tag you're upgrading to. Check the available
+Replace `v0.2.4` with the tag you're upgrading to. Check the available
 tags at https://github.com/FrancoisBotha/ombutocode/tags.
+
+> **Windows alternative:** the repo also ships a small GUI migrator
+> (`migration-tool/migrate-ombutocode.exe` in the cloned source) that
+> performs steps 2–6 for you — point it at the cloned release (source)
+> and your project (target), Preview, then Migrate. It also moves your
+> existing skills into the v0.2.4 category folders automatically.
 
 ---
 
@@ -186,6 +192,28 @@ Then relaunch the app:
 The About dialog and status bar should now show the new version.
 
 ---
+
+## Version-specific notes
+
+### Upgrading to 0.2.4
+
+- **Skill categories.** Skills now live in category sub-folders under
+  `docs/Skills/` (PRD, Architecture, Styling, Epics, BDD, Ticket
+  Generation, Diagnostics, Bootstrapping, Other), and each Plan page
+  shows only its own category. Your existing flat skill files keep
+  working — they appear under the "Other" category — but to get the
+  per-page filtering, move them into the matching sub-folders (the
+  Windows GUI migrator does this automatically; on macOS/Linux move the
+  files by hand or via the in-app Document Explorer).
+- **Requests database.** The `requests` table self-migrates on first
+  launch (`feature_ref` → `epic_ref`, preserving linked epics). No
+  manual steps; you'll see a `[RequestsDb] Migrated:` line in the logs.
+- **Dark theme default.** New installs default to dark. Existing
+  installs keep whatever theme is saved in settings.
+- **Menu reorganisation.** Epics, Logs, and Archive moved from Build to
+  the new **Review** tab; Mockups/Style Guide/Data Model are grouped
+  under **Design** in Plan; Use Cases and Class Diagrams left the menu
+  (their documents remain reachable via the Document Explorer).
 
 ## Database migrations
 

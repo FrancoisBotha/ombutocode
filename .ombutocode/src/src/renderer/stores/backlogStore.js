@@ -174,6 +174,40 @@ export const useBacklogStore = defineStore('backlog', () => {
     }
   }
 
+  /**
+   * Promote every backlog ticket to todo, ordered by the numeric part of the
+   * ticket ID (e.g. AUTH-002 before AUTH-010 before LOGS-001 ties broken
+   * alphabetically). Reloads once at the end instead of per ticket.
+   */
+  async function promoteAllToTodo() {
+    _error.value = null;
+
+    const ticketNumber = (id) => {
+      const match = String(id || '').match(/(\d+)\s*$/);
+      return match ? parseInt(match[1], 10) : Number.MAX_SAFE_INTEGER;
+    };
+    const ordered = [...backlogTickets.value].sort((a, b) =>
+      ticketNumber(a.id) - ticketNumber(b.id) || String(a.id).localeCompare(String(b.id))
+    );
+
+    let promoted = 0;
+    try {
+      for (const ticket of ordered) {
+        await window.electron.ipcRenderer.invoke('backlog:updateStatus', {
+          ticketId: ticket.id,
+          newStatus: 'todo'
+        });
+        promoted += 1;
+      }
+    } catch (e) {
+      _error.value = e.message;
+      throw e;
+    } finally {
+      await loadBacklog();
+    }
+    return promoted;
+  }
+
   async function pickupByAgent(ticketId, agent) {
     _error.value = null;
     try {
@@ -395,6 +429,7 @@ export const useBacklogStore = defineStore('backlog', () => {
     updateTicketAssignee,
     updateTicketFields,
     promoteToTodo,
+    promoteAllToTodo,
     pickupByAgent,
     deleteTicket,
     createAdHocFromPrompt,

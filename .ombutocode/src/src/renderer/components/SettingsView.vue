@@ -156,6 +156,36 @@
         </div>
       </section>
 
+      <!-- Workflow Section -->
+      <section class="settings-section">
+        <div class="section-header">
+          <span class="section-icon mdi mdi-arrow-decision-outline"></span>
+          <div class="section-title-group">
+            <h2>Workflow</h2>
+            <p class="section-description">Configure how tickets move through the board</p>
+          </div>
+        </div>
+        <div class="section-content">
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-name">Auto-assign Promoted Tickets</span>
+              <span class="setting-hint">When a ticket is promoted from Backlog to TODO, automatically assign it to the default coding agent</span>
+            </div>
+            <div class="setting-control">
+              <label class="toggle-switch" :class="{ 'is-loading': loading }">
+                <input
+                  type="checkbox"
+                  v-model="autoAssignEnabled"
+                  @change="updateAutoAssign"
+                  :disabled="loading"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Notifications Section -->
       <section class="settings-section">
         <div class="section-header">
@@ -657,6 +687,7 @@ export default {
     const adHocTicketModel = computed(() => settingsStore.adHocTicketModel);
     const appRefreshInterval = computed(() => settingsStore.appRefreshInterval);
     const enableReviewNotificationSound = computed(() => settingsStore.enableReviewNotificationSound);
+    const autoAssignPromotedTickets = computed(() => settingsStore.autoAssignPromotedTickets);
     const maxEvalRetries = computed(() => settingsStore.maxEvalRetries);
     const loading = computed(() => settingsStore.loading);
     const error = computed(() => settingsStore.error);
@@ -669,18 +700,28 @@ export default {
 
     // Local state for titlebar color (empty string = use per-theme default)
     const currentTitlebarColor = ref('');
-    // 10-color palette for distinguishing multiple Ombuto Code instances.
+    // 20-color palette for distinguishing multiple Ombuto Code instances.
     const titlebarPalette = [
-      { name: 'Red',    value: '#d32f2f' },
-      { name: 'Pink',   value: '#c2185b' },
-      { name: 'Purple', value: '#7b1fa2' },
-      { name: 'Indigo', value: '#303f9f' },
-      { name: 'Blue',   value: '#1976d2' },
-      { name: 'Cyan',   value: '#0097a7' },
-      { name: 'Teal',   value: '#00796b' },
-      { name: 'Green',  value: '#388e3c' },
-      { name: 'Orange', value: '#e64a19' },
-      { name: 'Brown',  value: '#5d4037' }
+      { name: 'Red',         value: '#d32f2f' },
+      { name: 'Pink',        value: '#c2185b' },
+      { name: 'Purple',      value: '#7b1fa2' },
+      { name: 'Indigo',      value: '#303f9f' },
+      { name: 'Blue',        value: '#1976d2' },
+      { name: 'Cyan',        value: '#0097a7' },
+      { name: 'Teal',        value: '#00796b' },
+      { name: 'Green',       value: '#388e3c' },
+      { name: 'Orange',      value: '#e64a19' },
+      { name: 'Brown',       value: '#5d4037' },
+      { name: 'Maroon',      value: '#880e4f' },
+      { name: 'Deep Purple', value: '#512da8' },
+      { name: 'Navy',        value: '#1a237e' },
+      { name: 'Light Blue',  value: '#0288d1' },
+      { name: 'Forest',      value: '#1b5e20' },
+      { name: 'Olive',       value: '#827717' },
+      { name: 'Amber',       value: '#ff8f00' },
+      { name: 'Slate',       value: '#455a64' },
+      { name: 'Charcoal',    value: '#263238' },
+      { name: 'Grey',        value: '#616161' }
     ];
 
     // Local state for project name
@@ -697,6 +738,9 @@ export default {
 
     // Local state for review sound toggle
     const reviewSoundEnabled = ref(true);
+
+    // Local state for auto-assign-on-promote toggle
+    const autoAssignEnabled = ref(false);
 
     // Local state for max eval retries input
     const maxEvalRetriesInput = ref(2);
@@ -773,6 +817,11 @@ export default {
     // Sync reviewSoundEnabled with store value when it loads
     watch(enableReviewNotificationSound, (newValue) => {
       reviewSoundEnabled.value = newValue;
+    }, { immediate: true });
+
+    // Sync autoAssignEnabled with store value when it loads
+    watch(autoAssignPromotedTickets, (newValue) => {
+      autoAssignEnabled.value = newValue;
     }, { immediate: true });
 
     // Sync maxEvalRetriesInput with store value when it loads
@@ -1057,6 +1106,35 @@ export default {
       }
     }
 
+    // Update auto-assign-on-promote setting
+    async function updateAutoAssign() {
+      const newValue = autoAssignEnabled.value;
+
+      // Don't save if value hasn't changed
+      if (autoAssignPromotedTickets.value === newValue) {
+        return;
+      }
+
+      try {
+        await settingsStore.setAutoAssignPromotedTickets(newValue);
+
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          settingsStore.clearSaveStatus();
+        }, 3000);
+      } catch (err) {
+        console.error('[SettingsView] Failed to save auto-assign setting:', err);
+
+        // Reset to current stored value on error
+        autoAssignEnabled.value = autoAssignPromotedTickets.value;
+
+        // Clear error message after 5 seconds
+        setTimeout(() => {
+          settingsStore.clearSaveStatus();
+        }, 5000);
+      }
+    }
+
     // Update max eval retries setting
     async function updateMaxEvalRetries() {
       const newValue = maxEvalRetriesInput.value;
@@ -1170,6 +1248,7 @@ export default {
       adHocAgentModels,
       refreshIntervalInput,
       reviewSoundEnabled,
+      autoAssignEnabled,
       maxEvalRetriesInput,
       updateProjectName,
       updateEvalAgent,
@@ -1178,6 +1257,7 @@ export default {
       updateAdHocModel,
       updateRefreshInterval,
       updateReviewSound,
+      updateAutoAssign,
       updateMaxEvalRetries,
       dbExporting,
       dbImporting,

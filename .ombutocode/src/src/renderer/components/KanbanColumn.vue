@@ -1134,6 +1134,10 @@ export default {
       rejectError.value = '';
       try {
         await backlogStore.rejectReviewTicket(rejectTargetId.value, trimmedComment);
+        // Clear the in-flight guard BEFORE closing — closeRejectModal()
+        // no-ops while rejectingId is set (it exists to block Cancel /
+        // overlay clicks mid-request), which kept the dialog open forever.
+        rejectingId.value = null;
         closeRejectModal();
       } catch (e) {
         rejectError.value = e?.message || 'Failed to reject ticket.';
@@ -1378,8 +1382,8 @@ export default {
 <style scoped>
 .kanban-column {
   flex: 1;
-  min-width: 220px;
-  max-width: 240px;
+  min-width: 209px;
+  max-width: 228px;
   background-color: #f1f2f4;
   border-radius: 8px;
   padding: 0.5rem;
@@ -1390,8 +1394,8 @@ export default {
 }
 
 .kanban-column[data-column-id="todo"] {
-  min-width: 230px;
-  max-width: 250px;
+  min-width: 219px;
+  max-width: 238px;
 }
 
 .column-header {

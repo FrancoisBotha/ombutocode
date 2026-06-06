@@ -949,38 +949,11 @@ export default {
   color: var(--text-color);
 }
 
-/* Tabulator dark theme (deep selectors) */
-[data-theme="dark"] :deep(.tabulator) {
-  background-color: var(--card-bg);
-  border: 1px solid var(--border-color);
-}
-
-[data-theme="dark"] :deep(.tabulator-header),
-[data-theme="dark"] :deep(.tabulator-header .tabulator-col) {
-  background-color: #1a1e24;
-  border-bottom-color: var(--border-color);
-}
-
-[data-theme="dark"] :deep(.tabulator-header .tabulator-col-title) {
-  color: var(--text-muted);
-}
-
-[data-theme="dark"] :deep(.tabulator-row) {
-  background-color: var(--card-bg);
-}
-
-[data-theme="dark"] :deep(.tabulator-row:hover) {
-  background-color: #282d35;
-}
-
-[data-theme="dark"] :deep(.tabulator-row.selected-row) {
-  background-color: #1e2a3a !important;
-}
-
-[data-theme="dark"] :deep(.tabulator-cell) {
-  color: var(--text-color);
-  border-bottom-color: var(--border-color);
-}
+/* Tabulator dark theming is shared via assets/main.css (the same dark-grey
+   theme used by the Backlog / Epics / Logs tables). Note: a previous block
+   here used `[data-theme="dark"] :deep(...)` selectors, which never match in
+   scoped CSS — the data-v attribute lands on the html-level [data-theme]
+   selector instead of an in-component anchor. */
 
 [data-theme="dark"] :deep(.col-date) {
   color: var(--text-muted);

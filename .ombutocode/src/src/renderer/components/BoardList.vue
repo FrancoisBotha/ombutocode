@@ -19,6 +19,14 @@
             <span class="mdi mdi-hammer-wrench"></span>
             Build
           </button>
+          <button
+            class="sidebar-tab"
+            :class="{ 'is-active': sidebarMode === 'review' }"
+            @click="switchMode('review')"
+          >
+            <span class="mdi mdi-clipboard-check-outline"></span>
+            Review
+          </button>
         </div>
       </template>
       <template v-else>
@@ -187,7 +195,38 @@
       </div>
     </div>
 
-    <!-- ===== Bottom section (always visible, both tabs) ===== -->
+    <!-- ===== REVIEW MODE (expanded) ===== -->
+    <div class="board-list-content plan-mode-content" v-if="!isCollapsed && sidebarMode === 'review'">
+      <!-- Review nav icon bar -->
+      <div class="plan-nav-icons">
+        <button
+          v-for="item in reviewNavIconItems"
+          :key="item.view"
+          class="plan-nav-btn"
+          :class="{ 'is-active': activeView === item.view }"
+          :title="item.label"
+          @click="$emit('change-view', item.view)"
+        >
+          <span class="mdi" :class="item.icon"></span>
+        </button>
+      </div>
+
+      <!-- Review text menu -->
+      <div class="plan-text-menu">
+        <div v-for="group in reviewNavGroups" :key="group.label" class="plan-text-group">
+          <div class="plan-text-group-label">{{ group.label }}</div>
+          <a
+            v-for="item in group.items"
+            :key="item.view"
+            class="plan-text-link"
+            :class="{ 'is-active': activeView === item.view }"
+            @click="$emit('change-view', item.view)"
+          >{{ item.label }}</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== Bottom section (always visible, all tabs) ===== -->
     <div v-if="!isCollapsed" class="board-list-bottom">
       <div class="divider"></div>
       <div
@@ -250,6 +289,14 @@
       >
         <span class="mdi mdi-hammer-wrench"></span>
       </div>
+      <div
+        class="collapsed-board collapsed-tab"
+        :class="{ 'is-active': sidebarMode === 'review' }"
+        @click="switchMode('review')"
+        title="Review"
+      >
+        <span class="mdi mdi-clipboard-check-outline"></span>
+      </div>
       <div class="divider collapsed-divider"></div>
 
       <template v-if="sidebarMode === 'plan'">
@@ -286,17 +333,9 @@
           class="collapsed-board"
           :class="{ 'is-active': activeView === 'requests' }"
           @click="$emit('change-view', 'requests')"
-          title="Requests"
+          title="Feature Requests"
         >
           <span class="mdi mdi-message-text-outline"></span>
-        </div>
-        <div
-          class="collapsed-board"
-          :class="{ 'is-active': activeView === 'epics' }"
-          @click="$emit('change-view', 'epics')"
-          title="Epics"
-        >
-          <span class="mdi mdi-shape-outline"></span>
         </div>
         <div
           class="collapsed-board"
@@ -313,6 +352,17 @@
           title="Automation"
         >
           <span class="mdi mdi-lightning-bolt-outline"></span>
+        </div>
+      </template>
+
+      <template v-if="sidebarMode === 'review'">
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'epics' }"
+          @click="$emit('change-view', 'epics')"
+          title="Epics"
+        >
+          <span class="mdi mdi-shape-outline"></span>
         </div>
         <div
           class="collapsed-board"
@@ -504,11 +554,8 @@ export default {
     const buildNavIconItems = [
       { view: 'workspace', label: 'Workspace', icon: 'mdi-view-dashboard-outline' },
       { view: 'kanban', label: 'Board', icon: 'mdi-view-column' },
-      { view: 'epics', label: 'Epics', icon: 'mdi-shape-outline' },
       { view: 'backlog', label: 'Backlog', icon: 'mdi-format-list-bulleted' },
       { view: 'automation', label: 'Automation', icon: 'mdi-lightning-bolt-outline' },
-      { view: 'logs', label: 'Logs', icon: 'mdi-text-box-outline' },
-      { view: 'archive', label: 'Archive', icon: 'mdi-archive' },
     ];
 
     const buildNavGroups = [
@@ -517,15 +564,29 @@ export default {
         items: [
           { view: 'workspace', label: 'Workspace' },
           { view: 'kanban', label: 'Board' },
-          { view: 'epics', label: 'Epics' },
           { view: 'backlog', label: 'Backlog' },
-          { view: 'requests', label: 'Requests' },
+          { view: 'requests', label: 'Feature Requests' },
         ]
       },
       {
         label: 'Operations',
         items: [
           { view: 'automation', label: 'Automation' },
+        ]
+      },
+    ];
+
+    const reviewNavIconItems = [
+      { view: 'epics', label: 'Epics', icon: 'mdi-shape-outline' },
+      { view: 'logs', label: 'Logs', icon: 'mdi-text-box-outline' },
+      { view: 'archive', label: 'Archive', icon: 'mdi-archive' },
+    ];
+
+    const reviewNavGroups = [
+      {
+        label: 'Review',
+        items: [
+          { view: 'epics', label: 'Epics' },
           { view: 'logs', label: 'Logs' },
           { view: 'archive', label: 'Archive' },
         ]
@@ -573,10 +634,11 @@ export default {
       { view: 'plan-architecture', label: 'Architecture', icon: 'mdi-layers-outline' },
       { view: 'plan-initiate-stack', label: 'Initiate Stack', icon: 'mdi-cog-play-outline' },
       { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
-      { view: 'plan-use-cases', label: 'Use Cases', icon: 'mdi-text-box-multiple-outline' },
+      { view: 'plan-bdd-use-cases', label: 'BDD User Stories', icon: 'mdi-format-list-checks' },
       { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },
-      { view: 'plan-class-diagrams', label: 'Class Diagrams', icon: 'mdi-shape-outline' },
       { view: 'plan-mockups', label: 'Mockups', icon: 'mdi-image-multiple' },
+      { view: 'plan-style-guide', label: 'Style Guide', icon: 'mdi-palette-outline' },
+      { view: 'plan-data-model', label: 'Data Model', icon: 'mdi-database-outline' },
       { view: 'plan-skills', label: 'Skills', icon: 'mdi-school-outline' },
       { view: 'plan-scratchpad', label: 'Scratch Pad', icon: 'mdi-note-text' },
     ];
@@ -590,19 +652,23 @@ export default {
           { view: 'plan-initiate-stack', label: 'Initiate Stack' },
           { view: 'plan-epics', label: 'Epic Creation' },
           { view: 'plan-ticket-gen', label: 'Ticket Generation' },
+          { view: 'plan-bdd-use-cases', label: 'BDD User Stories' },
         ]
       },
       {
-        label: 'Requirements & Design',
+        label: 'Design',
+        items: [
+          { view: 'plan-mockups', label: 'Mockups' },
+          { view: 'plan-style-guide', label: 'Style Guide' },
+          { view: 'plan-data-model', label: 'Data Model' },
+        ]
+      },
+      {
+        label: 'Requirements',
         items: [
           { view: 'plan-functional-requirements', label: 'Functional Requirements' },
           { view: 'plan-non-functional-requirements', label: 'Non-Functional Requirements' },
           { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams' },
-          { view: 'plan-use-cases', label: 'Use Cases' },
-          { view: 'plan-style-guide', label: 'Style Guide' },
-          { view: 'plan-mockups', label: 'Mockups' },
-          { view: 'plan-class-diagrams', label: 'Class Diagrams' },
-          { view: 'plan-data-model', label: 'Data Model' },
         ]
       },
     ];
@@ -615,15 +681,13 @@ export default {
       'product requirements document',
       'architecture',
       'epics',
+      'mockups',
+      'style guide',
+      'data model',
       'functional requirements',
       'non-functional requirements',
-      'data model',
-      'structure',
       'use case diagrams',
-      'use cases',
-      'class diagrams',
-      'style guide',
-      'mockups',
+      'structure',
       'references',
       'skills',
       'scratchpad',
@@ -1348,6 +1412,8 @@ export default {
       switchMode,
       buildNavIconItems,
       buildNavGroups,
+      reviewNavIconItems,
+      reviewNavGroups,
       showAboutModal,
       aboutBuildVersion,
       aboutLibraries,

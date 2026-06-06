@@ -175,10 +175,14 @@ const settingsStore = new Store({
       type: 'boolean',
       default: true
     },
+    auto_assign_promoted_tickets: {
+      type: 'boolean',
+      default: false
+    },
     theme: {
       type: 'string',
       enum: ['light', 'dark'],
-      default: 'light'
+      default: 'dark'
     },
     titlebar_color: {
       type: 'string',
@@ -2031,9 +2035,21 @@ ipcMain.handle('backlog:updateStatus', async (_, { ticketId, newStatus }) => {
     last_updated: timestamp
   };
 
-  // AD_HOC-029: Clear assignee when promoting from backlog to todo
+  // AD_HOC-029: Clear assignee when promoting from backlog to todo.
+  // With auto_assign_promoted_tickets enabled, assign the default coding
+  // agent instead so the scheduler can pick the ticket up immediately.
   if (previousStatus === 'backlog' && newStatus === 'todo') {
-    updates.assignee = 'NONE';
+    const autoAssign = settingsStore.get('auto_assign_promoted_tickets', false);
+    const defaultAgent = settingsStore.get('eval_default_agent', null);
+    if (autoAssign && defaultAgent) {
+      updates.assignee = String(defaultAgent).trim().toLowerCase();
+      console.log(`[Backlog] Auto-assigned promoted ticket ${ticketId} to default agent '${updates.assignee}'`);
+    } else {
+      updates.assignee = 'NONE';
+      if (autoAssign && !defaultAgent) {
+        console.warn(`[Backlog] auto_assign_promoted_tickets is enabled but no default agent is configured — ticket ${ticketId} promoted unassigned.`);
+      }
+    }
   }
 
   // Track test failures: increment counter when test → todo transition
@@ -3196,8 +3212,9 @@ ipcMain.handle('settings:read', async () => {
       ad_hoc_ticket_model: settingsStore.get('ad_hoc_ticket_model', null),
       app_refresh_interval: settingsStore.get('app_refresh_interval', 30),
       enable_review_notification_sound: settingsStore.get('enable_review_notification_sound', true),
+      auto_assign_promoted_tickets: settingsStore.get('auto_assign_promoted_tickets', false),
       max_eval_retries: settingsStore.get('max_eval_retries', 2),
-      theme: settingsStore.get('theme', 'light'),
+      theme: settingsStore.get('theme', 'dark'),
       titlebar_color: settingsStore.get('titlebar_color', '')
     };
     return { success: true, data: settings };
@@ -3306,6 +3323,16 @@ ipcMain.handle('settings:write', async (_, payload) => {
       }
     }
 
+    // Validate auto_assign_promoted_tickets
+    if ('auto_assign_promoted_tickets' in payload) {
+      const value = payload.auto_assign_promoted_tickets;
+      if (typeof value !== 'boolean') {
+        errors.push('auto_assign_promoted_tickets must be a boolean');
+      } else {
+        updates.auto_assign_promoted_tickets = value;
+      }
+    }
+
     // Validate max_eval_retries
     if ('max_eval_retries' in payload) {
       const value = payload.max_eval_retries;
@@ -3366,8 +3393,9 @@ ipcMain.handle('settings:write', async (_, payload) => {
       ad_hoc_ticket_model: settingsStore.get('ad_hoc_ticket_model'),
       app_refresh_interval: settingsStore.get('app_refresh_interval'),
       enable_review_notification_sound: settingsStore.get('enable_review_notification_sound'),
+      auto_assign_promoted_tickets: settingsStore.get('auto_assign_promoted_tickets', false),
       max_eval_retries: settingsStore.get('max_eval_retries'),
-      theme: settingsStore.get('theme', 'light'),
+      theme: settingsStore.get('theme', 'dark'),
       titlebar_color: settingsStore.get('titlebar_color', '')
     };
 

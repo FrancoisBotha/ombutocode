@@ -175,6 +175,7 @@ for dir in \
   "Functional Requirements" \
   "Non-Functional Requirements" \
   "Epics" \
+  "BDD Use Cases" \
   "Use Cases" \
   "Use Case Diagrams" \
   "Class Diagrams" \
@@ -488,13 +489,17 @@ EOF
 fi
 
 # ── Skills from templates ──
+# Templates are organised into category sub-folders (PRD, Architecture,
+# Styling, Epics, BDD, Ticket Generation, Diagnostics, Bootstrapping, Other);
+# copy recursively, preserving the structure.
 SKILL_TEMPLATES="$OMBUTOCODE_DIR/templates/skills"
 if [ -d "$SKILL_TEMPLATES" ]; then
-  for skill in "$SKILL_TEMPLATES"/*.md; do
-    [ -f "$skill" ] || continue
-    dest="$DOCS/Skills/$(basename "$skill")"
+  find "$SKILL_TEMPLATES" -type f -name '*.md' | while IFS= read -r skill; do
+    rel="${skill#"$SKILL_TEMPLATES"/}"
+    dest="$DOCS/Skills/$rel"
     if [ ! -f "$dest" ]; then
-      echo "  Copying Skills/$(basename "$skill")"
+      echo "  Copying Skills/$rel"
+      mkdir -p "$(dirname "$dest")"
       cp "$skill" "$dest"
     fi
   done
@@ -514,7 +519,7 @@ if [ -d "$MOCKUP_TEMPLATES" ]; then
 fi
 
 # ── .gitkeep for empty folders ──
-for dir in Epics References "Test Strategy"; do
+for dir in Epics References "Test Strategy" "BDD Use Cases"; do
   [ -f "$DOCS/$dir/.gitkeep" ] || touch "$DOCS/$dir/.gitkeep"
 done
 

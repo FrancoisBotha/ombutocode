@@ -161,7 +161,9 @@
               <label class="epics-panel-label">Skill</label>
               <select class="epics-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent">
                 <option value="">— No skill —</option>
-                <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+                <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                  <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+                </optgroup>
               </select>
             </div>
             <div class="epics-prompt-section">
@@ -180,7 +182,9 @@
 </template>
 
 <script>
-import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { collectSkillFiles, filterSkillsByCategory, groupSkillFiles } from '@/utils/skills';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 
 let termInstance = null;
 let fitAddon = null;
@@ -317,6 +321,7 @@ export default {
 
     // Skill selection (Epic Generation skill from docs/Skills/)
     const skillFiles = ref([]);
+    const skillGroups = computed(() => groupSkillFiles(skillFiles.value));
     const selectedSkill = ref('');
     const selectedSkillContent = ref('');
 
@@ -490,6 +495,7 @@ export default {
       term.loadAddon(fitAddon);
       term.open(terminalContainer.value);
       fitAddon.fit();
+      enableTerminalPaste(term);
       termInstance = term;
 
       const shellId = 'epics-agent-' + (++sessionCounter);
@@ -599,22 +605,15 @@ ${instruction}`;
     async function loadSkills() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
-        if (tree && tree.children) {
-          const folder = tree.children.find(c => c.name === 'Skills');
-          if (folder && folder.children) {
-            skillFiles.value = folder.children
-              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
-              .map(f => ({ path: f.path, name: f.name, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
-            // Default to Epic Generation on mount — it's the right starting point
-            // for the bulk-create flow on a fresh project. startSession() switches
-            // to Epic Refinement when the user picks the single/refine mode.
-            const match = skillFiles.value.find(s => s.name.toLowerCase().includes('epic generation'))
-              || skillFiles.value.find(s => s.name.toLowerCase().includes('epic'));
-            if (match) {
-              selectedSkill.value = match.path;
-              await loadSelectedSkillContent();
-            }
-          }
+        skillFiles.value = filterSkillsByCategory(collectSkillFiles(tree), 'Epics');
+        // Default to Epic Generation on mount — it's the right starting point
+        // for the bulk-create flow on a fresh project. startSession() switches
+        // to Epic Refinement when the user picks the single/refine mode.
+        const match = skillFiles.value.find(s => s.name.toLowerCase().includes('epic generation'))
+          || skillFiles.value.find(s => s.name.toLowerCase().includes('epic'));
+        if (match) {
+          selectedSkill.value = match.path;
+          await loadSelectedSkillContent();
         }
       } catch (_) {}
     }
@@ -672,7 +671,7 @@ ${instruction}`;
     return {
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
       epics, prdFiles, archFiles, dataModelFiles, styleGuideFiles, selectedPrd, selectedArch, selectedDataModel, selectedStyleGuide,
-      skillFiles, selectedSkill, loadSelectedSkillContent,
+      skillFiles, skillGroups, selectedSkill, loadSelectedSkillContent,
       showNewInput, newName, newNameInput,
       openEpic, deleteEpic, onNewEpic, createManualEpic,
       startSession, stopSession, startResize,

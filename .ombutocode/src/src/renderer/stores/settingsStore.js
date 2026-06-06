@@ -10,6 +10,7 @@ function createDefaultSettings() {
     ad_hoc_ticket_model: null,
     app_refresh_interval: 30,
     enable_review_notification_sound: true,
+    auto_assign_promoted_tickets: false,
     max_eval_retries: 2,
     theme: 'dark',
     titlebar_color: ''
@@ -32,6 +33,7 @@ export const useSettingsStore = defineStore('settings', () => {
   const adHocTicketModel = computed(() => _settings.value.ad_hoc_ticket_model);
   const appRefreshInterval = computed(() => _settings.value.app_refresh_interval);
   const enableReviewNotificationSound = computed(() => _settings.value.enable_review_notification_sound);
+  const autoAssignPromotedTickets = computed(() => _settings.value.auto_assign_promoted_tickets);
   const maxEvalRetries = computed(() => _settings.value.max_eval_retries);
   const theme = computed(() => _settings.value.theme);
   const titlebarColor = computed(() => _settings.value.titlebar_color);
@@ -68,10 +70,13 @@ export const useSettingsStore = defineStore('settings', () => {
       enable_review_notification_sound: typeof payload.enable_review_notification_sound === 'boolean'
         ? payload.enable_review_notification_sound
         : true,
+      auto_assign_promoted_tickets: typeof payload.auto_assign_promoted_tickets === 'boolean'
+        ? payload.auto_assign_promoted_tickets
+        : false,
       max_eval_retries: Number.isFinite(payload.max_eval_retries) && payload.max_eval_retries >= 0
         ? payload.max_eval_retries
         : 2,
-      theme: payload.theme === 'dark' ? 'dark' : 'light',
+      theme: payload.theme === 'light' ? 'light' : 'dark',
       titlebar_color: typeof payload.titlebar_color === 'string' && /^(#[0-9a-fA-F]{6})?$/.test(payload.titlebar_color)
         ? payload.titlebar_color
         : ''
@@ -227,6 +232,17 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   /**
+   * Update auto-assign-on-promote setting
+   * @param {boolean} value
+   */
+  async function setAutoAssignPromotedTickets(value) {
+    if (typeof value !== 'boolean') {
+      throw new Error('auto_assign_promoted_tickets must be a boolean');
+    }
+    return saveSettings({ auto_assign_promoted_tickets: value });
+  }
+
+  /**
    * Update max eval retries setting
    * @param {number} value - maximum number of eval retries (must be >= 0)
    */
@@ -292,6 +308,7 @@ export const useSettingsStore = defineStore('settings', () => {
     adHocTicketModel,
     appRefreshInterval,
     enableReviewNotificationSound,
+    autoAssignPromotedTickets,
     maxEvalRetries,
     theme,
     titlebarColor,
@@ -309,6 +326,7 @@ export const useSettingsStore = defineStore('settings', () => {
     setAdHocTicketModel,
     setAppRefreshInterval,
     setEnableReviewNotificationSound,
+    setAutoAssignPromotedTickets,
     setMaxEvalRetries,
     setTheme,
     setTitlebarColor,

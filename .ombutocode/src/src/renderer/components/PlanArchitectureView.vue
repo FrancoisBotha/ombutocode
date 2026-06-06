@@ -6,6 +6,7 @@
     doc-file-name="Architecture.md"
     doc-short-name="Architecture"
     skill-match="architecture"
+    skill-category="Architecture"
     :context-files="['docs/Product Requirements Document/PRD.md']"
     @change-view="$emit('change-view', $event)"
   />

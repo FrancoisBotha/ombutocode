@@ -21,8 +21,9 @@ const DEFAULTS = {
   ad_hoc_ticket_model: null,
   app_refresh_interval: 30,
   enable_review_notification_sound: true,
+  auto_assign_promoted_tickets: false,
   max_eval_retries: 2,
-  theme: 'light'
+  theme: 'dark'
 };
 
 const ENV_OVERRIDES = {

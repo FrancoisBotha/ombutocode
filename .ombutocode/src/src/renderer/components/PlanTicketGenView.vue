@@ -91,7 +91,9 @@
           <div class="tg-panel-body">
             <select class="tg-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent" :disabled="agentRunning">
               <option value="">-- None --</option>
-              <option v-for="s in skillFiles" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              </optgroup>
             </select>
             <div class="tg-field-group" style="margin-top: 0.75rem;">
               <label class="tg-panel-label">Agent</label>
@@ -125,6 +127,8 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { collectSkillFiles, filterSkillsByCategory, groupSkillFiles } from '@/utils/skills';
+import { enableTerminalPaste } from '@/utils/terminalPaste';
 
 let termInstance = null;
 let fitAddon = null;
@@ -158,6 +162,7 @@ export default {
     const allEpics = ref([]);
     const currentEpic = ref(null);
     const skillFiles = ref([]);
+    const skillGroups = computed(() => groupSkillFiles(skillFiles.value));
     const selectedSkill = ref('');
     const selectedSkillContent = ref('');
 
@@ -219,18 +224,11 @@ export default {
     async function loadSkills() {
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
-        if (tree && tree.children) {
-          const folder = tree.children.find(c => c.name === 'Skills');
-          if (folder && folder.children) {
-            skillFiles.value = folder.children
-              .filter(f => f.type === 'file' && f.name.endsWith('.md'))
-              .map(f => ({ path: f.path, name: f.name, displayName: f.name.replace('.md', '').replace(/_/g, ' ') }));
-            const match = skillFiles.value.find(s => s.name.toLowerCase().includes('ticket'));
-            if (match) {
-              selectedSkill.value = match.path;
-              await loadSelectedSkillContent();
-            }
-          }
+        skillFiles.value = filterSkillsByCategory(collectSkillFiles(tree), 'Ticket Generation');
+        const match = skillFiles.value.find(s => s.name.toLowerCase().includes('ticket'));
+        if (match) {
+          selectedSkill.value = match.path;
+          await loadSelectedSkillContent();
         }
       } catch (_) {}
     }
@@ -285,6 +283,7 @@ export default {
       term.loadAddon(fitAddon);
       term.open(terminalContainer.value);
       fitAddon.fit();
+      enableTerminalPaste(term);
       termInstance = term;
 
       buildPrompt();
@@ -422,7 +421,7 @@ Start by reading the epic. Then propose the tickets with a summary table and ask
       sessionActive, agentRunning, terminalContainer, defaultAgent, selectedSessionAgent, availableAgents,
       sessionPrompt, panelWidth, loading,
       allEpics, newEpics, ticketedEpics, currentEpic, goToBacklog,
-      skillFiles, selectedSkill, loadSelectedSkillContent,
+      skillFiles, skillGroups, selectedSkill, loadSelectedSkillContent,
       startSession, stopSession, launchAgent, startResize,
     };
   }

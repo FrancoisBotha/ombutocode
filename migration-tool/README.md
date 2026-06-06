@@ -41,25 +41,29 @@ Produces `migrate-ombutocode.exe` in the same folder. Output is around
 **Backs up first:**
 - Target's existing `.ombutocode/src/` → `.ombutocode/src.backup-<timestamp>/`
 
-**Additively copies (only if missing in target):**
-- New skills from `docs/Skills/` into both
-  `.ombutocode/templates/skills/` and the project's active `docs/Skills/`:
-  - Epic Generation.md
-  - Epic Refinement.md
-  - Fix Ticket.md
-  - PRD-BASIC Skill.md
-  - Architecture-BASIC Skill.md
+**Migrates skills to the v0.2.4 category layout** (in both the project's
+active `docs/Skills/` and `.ombutocode/templates/skills/`):
+- Skills are now organised in category sub-folders: PRD, Architecture,
+  Styling, Epics, BDD, Ticket Generation, Diagnostics, Bootstrapping, Other.
+- Existing flat skill files are **moved** into their category folder
+  (content preserved — user edits travel with the file).
+- Skills missing from the target are copied from the source.
+- A flat file that also exists in categorised form is left in place
+  (never deleted — it may carry user edits) and noted in the log.
+- Custom user skills not in the canonical list are untouched; the app
+  shows them under the "Other" category until moved into a folder.
 
 **Deletes** (so the next launch rebuilds cleanly):
 - Target's `.ombutocode/src/node_modules/`
 - Target's `.ombutocode/src/dist/`
 
 **Does NOT touch:**
-- `.ombutocode/data/` (your SQLite DBs — backlog, runs, logs)
+- `.ombutocode/data/` (your SQLite DBs — backlog, runs, logs; the requests
+  table self-migrates `feature_ref` → `epic_ref` on first launch)
 - `.ombutocode/logs/`
 - `.ombutocode/run-output/`
 - `.ombutocode/planning/`
-- `docs/` (apart from additive new-skill files above)
+- `docs/` (apart from the skill moves/additions above)
 
 ## After migration
 
@@ -73,8 +77,11 @@ The launcher does `npm install`, `vite build`, then `electron .`. First
 launch after migration takes longer because everything's rebuilding from
 scratch.
 
-If you had Opus 4.6 picked as your eval / ad-hoc model in Settings,
-re-pick it as Opus 4.7 — the model id changed in `codingagents.yml`.
+Version-specific notes for 0.2.4:
+- The default theme is now dark — this only affects fresh installs; your
+  saved theme setting is preserved.
+- The requests database migrates itself on first launch
+  (`feature_ref` → `epic_ref`); no manual steps needed.
 
 ## Reverting
 

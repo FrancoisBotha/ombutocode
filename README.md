@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.2-blue" alt="Version 0.2.2" />
+  <img src="https://img.shields.io/badge/version-0.2.4-blue" alt="Version 0.2.4" />
   <img src="https://img.shields.io/badge/status-beta-orange" alt="Beta" />
   <img src="https://img.shields.io/badge/Electron-25-47848F?logo=electron&logoColor=white" alt="Electron" />
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
@@ -32,7 +32,7 @@
 
 > ## ⚠️ Beta — Not Released
 >
-> **Ombuto Code is currently in beta (v0.2.2) and has not been officially released.**
+> **Ombuto Code is currently in beta (v0.2.4) and has not been officially released.**
 > APIs, data formats, and features may change without notice. Use at your own risk and
 > expect breaking changes between versions until the 1.0.0 release. Feedback and bug
 > reports are very welcome while we stabilise the product.
@@ -41,11 +41,13 @@
 
 ## Overview
 
-Ombuto Code is a desktop workbench that bridges the gap between **requirements engineering** and **automated software development**. It provides two integrated modes:
+Ombuto Code is a desktop workbench that bridges the gap between **requirements engineering** and **automated software development**. It provides three integrated modes:
 
-- **Plan** &mdash; Structure your project with PRDs, use cases, class diagrams, ER diagrams, functional requirements, and a hierarchical file tree. AI agents can guide you through creating requirements documents interactively.
+- **Plan** &mdash; Structure your project with PRDs, BDD user stories, use case diagrams, ER diagrams, functional requirements, and a hierarchical file tree. AI agents can guide you through creating requirements documents interactively.
 
-- **Build** &mdash; Manage development with a Kanban board, backlog, AI coding agents (Claude, Codex, Kimi), automated scheduling, and real-time logs. Agents pick up tickets and write code autonomously.
+- **Build** &mdash; Manage development with a Kanban board, backlog, AI coding agents (Claude, Codex, Kimi), feature requests, and automated scheduling. Agents pick up tickets and write code autonomously.
+
+- **Review** &mdash; Inspect outcomes: epic specifications with inline status control, searchable run logs, and the archive of completed tickets.
 
 ## Features
 
@@ -61,6 +63,9 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 - **Class Diagram** visual editor (classes, attributes, operations, relationships)
 - **ER Diagram** viewer from PostgreSQL DDL schemas
 - **Functional & Non-Functional Requirements** matrix with Excel export/import
+- **BDD User Stories** &mdash; lightweight As-A / I-Want / So-That stories with Given-When-Then scenarios; each story generates 1-3 implementation tickets
+- **Skill categories** &mdash; skills live in sub-folders under `docs/Skills/` (PRD, Architecture, Styling, Epics, BDD, Ticket Generation, Diagnostics, Bootstrapping, Other); each Plan page offers only its own category, with grouped dropdowns
+- **Design menu group** &mdash; Mockups, Style Guide, and Data Model in one place
 - **Mockup gallery** with lightbox viewing
 - **Scratch Pad** for quick notes
 - **File tree sidebar** with drag-and-drop, folder management, and hierarchical sorting
@@ -72,18 +77,23 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 - **Ticket Doctor** &mdash; stethoscope icon on tickets that exceeded the retry threshold; opens an AI session using the Fix Ticket skill to diagnose, repair, and emit a `TICKET_DOCTOR_RESULT: SUCCESS` marker that unlocks "Move to Review"
 - **Test-Driven Development workflow** baked into agent prompts &mdash; impl phase writes failing tests first, then implementation; test phase reads `docs/Test Strategy/test-strategy.md` for the project's exact test commands (stack-agnostic)
 - **Epic-level dependencies** &mdash; epics can declare `Depends On: epic_NN_...` and the scheduler holds downstream tickets until prerequisite epics reach `DONE`
-- **Backlog** management with ticket creation and dependency tracking
+- **Backlog** management with ticket creation, dependency tracking, single or bulk promotion (Promote All), and optional auto-assignment of the default agent on promote
+- **Feature Requests** &mdash; lightweight intake that can be promoted into tickets
 - **Coding Agents** &mdash; configure Claude (Opus 4.7, Sonnet 4.6, Haiku 4.5), Codex, and Kimi with per-agent model selection
 - **Automated Scheduler** &mdash; assigns agents to todo tickets, manages concurrency, rate limits, and provider-pause detection
 - **Automation** dashboard with active runs and evaluation queue
+- **Agent terminals** support clipboard paste everywhere (Ctrl+V or right-click, bracketed-paste safe)
+
+### Review Mode
+- **Epics** browser with inline status dropdown (NEW → TICKETS → BUILDING → DONE), start/evaluate actions, and dependency blockers
 - **Logs** viewer with filtering by severity, event type, and ticket ID
 - **Archive** for completed tickets
 
 ### General
-- **Light and dark themes** with green accent &mdash; switch any time from Settings
+- **Light and dark themes** with green accent &mdash; dark by default, switch any time from Settings
 - **Multi-instance support** &mdash; run several projects side by side, each with its own `userData` directory and per-project single-instance lockfile
-- **Custom title bar colour** &mdash; pick one of 10 swatches per project (or default) to distinguish multiple running instances at a glance
-- Collapsible sidebar with Plan/Build tab switching
+- **Custom title bar colour** &mdash; pick one of 20 swatches per project (or default) to distinguish multiple running instances at a glance
+- Collapsible sidebar with Plan/Build/Review tab switching
 - Settings with agent connectivity testing
 - Help page with comprehensive documentation
 - About modal with OSS license listing

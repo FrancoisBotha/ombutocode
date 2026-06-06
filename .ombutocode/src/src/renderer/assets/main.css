@@ -1045,53 +1045,67 @@ body {
   color: var(--text-muted);
 }
 
-/* ── Shared: Tabulator tables (Features, Logs) ── */
+/* ── Shared: Tabulator tables (Backlog, Epics, Logs, Archive) ──
+   Dark-grey theme matching the Backlog table. Global on purpose: these rules
+   load after component styles, override Tabulator's stock light defaults
+   (white rows, #efefef striping, #aaa borders), and keep all Tabulator
+   tables consistent in dark mode. */
 [data-theme="dark"] .tabulator-table {
-  background-color: var(--secondary-color);
-  box-shadow: var(--box-shadow);
+  background-color: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
-[data-theme="dark"] :deep(.tabulator),
 [data-theme="dark"] .tabulator {
-  background-color: var(--secondary-color) !important;
+  background-color: var(--card-bg) !important;
 }
 
-[data-theme="dark"] :deep(.tabulator-header),
+[data-theme="dark"] .tabulator .tabulator-tableholder {
+  background-color: var(--card-bg);
+}
+
 [data-theme="dark"] .tabulator-header {
   background-color: #1a1e24 !important;
   border-bottom-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] :deep(.tabulator-header .tabulator-col),
 [data-theme="dark"] .tabulator-header .tabulator-col {
   background-color: #1a1e24 !important;
+  border-right-color: var(--border-color);
 }
 
-[data-theme="dark"] :deep(.tabulator-header .tabulator-col-title),
 [data-theme="dark"] .tabulator-header .tabulator-col-title {
   color: var(--text-muted) !important;
 }
 
-[data-theme="dark"] :deep(.tabulator-row:hover),
-[data-theme="dark"] .tabulator-row:hover {
-  background-color: #282d35 !important;
+[data-theme="dark"] .tabulator-row {
+  background-color: var(--card-bg);
 }
 
-[data-theme="dark"] :deep(.tabulator-row.selected-row),
+[data-theme="dark"] .tabulator-row.tabulator-row-even {
+  background-color: #262c34;
+}
+
+[data-theme="dark"] .tabulator-row:hover {
+  background-color: #2d333b !important;
+}
+
 [data-theme="dark"] .tabulator-row.selected-row {
   background-color: #1e2a3a !important;
 }
 
-[data-theme="dark"] :deep(.tabulator-cell),
 [data-theme="dark"] .tabulator-cell {
   color: var(--text-color) !important;
-  border-bottom-color: var(--border-color) !important;
+  border-right-color: #2d333b;
+  border-bottom-color: #2a2f36 !important;
 }
 
-[data-theme="dark"] :deep(.col-updated),
-[data-theme="dark"] :deep(.col-timestamp),
-[data-theme="dark"] :deep(.col-event-type),
-[data-theme="dark"] :deep(.col-ticket-id) {
+[data-theme="dark"] .tabulator-cell.col-updated,
+[data-theme="dark"] .tabulator-cell.col-timestamp,
+[data-theme="dark"] .tabulator-cell.col-event-type,
+[data-theme="dark"] .tabulator-cell.col-ticket-id,
+[data-theme="dark"] .tabulator-cell.col-id,
+[data-theme="dark"] .tabulator-cell.col-date,
+[data-theme="dark"] .tabulator-cell.col-deps {
   color: var(--text-muted) !important;
 }
 

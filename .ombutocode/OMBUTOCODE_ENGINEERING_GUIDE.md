@@ -37,8 +37,8 @@ Priority order:
 ├── run-output/                # stdout/stderr logs (gitignored)
 ├── tools/                     # CLI tools for agents
 │   ├── tools.json             # Tool manifest (read this first)
-│   ├── db-query.js            # Database query tool (Node.js)
-│   └── svg-to-png.js          # SVG to PNG converter (Node.js + sharp)
+│   ├── db-query.cjs            # Database query tool (Node.js)
+│   └── svg-to-png.cjs          # SVG to PNG converter (Node.js + sharp)
 └── OMBUTOCODE_ENGINEERING_GUIDE.md  # This file
 
 docs/
@@ -50,27 +50,29 @@ docs/
 
 CLI tools are available at `.ombutocode/tools/`. Read `.ombutocode/tools/tools.json` for the full manifest. Do NOT use Python, sqlite3, or hand-rolled sql.js scripts — the tools below cover reads and ticket inserts, and they use the bundled sql.js package with no additional dependencies.
 
-**Database queries (read-only):** `.ombutocode/tools/db-query.js`
+The tools are CommonJS and carry the **`.cjs`** extension deliberately: in a project whose `package.json` declares `"type": "module"`, Node parses `.js` as ESM and every `require()` inside them fails with `require is not defined in ES module scope`. Invoke them exactly as written below — do not "fix" the extension, and do not make throwaway `.cjs` copies of your own. Any new tool added here follows the same rule.
+
+**Database queries (read-only):** `.ombutocode/tools/db-query.cjs`
 
 ```bash
-node .ombutocode/tools/db-query.js tickets              # List all tickets
-node .ombutocode/tools/db-query.js tickets --status todo # Filter by status
-node .ombutocode/tools/db-query.js ticket AUTH-001       # Single ticket detail
-node .ombutocode/tools/db-query.js stats                 # Ticket counts by status
-node .ombutocode/tools/db-query.js epics                 # List epics
-node .ombutocode/tools/db-query.js tables                # List DB tables
+node .ombutocode/tools/db-query.cjs tickets              # List all tickets
+node .ombutocode/tools/db-query.cjs tickets --status todo # Filter by status
+node .ombutocode/tools/db-query.cjs ticket AUTH-001       # Single ticket detail
+node .ombutocode/tools/db-query.cjs stats                 # Ticket counts by status
+node .ombutocode/tools/db-query.cjs epics                 # List epics
+node .ombutocode/tools/db-query.cjs tables                # List DB tables
 ```
 
-**Ticket inserts (write):** `.ombutocode/tools/ticket-write.js`
+**Ticket inserts (write):** `.ombutocode/tools/ticket-write.cjs`
 
 This is the canonical way to add new tickets to the backlog. Build a JSON array file containing the ticket objects and pass it to `insert`. The tool validates the payload, checks for id collisions, runs the batch in a single transaction, auto-backs-up the DB, and bumps `backlog:updated_at`.
 
 ```bash
 # Preview without writing
-node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json --dry-run
+node .ombutocode/tools/ticket-write.cjs insert /tmp/<epic>-tickets.json --dry-run
 
 # Insert for real
-node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json
+node .ombutocode/tools/ticket-write.cjs insert /tmp/<epic>-tickets.json
 ```
 
 Do NOT write one-shot sql.js scripts for ticket inserts — use `ticket-write` instead.
@@ -112,8 +114,9 @@ The project lifecycle has three planning-side phases — **Define**, **Bootstrap
 
 1. **Define** — author the PRD (`docs/Product Requirements Document/PRD.md`) and the Architecture (`docs/Architecture/Architecture.md`). Done once, then iterated as the product evolves.
 2. **Bootstrap (Initiate Stack)** — run the **Plan → Initiate Stack** workflow. Reads the PRD + Architecture, scaffolds the source tree, installs dependencies, extends `.gitignore` with stack-appropriate patterns, and writes/updates `docs/Test Strategy/test-strategy.md` — the authoritative playbook the test phase reads on every ticket. Safe to re-run later in **refresh mode** when the architecture evolves; refresh mode only proposes deltas and never overwrites existing source.
-3. **Decompose** — Epic Generation breaks the PRD into epic spec files in `docs/Epics/`. Ticket Generation breaks each epic into atomic tickets in the backlog database.
-4. **Execute** — the scheduler dispatches tickets through `todo → building → eval → review → done`.
+3. **Bootstrap Prototype (optional)** — if the product started life as a prototype, run the **Plan → Bootstrap Prototype** workflow next. It reads a prototype folder anywhere on disk (read-only) plus the Architecture document, and ports the prototype into the repository as the first increment of the real application — staying as true to the prototype as the architecture's constraints allow. It is an interactive session: the agent builds and runs the app and the user confirms fidelity before it finishes, then records every deliberate deviation in `docs/Architecture/prototype-port.md`. Downstream agents must treat the deviations recorded there as intentional and not "fix" them.
+4. **Decompose** — Epic Generation breaks the PRD into epic spec files in `docs/Epics/`. Ticket Generation breaks each epic into atomic tickets in the backlog database.
+5. **Execute** — the scheduler dispatches tickets through `todo → building → eval → review → done`.
 
 If you find yourself generating epics or tickets against a repository that has no source tree, no manifest files, and no `docs/Test Strategy/test-strategy.md`, **stop and run Initiate Stack first** — the work you generate downstream will land in a broken environment otherwise.
 

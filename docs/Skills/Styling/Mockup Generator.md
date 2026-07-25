@@ -113,7 +113,7 @@ The recommended workflow for generating mockup images:
 
 2. **Convert to PNG** — Use the SVG-to-PNG tool to produce a PNG image:
    ```bash
-   node .ombutocode/tools/svg-to-png.js docs/Mockups/<Name>.svg
+   node .ombutocode/tools/svg-to-png.cjs docs/Mockups/<Name>.svg
    ```
    This creates `docs/Mockups/<Name>.png` alongside the SVG source.
 

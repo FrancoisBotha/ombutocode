@@ -3742,10 +3742,16 @@ ipcMain.handle('agent:spawnInteractive', async (event, shellId, command, args) =
 // doctor agent works on the same branch the failing runs committed to). Falls
 // back to PROJECT_ROOT if the worktree doesn't exist — the agent can decide
 // whether to create one or work in-place.
-ipcMain.handle('doctor:spawn', async (event, shellId, ticketId, command, args) => {
+ipcMain.handle('doctor:spawn', async (event, shellId, ticketId, command, args, size) => {
   if (!shellId || !ticketId || !command) {
     return { success: false, error: 'shellId, ticketId, and command are required' };
   }
+
+  // Spawn the PTY at the renderer's actual xterm dimensions so the agent's TUI
+  // lays out at the right width from the first frame. A width mismatch wraps
+  // lines at the wrong column, garbling the output and splitting result markers.
+  const cols = Math.max(20, Math.round(size?.cols) || 120);
+  const rows = Math.max(5, Math.round(size?.rows) || 30);
 
   // Resolve the ticket's worktree path using the same convention worktreeManager
   // uses: `<parentDir>/<projectName>-worktrees/<ticketId>`.
@@ -3778,8 +3784,8 @@ ipcMain.handle('doctor:spawn', async (event, shellId, ticketId, command, args) =
 
   const proc = pty.spawn(resolvedCmd, args || [], {
     name: 'xterm-256color',
-    cols: 120,
-    rows: 30,
+    cols,
+    rows,
     cwd,
     env: process.env,
   });
@@ -3805,6 +3811,37 @@ ipcMain.handle('doctor:spawn', async (event, shellId, ticketId, command, args) =
 
 // ── Plan: File tree operations ──
 
+// Generic folder picker. Used by Bootstrap Prototype to locate a prototype
+// directory anywhere on disk (it lives outside docs/, so fileTreeService
+// cannot reach it). Returns a shallow listing so the UI can show the user
+// what was picked without a second round-trip.
+ipcMain.handle('dialog:selectDirectory', async (event, options = {}) => {
+  try {
+    const { dialog } = require('electron');
+    const win = BrowserWindow.fromWebContents(event.sender) || mainWindow;
+    const result = await dialog.showOpenDialog(win, {
+      title: options.title || 'Select Folder',
+      properties: ['openDirectory'],
+      ...(options.defaultPath ? { defaultPath: options.defaultPath } : {}),
+    });
+    if (result.canceled || !result.filePaths.length) return { success: false, canceled: true };
+
+    const dirPath = result.filePaths[0];
+    let entries = [];
+    try {
+      entries = fs.readdirSync(dirPath, { withFileTypes: true })
+        .filter(d => !d.name.startsWith('.') || d.name === '.env.example')
+        .slice(0, 60)
+        .map(d => ({ name: d.name, type: d.isDirectory() ? 'folder' : 'file' }));
+    } catch (_) { /* unreadable dir — path is still useful */ }
+
+    return { success: true, path: dirPath, name: path.basename(dirPath), entries };
+  } catch (err) {
+    console.error('[Dialog] selectDirectory error:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 ipcMain.handle('filetree:scan', async () => {
   try { return fileTreeService.scan(); }
   catch (e) { console.error('[FileTree] scan error:', e); return { name: 'docs', path: '', type: 'folder', children: [] }; }
@@ -3824,6 +3861,11 @@ ipcMain.handle('filetree:renameFile', async (_, oldPath, newPath) => {
 
 ipcMain.handle('filetree:readFile', async (_, relativePath) => {
   return fileTreeService.readFile(relativePath);
+});
+
+ipcMain.handle('filetree:fileExists', async (_, relativePath) => {
+  try { return fileTreeService.fileExists(relativePath); }
+  catch (e) { console.error('[FileTree] fileExists error:', e); return false; }
 });
 
 ipcMain.handle('filetree:writeFile', async (_, relativePath, content) => {

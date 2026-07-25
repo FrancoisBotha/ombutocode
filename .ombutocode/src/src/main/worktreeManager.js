@@ -188,6 +188,90 @@ function symlinkAllNodeModules(projectRoot, worktreePath) {
   }
 }
 
+// How deep to hunt for node_modules junctions inside a worktree. Ticket
+// worktrees link them at depth 1-2 (`node_modules`, `<pkg>/node_modules`);
+// eval worktrees also link `.ombutocode/src/node_modules` at depth 3.
+const NODE_MODULES_LINK_SCAN_DEPTH = 3;
+
+function isSymlinkSync(targetPath) {
+  try {
+    return fsSync.lstatSync(targetPath).isSymbolicLink();
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Collect every node_modules entry inside `dir` that is a link (symlink or
+ * Windows junction) rather than a real directory. Never descends into a link,
+ * and never descends into a real node_modules — both would be pointless and
+ * slow.
+ */
+function collectNodeModulesLinks(dir, depth, out = []) {
+  let entries;
+  try {
+    entries = fsSync.readdirSync(dir, { withFileTypes: true });
+  } catch (error) {
+    return out;
+  }
+
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.name === 'node_modules') {
+      // lstat rather than trusting the dirent — Windows reparse points are
+      // reported inconsistently across Node versions.
+      if (isSymlinkSync(full)) out.push(full);
+      continue;
+    }
+    if (entry.isSymbolicLink() || !entry.isDirectory()) continue;
+    if (entry.name === '.git') continue;
+    if (depth > 1) collectNodeModulesLinks(full, depth - 1, out);
+  }
+  return out;
+}
+
+/**
+ * Unlink the node_modules junctions we created in a worktree, BEFORE anything
+ * deletes that worktree.
+ *
+ * Why this exists: on Windows the links are NTFS junctions (chosen so they
+ * work without elevation). `git worktree remove --force` under Git for Windows
+ * walks *through* a junction as if it were a real directory instead of
+ * unlinking it — so removing a worktree deletes the CONTENTS of the main
+ * repo's node_modules that the junction points at, leaving an empty directory
+ * behind and breaking the next build. Node's own `fs.rm` does not have this
+ * problem: it unlinks reparse points.
+ *
+ * @returns {{unlinked: string[], failed: string[]}}
+ */
+function unlinkNodeModulesLinks(worktreePath) {
+  const unlinked = [];
+  const failed = [];
+  if (!worktreePath || !pathExistsSync(worktreePath)) return { unlinked, failed };
+
+  for (const link of collectNodeModulesLinks(worktreePath, NODE_MODULES_LINK_SCAN_DEPTH)) {
+    try {
+      fsSync.unlinkSync(link);
+      unlinked.push(link);
+    } catch (error) {
+      try {
+        // Windows refuses unlink() on some directory reparse points; rmdir
+        // removes the link itself without touching the target.
+        fsSync.rmdirSync(link);
+        unlinked.push(link);
+      } catch (rmdirError) {
+        console.warn(`[Worktree] Could not unlink node_modules junction ${link}: ${rmdirError.message}`);
+        failed.push(link);
+      }
+    }
+  }
+
+  if (unlinked.length) {
+    console.log(`[Worktree] Unlinked ${unlinked.length} node_modules junction(s) in ${worktreePath}`);
+  }
+  return { unlinked, failed };
+}
+
 function pathExistsSync(targetPath) {
   try {
     fsSync.statSync(targetPath);
@@ -275,6 +359,21 @@ function addWorktreeSync({
 }
 
 async function removeWorktreeRegistration({ projectRoot, worktreePath }) {
+  const { failed } = unlinkNodeModulesLinks(worktreePath);
+
+  if (failed.length) {
+    // Handing this to git would follow the surviving junctions and wipe the
+    // main repo's dependencies. Delete with Node instead — it unlinks reparse
+    // points — and prune the registration afterwards.
+    console.warn(
+      `[Worktree] ${failed.length} node_modules junction(s) still present in ${worktreePath}; ` +
+      `removing with Node instead of git to protect the main repo's dependencies`
+    );
+    await fs.rm(worktreePath, { recursive: true, force: true });
+    await runGit({ cwd: projectRoot, args: ['worktree', 'prune'], allowFailure: true });
+    return;
+  }
+
   const removeResult = await runGit({
     cwd: projectRoot,
     args: ['worktree', 'remove', '--force', worktreePath],
@@ -339,6 +438,23 @@ function removeDirSyncWithRetry(targetPath) {
 }
 
 function removeWorktreeRegistrationSync({ projectRoot, worktreePath }) {
+  const { failed } = unlinkNodeModulesLinks(worktreePath);
+
+  if (failed.length) {
+    // See removeWorktreeRegistration() — never let git delete a tree that
+    // still contains junctions into the main repo.
+    console.warn(
+      `[Worktree] ${failed.length} node_modules junction(s) still present in ${worktreePath}; ` +
+      `removing with Node instead of git to protect the main repo's dependencies`
+    );
+    const nodeRemoval = removeDirSyncWithRetry(worktreePath);
+    if (nodeRemoval.renamed) {
+      console.warn(`[Worktree] Could not remove ${worktreePath} after retries; renamed to ${nodeRemoval.renamed} to unblock pipeline.`);
+    }
+    runGitSync({ cwd: projectRoot, args: ['worktree', 'prune'], allowFailure: true });
+    return;
+  }
+
   const removeResult = runGitSync({
     cwd: projectRoot,
     args: ['worktree', 'remove', '--force', worktreePath],
@@ -1213,5 +1329,8 @@ module.exports = {
   commitWorktreeChangesSync,
   branchHasCommitsAheadSync,
   rebaseTicketBranchSync,
-  updateTicketBranchSync
+  updateTicketBranchSync,
+  // Exported for tests — the junction guard is the difference between a clean
+  // teardown and a wiped node_modules in the main repo.
+  unlinkNodeModulesLinks
 };

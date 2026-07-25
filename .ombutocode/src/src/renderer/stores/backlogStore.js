@@ -235,12 +235,15 @@ export const useBacklogStore = defineStore('backlog', () => {
     }
   }
 
-  async function createAdHocFromPrompt(promptText) {
+  // `status` is optional and defaults to 'backlog' in the main process.
+  // The Board "Minor Fix" action passes 'todo' so the ticket skips the
+  // backlog and lands directly in the TODO column.
+  async function createAdHocFromPrompt(promptText, { status } = {}) {
     _error.value = null;
     try {
-      const result = await window.electron.ipcRenderer.invoke('backlog:createAdHocFromPrompt', {
-        promptText
-      });
+      const payload = { promptText };
+      if (status) payload.status = status;
+      const result = await window.electron.ipcRenderer.invoke('backlog:createAdHocFromPrompt', payload);
       if (!result || typeof result !== 'object') {
         throw new Error('Invalid response from ad-hoc ticket creation IPC');
       }

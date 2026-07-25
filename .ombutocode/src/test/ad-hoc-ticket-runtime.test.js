@@ -86,6 +86,84 @@ test('buildTicketFromDraft and appendTicketToBacklog enforce backlog defaults', 
   assert.equal(updated.tickets[0].id, 'AD_HOC-002');
 });
 
+test('normalizePromptPayload defaults to backlog and accepts todo', () => {
+  const defaulted = normalizePromptPayload({ promptText: 'Fix a typo' });
+  assert.equal(defaulted.status, 'backlog');
+
+  const minorFix = normalizePromptPayload({ promptText: 'Fix a typo', status: 'TODO' });
+  assert.equal(minorFix.ok, true);
+  assert.equal(minorFix.status, 'todo');
+
+  const invalid = normalizePromptPayload({ promptText: 'Fix a typo', status: 'done' });
+  assert.equal(invalid.ok, false);
+  assert.equal(invalid.error.code, 'VALIDATION_ERROR');
+});
+
+test('buildTicketFromDraft honours an explicit todo status and origin', () => {
+  const ticket = buildTicketFromDraft({
+    draft: {
+      title: 'Minor fix task',
+      dependencies: [],
+      acceptance_criteria: ['A'],
+      files_touched: [],
+      notes: 'Drafted'
+    },
+    existingTickets: [],
+    promptText: 'Tooltip is truncated',
+    nowIso: '2026-02-16T12:00:00.000Z',
+    status: 'todo',
+    origin: 'Board Minor Fix'
+  });
+
+  assert.equal(ticket.status, 'todo');
+  assert.match(ticket.notes, /Created via Board Minor Fix prompt/);
+});
+
+test('createAdHocTicketCreator writes a todo ticket for minor fixes', async () => {
+  const writes = [];
+  const creator = createAdHocTicketCreator({
+    projectRoot: process.cwd(),
+    resolveTemplateConfig: () => ({ command: 'codex', args: [] }),
+    runDraftCommand: async () => ({
+      stdout: JSON.stringify({
+        title: 'Generated from prompt',
+        dependencies: [],
+        acceptance_criteria: ['Works'],
+        files_touched: [],
+        notes: 'Drafted'
+      }),
+      stderr: ''
+    }),
+    readBacklogData: () => ({ version: 1, updated_at: '', tickets: [] }),
+    writeBacklogData: (data) => writes.push(data),
+    now: () => '2026-02-16T12:20:00.000Z'
+  });
+
+  const result = await creator({ promptText: 'Fix the truncated tooltip', status: 'todo' });
+
+  assert.equal(result.success, true);
+  assert.equal(result.data.ticket.status, 'todo');
+  assert.equal(writes[0].tickets[0].status, 'todo');
+});
+
+test('createAdHocTicketCreator rejects an unsupported status', async () => {
+  const writes = [];
+  const creator = createAdHocTicketCreator({
+    projectRoot: process.cwd(),
+    resolveTemplateConfig: () => ({ command: 'codex', args: [] }),
+    runDraftCommand: async () => { throw new Error('should not be called'); },
+    readBacklogData: () => ({ version: 1, updated_at: '', tickets: [] }),
+    writeBacklogData: (data) => writes.push(data),
+    now: () => '2026-02-16T12:20:00.000Z'
+  });
+
+  const result = await creator({ promptText: 'Fix something', status: 'review' });
+
+  assert.equal(result.success, false);
+  assert.equal(result.error.code, 'VALIDATION_ERROR');
+  assert.equal(writes.length, 0);
+});
+
 test('createAdHocTicketCreator rejects duplicate submit while a request is in flight', async () => {
   const writes = [];
   const creator = createAdHocTicketCreator({

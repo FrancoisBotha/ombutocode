@@ -64,6 +64,7 @@
       <PlanEpicsView v-show="activeView === 'plan-epics'" :visible="activeView === 'plan-epics'" @change-view="handleChangeView" />
       <PlanTicketGenView v-show="activeView === 'plan-ticket-gen'" :visible="activeView === 'plan-ticket-gen'" @change-view="handleChangeView" />
       <PlanInitiateStackView v-show="activeView === 'plan-initiate-stack'" :visible="activeView === 'plan-initiate-stack'" @change-view="handleChangeView" />
+      <PlanBootstrapPrototypeView v-show="activeView === 'plan-bootstrap-prototype'" :visible="activeView === 'plan-bootstrap-prototype'" @change-view="handleChangeView" />
       <PlanBddUseCasesView v-show="activeView === 'plan-bdd-use-cases'" :visible="activeView === 'plan-bdd-use-cases'" @change-view="handleChangeView" />
 
     </div>
@@ -170,6 +171,7 @@ import PlanDataModelView from '@/components/PlanDataModelView.vue';
 import PlanEpicsView from '@/components/PlanEpicsView.vue';
 import PlanTicketGenView from '@/components/PlanTicketGenView.vue';
 import PlanInitiateStackView from '@/components/PlanInitiateStackView.vue';
+import PlanBootstrapPrototypeView from '@/components/PlanBootstrapPrototypeView.vue';
 import PlanBddUseCasesView from '@/components/PlanBddUseCasesView.vue';
 import PlanArtifactsView from '@/views/ArtifactListView.vue';
 import PlanTreeView from '@/views/TreeView.vue';
@@ -217,6 +219,7 @@ export default {
     PlanEpicsView,
     PlanTicketGenView,
     PlanInitiateStackView,
+    PlanBootstrapPrototypeView,
     PlanBddUseCasesView,
     PlanArtifactsView,
     PlanTreeView,

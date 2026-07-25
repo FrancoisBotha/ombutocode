@@ -196,6 +196,13 @@
             <em>See "Initiate the Stack" below.</em>
           </li>
           <li>
+            <strong>Bootstrap your prototype (optional)</strong> — If you already have a working
+            prototype, go to <strong>Plan > Bootstrap Prototype</strong>, point it at the prototype
+            folder, and let the AI port it into the project as the first increment of the real
+            application — as faithfully as your architecture allows, with a build-and-run
+            verification before it finishes. <em>See "Bootstrap Prototype" below.</em>
+          </li>
+          <li>
             <strong>Create epics</strong> — Go to <strong>Plan > Epic Creation</strong> and click
             <strong>Create Initial Epics</strong>. The AI breaks your PRD into deliverable milestones.
             <em>See "Create Epics" below.</em>
@@ -490,6 +497,76 @@
       </section>
 
       <section class="help-section">
+        <h2><span class="mdi mdi-rocket-launch-outline"></span> Bootstrap Prototype</h2>
+        <p>
+          If your product started life as a prototype — a clickable mockup, a Vite sketch, a
+          throwaway app you built to prove the idea — <strong>Bootstrap Prototype</strong> folds
+          that prototype into the repository as the first increment of the real application,
+          rather than throwing it away and re-specifying it from scratch. It sits directly below
+          Initiate Stack in the Plan sidebar and is the first step of application creation.
+        </p>
+
+        <h3>The governing principle</h3>
+        <p>
+          The agent is instructed to stay <strong>as true to the prototype as possible</strong>
+          while respecting the constraints in your Architecture document. The prototype is the
+          specification of behaviour and experience — screens, layout, copy, flows, sample data.
+          The architecture is the specification of structure and technology — language, framework,
+          directory layout, layering, data access. Where they collide, the architecture wins on
+          structure, but the prototype's observable behaviour must be preserved, and every such
+          deviation is reported to you and recorded.
+        </p>
+
+        <h3>Running it</h3>
+        <ol class="help-steps">
+          <li>
+            <strong>Go to Plan > Bootstrap Prototype</strong> — run it after Initiate Stack, so
+            the port lands in a skeleton that already has dependencies and a test playbook.
+          </li>
+          <li>
+            <strong>Pick the Architecture document</strong> from the dropdown — it is required,
+            since it supplies the constraint set the port must satisfy. PRD, Style Guide and Data
+            Model are optional extra context.
+          </li>
+          <li>
+            <strong>Browse to the prototype folder</strong> — anywhere on your filesystem. The
+            folder is treated as read-only reference material; the agent never writes to it.
+          </li>
+          <li>
+            <strong>Click "Bootstrap Prototype"</strong> — launches your default coding agent with
+            the <em>Bootstrap Prototype</em> skill pre-loaded, as an interactive session.
+          </li>
+          <li>
+            <strong>Confirm the plan</strong> — the agent's first action is to inventory both the
+            prototype and the repository, then report the delta: what ports directly, what must be
+            translated to another framework, what must be restructured to satisfy the
+            architecture's layering, and what outright conflicts. Nothing is written until you say go.
+          </li>
+          <li>
+            <strong>Verify the running app</strong> — the agent builds and runs the application and
+            hands it to you with the exact command and URL/window to check. Compare it against the
+            prototype; report any difference and the agent fixes it and re-runs. The session is not
+            finished until you confirm the match.
+          </li>
+          <li>
+            <strong>Read the port record</strong> — <code>docs/Architecture/prototype-port.md</code>
+            maps prototype file to repository file, lists every deviation with the architectural
+            constraint that forced it, notes what was deliberately not ported, and records the
+            verified build and run commands.
+          </li>
+        </ol>
+
+        <div class="help-tip">
+          <span class="mdi mdi-lightbulb-outline"></span>
+          <p>
+            <strong>Tip:</strong> The port record matters more than it looks. Without it, a later
+            agent working a ticket will read a deliberate deviation as a bug and "fix" it back
+            towards the prototype, breaking the architecture.
+          </p>
+        </div>
+      </section>
+
+      <section class="help-section">
         <h2><span class="mdi mdi-flag-outline"></span> Create Epics</h2>
         <p>
           With your PRD and Architecture in place, the next step is to break the requirements
@@ -515,6 +592,10 @@
             and Style Guide. The AI agent reads all of these to understand the full project scope.
           </li>
           <li>
+            <strong>Choose an epic strategy</strong> — this decides what "epic done" means for the
+            whole project, so pick one and stay with it. See <em>Choosing a strategy</em> below.
+          </li>
+          <li>
             <strong>Click "Create Initial Epics"</strong> — the agent analyses your PRD and proposes
             a breakdown into epics, each with a one-line summary. You confirm before the files are created.
           </li>
@@ -530,6 +611,50 @@
             with a link back to the epic.
           </li>
         </ol>
+
+        <h3>Choosing a strategy</h3>
+        <p>
+          The Epic Creation page offers two ways to slice the PRD, each backed by its own skill
+          (<code>docs/Skills/Epics/</code>). They produce genuinely different epic lists — don't mix
+          them within one project, or "done" will mean something different from one epic to the next.
+        </p>
+        <div class="help-features">
+          <div class="help-feature">
+            <span class="mdi mdi-layers-triple-outline"></span>
+            <div>
+              <strong>Vertical Slice (working MVP)</strong>
+              <p>
+                Every epic ends with an application that builds, runs, and lets a user complete a
+                real task end to end. Epic 1 is the thinnest usable product; each epic after it
+                adds one more capability, so you always have something demoable. Each epic states
+                a <em>working increment</em> in §1 and carries a mandatory end-to-end acceptance
+                criterion. Foundations aren't their own epic — the minimum each slice needs is
+                folded into that slice. Costs some parallelism, since slices build on each other.
+              </p>
+            </div>
+          </div>
+          <div class="help-feature">
+            <span class="mdi mdi-view-sequential-outline"></span>
+            <div>
+              <strong>Layered (maximum parallelism)</strong>
+              <p>
+                Epics follow subsystems and architectural layers — scaffold, schema, auth,
+                services, then the screens that consume them. Shared interfaces are designed up
+                front and built once, and epics touching different subsystems can run
+                concurrently with few merge conflicts. The trade-off: the product isn't usable
+                until the layers meet, an epic can be complete while delivering nothing a user
+                can see, and integration risk lands late.
+              </p>
+            </div>
+          </div>
+        </div>
+        <p>
+          Rule of thumb: choose <strong>Vertical Slice</strong> when requirements will evolve once
+          you see the thing running, or someone needs to try it early. Choose <strong>Layered</strong>
+          when requirements are stable, the architecture is settled, and throughput matters more
+          than early feedback — or when you're building a platform or back-end where "what the user
+          can do" isn't the unit of progress.
+        </p>
 
         <h3>After creating epics</h3>
         <p>
@@ -753,6 +878,21 @@
           implement backlog tickets. Go to <strong>Settings > Coding Agents</strong> to test
           connectivity and see the full setup guide.
         </p>
+
+        <h3>Models</h3>
+        <p>
+          <strong>Settings > Models</strong> maintains the model list for each agent. Add, rename,
+          re-identify, enable/disable or delete models; each edit is written straight to
+          <code>.ombutocode/codingagents/codingagents.yml</code>. The <em>Identifier</em> is the
+          string passed to the CLI (e.g. <code>claude-opus-5</code>). Rate and cost limits stay in
+          that YAML file and are edited under <strong>Build > Coding Agents</strong>.
+        </p>
+        <p>
+          Model selection is currently only wired through for <strong>Claude</strong> — its command
+          template in <code>codingagent-templates.json</code> carries <code>--model</code>. Codex and
+          Kimi run their own CLI default; models listed for them still drive scheduling, but the
+          identifier is not yet passed to the CLI.
+        </p>
       </section>
 
       <section class="help-section">
@@ -796,9 +936,9 @@
           </div>
         </div>
         <div class="help-code">
-          <code>node .ombutocode/tools/db-query.js tickets --status todo</code>
-          <code>node .ombutocode/tools/db-query.js ticket AUTH-001</code>
-          <code>node .ombutocode/tools/db-query.js query "SELECT id, json_extract(data, '$.title') FROM backlog_tickets"</code>
+          <code>node .ombutocode/tools/db-query.cjs tickets --status todo</code>
+          <code>node .ombutocode/tools/db-query.cjs ticket AUTH-001</code>
+          <code>node .ombutocode/tools/db-query.cjs query "SELECT id, json_extract(data, '$.title') FROM backlog_tickets"</code>
         </div>
 
         <h3>ticket-write — insert tickets into the backlog</h3>
@@ -820,8 +960,8 @@
           </div>
         </div>
         <div class="help-code">
-          <code>node .ombutocode/tools/ticket-write.js insert tickets.json --dry-run</code>
-          <code>node .ombutocode/tools/ticket-write.js insert tickets.json</code>
+          <code>node .ombutocode/tools/ticket-write.cjs insert tickets.json --dry-run</code>
+          <code>node .ombutocode/tools/ticket-write.cjs insert tickets.json</code>
         </div>
         <p>
           Each ticket in the JSON file must have at minimum: <code>id</code>, <code>title</code>,
@@ -837,9 +977,9 @@
           it's text/XML), then convert to PNG. No Python, PIL, or native build tools required.
         </p>
         <div class="help-code">
-          <code>node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg</code>
-          <code>node .ombutocode/tools/svg-to-png.js docs/Mockups/Login.svg --scale 2</code>
-          <code>node .ombutocode/tools/svg-to-png.js docs/Mockups/Card.svg --width 1920 --height 1080</code>
+          <code>node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg</code>
+          <code>node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Login.svg --scale 2</code>
+          <code>node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Card.svg --width 1920 --height 1080</code>
         </div>
 
         <div class="help-tip">

@@ -127,6 +127,11 @@ fi
 WORKTREES_DIR="$(dirname "$PROJECT_ROOT")/$(basename "$PROJECT_ROOT")-worktrees"
 if [ -d "$WORKTREES_DIR" ]; then
   echo "  Removing $(basename "$WORKTREES_DIR")/"
+  # Unlink node_modules junctions first. They point back into the main repo,
+  # and any tool that walks through a reparse point instead of unlinking it
+  # would delete the real dependencies. Same guard as
+  # worktreeManager.unlinkNodeModulesLinks().
+  find "$WORKTREES_DIR" -maxdepth 4 -name node_modules -type l -exec rm -f {} + 2>/dev/null || true
   rm -rf "$WORKTREES_DIR"
 fi
 

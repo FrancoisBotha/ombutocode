@@ -2,7 +2,7 @@
 system: true
 ---
 
-# Epic Generation
+# Epic Generation — Vertical Slice
 
 ## Overview
 
@@ -11,6 +11,60 @@ This skill guides AI coding agents in breaking a project's requirements (as capt
 The output of this skill is:
 1. One Markdown file per epic in `docs/Epics/` (file naming: `epic_NN_EPIC_NAME.md` — see "Epic Numbering" below).
 2. Updated `docs/Functional Requirements/FunctionalRequirements.md` and `docs/Non-Functional Requirements/NonFunctionalRequirements.md` matrices, with new rows cross-referencing each epic.
+
+---
+
+## Core principle — every epic ships a working product
+
+This is the **vertical slice** variant. **At the end of every epic the application must build, run, and let a real user do something useful end to end.** Not a layer. Not a component waiting to be wired up later. A working product that is a little more capable than it was before.
+
+Epic 1 is the thinnest complete slice of the product a user could actually use. Epic 2 is that same product with one more capability, still fully working. And so on. The project is an MVP from the end of Epic 1 onward, growing in capability — never a construction site that only becomes usable at the end.
+
+### The test
+
+Before accepting any epic, answer this out loud:
+
+> When this epic is `DONE` and nothing else is built, what can a user sit down and *do* that they could not do before — through the real UI, against real data, start to finish?
+
+If the answer contains "nothing yet, but it enables…", "the API is ready for…", "the schema supports…", or "once epic N is built…", the epic is **wrong** for this strategy. Rework it.
+
+### Vertical slices, not horizontal layers
+
+Slice through every layer the feature touches — UI, application logic, persistence, integration — and take only the depth this slice needs.
+
+**Wrong (horizontal layers):**
+1. Database schema for the whole product
+2. All API endpoints
+3. Shared UI component library
+4. Wire it together; the product finally works
+
+Nothing is usable until epic 4, every epic is unverifiable on its own terms, and integration risk is banked to the end.
+
+**Right (vertical slices):**
+1. A user can create a note and see it in a list — real screen, real table, real persistence (schema only for notes)
+2. A user can edit and delete those notes
+3. A user can search their notes
+4. A user can share a note with another user (auth and sharing arrive together, because this is the slice that needs them)
+
+Each epic ends with a product someone could demo. The schema, the endpoints and the components grow as the slices that need them arrive.
+
+### Foundations
+
+Genuinely shared groundwork — app shell, build setup, base schema, auth scaffolding — is **not its own epic**. Fold the minimum a slice needs into that slice. The first epic legitimately carries more plumbing than the rest; that is fine, as long as it still ends with a user-visible capability that works.
+
+Two exceptions, both of which must be called out explicitly when proposing:
+- Stack bootstrap performed by the **Initiate Stack** or **Bootstrap Prototype** workflows — that is tooling, not an epic.
+- A migration or refactor epic on an existing system, where the deliverable is "the same product, still fully working, on new foundations". The working-product test still applies: the app must run and behave correctly at the end.
+
+### Sequencing
+
+Order epics by **user value first**, not architectural convenience. The earliest epics deliver the capabilities the PRD treats as the product's core purpose; supporting and edge capabilities come later. Where a genuine technical prerequisite exists, it belongs *inside* the slice that first needs it, not in front of it as its own epic.
+
+### The trade-off you are accepting
+
+Slices stack up rather than fan out: later slices extend code earlier slices created, so fewer epics can be built concurrently and agents are more likely to touch the same files. You are buying a demoable product at every step, early feedback, and early integration risk, at the cost of raw parallel throughput. If throughput matters more — stable requirements, settled architecture, a platform or back-end where "what the user can do" is not the unit of progress — use the *Epic Generation - Layered* skill instead.
+
+Whichever variant you use, be consistent across a project's epic set — mixing the two produces an epic list where "done" means different things from one row to the next.
 
 ---
 
@@ -43,7 +97,7 @@ Rules:
 
 **Numbering rules:**
 - **Continue from the highest existing number.** Before assigning new numbers, list `docs/Epics/` and find the largest `NN` already in use. New epics start at the next integer (e.g. if the highest is `epic_07_…`, the next new epic is `epic_08_…`).
-- **Number reflects build order** — earlier numbers should be foundational (scaffold, database, auth) and later numbers should build on them. When proposing the epic list, sort by intended build order before assigning numbers.
+- **Number reflects build order** — the sequence is a series of increasingly capable working products, ordered by user value (see "Core principle" above). Earlier numbers carry more of the shared plumbing simply because they get there first, but every number still ends with a usable product. When proposing the epic list, sort by intended build order before assigning numbers.
 - **Never renumber existing epics** — if you discover a new epic that "should" come earlier, give it the next available number anyway. Renumbering would break ticket `epic_ref` links and orphan FR/NFR matrix rows.
 - **Gaps are allowed but discouraged.** If an epic is later deleted, leave the gap rather than re-shuffling.
 
@@ -55,8 +109,8 @@ The epic file's `## 12. References` section should still use the full filename i
 
 - **Read the source documents first** — PRD, Architecture, Data Model, Style Guide — before proposing epics. The epics must trace back to documented requirements, not invented scope.
 - **Read the engineering guide** at `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md` to understand the project's conventions, ticket workflow, and status lifecycle.
-- **Size epics to fit the ticket pipeline** — each epic should be decomposable into 3–8 development tickets. If an epic would need more, split it into two epics along a natural seam. If it would need fewer, consider merging it with a neighbour.
-- **One epic = one deliverable milestone** — when this epic is complete, something meaningful and testable has been shipped (a working feature slice, a foundational subsystem, an integration end-to-end).
+- **Size epics to fit the ticket pipeline** — each epic should be decomposable into 3–8 development tickets. If an epic would need more, split it into two epics along a natural seam — but split it *vertically*, into two smaller working slices, never into "the back end" and "the front end". If it would need fewer, consider merging it with a neighbour.
+- **One epic = one working product** — when this epic is complete the application builds, runs, and a user can complete a real task through it end to end. See "Core principle" above; this is the rule that overrides the others when they conflict.
 - **Propose first, write second** — always present the proposed list of epics with a one-line summary for each, and ask the user to confirm before creating any files.
 - **Follow the status lifecycle** — every new epic starts at `Status: NEW`. The lifecycle is: `NEW` → `TICKETS` → `BUILDING` → `DONE`.
 
@@ -79,6 +133,10 @@ Depends On: epic_01_APP_SHELL, epic_02_DATABASE_FOUNDATION
 
 ## 1. Purpose
 What this epic delivers and why.
+
+**Working increment:** (REQUIRED) One sentence stating what a user can do end to
+end once this epic is DONE that they could not do before. A real task through the
+real UI — not "the API supports…" or "the schema is ready for…".
 
 ## 2. User Story
 As a [role], I want [capability], So that [benefit].
@@ -104,8 +162,10 @@ Entities, fields, migrations.
 Affected systems, APIs, services.
 
 ## 9. Acceptance Criteria
-- [ ] Criterion 1
+- [ ] (REQUIRED, first) The application builds and runs, and a user can <the
+      working increment from §1> end to end without any other epic being complete
 - [ ] Criterion 2
+- [ ] Criterion 3
 
 ## 10. Risks & Unknowns
 
@@ -151,7 +211,7 @@ Each requirement listed in the epic's §4 / §5 should include its FR/NFR ID for
 
 1. **Read all source documents** the user provides (PRD always; Architecture, Data Model, Style Guide if available).
 2. **Determine the starting number** — list `docs/Epics/` and find the highest existing `epic_NN_…` prefix. New epics begin at `NN + 1`.
-3. **Propose the epic list** as a numbered summary table — proposed sequence number, title, and one-line description for each. Order by intended build sequence (foundations first). Ask the user to confirm or revise before writing any files.
+3. **Propose the epic list** as a numbered summary table — proposed sequence number, title, and, for each epic, **what a user can do end to end once it is DONE**. Order by user value, thinnest usable product first. Before presenting the table, apply "The test" above to every row and rework any epic that fails it; if you kept an epic that fails the test (see "Foundations" for the two exceptions), say so and explain why. Ask the user to confirm or revise before writing any files.
 4. **For each confirmed epic**:
    - Create the `docs/Epics/epic_NN_<NAME>.md` file using the structure above, with the title `# Epic N: <Name>` (unpadded N inside the file, zero-padded NN in the filename).
    - Append rows to the FR / NFR matrices for any requirements introduced, referencing the full prefixed epic stem.

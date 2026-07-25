@@ -6,7 +6,7 @@
  * Agents should write SVG mockups, then use this tool to produce PNG output.
  *
  * Usage:
- *   node .ombutocode/tools/svg-to-png.js <input.svg> [output.png] [--width N] [--height N] [--scale N]
+ *   node .ombutocode/tools/svg-to-png.cjs <input.svg> [output.png] [--width N] [--height N] [--scale N]
  *
  * Arguments:
  *   input.svg       Path to the SVG file to convert
@@ -18,10 +18,10 @@
  *   --scale N       Scale factor (e.g. 2 for 2x resolution, default: 1)
  *
  * Examples:
- *   node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg
- *   node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg docs/Mockups/Dashboard.png
- *   node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg --scale 2
- *   node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg --width 1920 --height 1080
+ *   node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg
+ *   node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg docs/Mockups/Dashboard.png
+ *   node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg --scale 2
+ *   node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg --width 1920 --height 1080
  */
 
 'use strict';
@@ -37,7 +37,7 @@ async function main() {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     console.log(`SVG to PNG Conversion Tool
 
-Usage: node .ombutocode/tools/svg-to-png.js <input.svg> [output.png] [options]
+Usage: node .ombutocode/tools/svg-to-png.cjs <input.svg> [output.png] [options]
 
 Options:
   --width N     Output width in pixels
@@ -45,8 +45,8 @@ Options:
   --scale N     Scale factor (e.g. 2 for retina)
 
 Examples:
-  node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg
-  node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg --scale 2
+  node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg
+  node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg --scale 2
 `);
     return;
   }

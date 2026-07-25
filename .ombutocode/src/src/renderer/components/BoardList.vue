@@ -170,11 +170,11 @@
       <div class="plan-nav-icons">
         <button
           v-for="item in buildNavIconItems"
-          :key="item.view"
+          :key="item.view || item.action"
           class="plan-nav-btn"
-          :class="{ 'is-active': activeView === item.view }"
+          :class="{ 'is-active': !!item.view && activeView === item.view }"
           :title="item.label"
-          @click="$emit('change-view', item.view)"
+          @click="onBuildMenuClick(item)"
         >
           <span class="mdi" :class="item.icon"></span>
         </button>
@@ -186,10 +186,10 @@
           <div class="plan-text-group-label">{{ group.label }}</div>
           <a
             v-for="item in group.items"
-            :key="item.view"
+            :key="item.view || item.action"
             class="plan-text-link"
-            :class="{ 'is-active': activeView === item.view }"
-            @click="$emit('change-view', item.view)"
+            :class="{ 'is-active': !!item.view && activeView === item.view }"
+            @click="onBuildMenuClick(item)"
           >{{ item.label }}</a>
         </div>
       </div>
@@ -331,6 +331,13 @@
         </div>
         <div
           class="collapsed-board"
+          @click="openMinorFixModal"
+          title="Minor Fix"
+        >
+          <span class="mdi mdi-wrench-outline"></span>
+        </div>
+        <div
+          class="collapsed-board"
           :class="{ 'is-active': activeView === 'requests' }"
           @click="$emit('change-view', 'requests')"
           title="Feature Requests"
@@ -460,6 +467,39 @@
       </div>
     </Teleport>
 
+    <!-- Minor Fix Modal — creates an ad-hoc ticket straight into TODO -->
+    <Teleport to="body">
+      <div v-if="showMinorFixModal" class="plan-delete-overlay" @click.self="cancelMinorFix()">
+        <div class="plan-delete-dialog minor-fix-dialog">
+          <div class="plan-delete-icon minor-fix-icon">
+            <span class="mdi mdi-wrench-outline"></span>
+          </div>
+          <h3>Minor Fix</h3>
+          <p>Describe the minor fix. The ticket is created directly in TODO on the board, skipping the backlog.</p>
+          <textarea
+            ref="minorFixTextareaRef"
+            v-model="minorFixPrompt"
+            class="minor-fix-input"
+            rows="6"
+            placeholder="Example: Fix the truncated ticket title in the board card tooltip."
+          ></textarea>
+          <p v-if="minorFixMessage" class="minor-fix-message">{{ minorFixMessage }}</p>
+          <div class="plan-delete-actions">
+            <button class="prd-btn prd-btn-secondary" :disabled="minorFixSubmitting" @click="cancelMinorFix()">
+              Cancel
+            </button>
+            <button
+              class="prd-btn prd-btn-primary"
+              :disabled="minorFixSubmitting || !minorFixPrompt.trim()"
+              @click="createMinorFixTicket"
+            >
+              {{ minorFixSubmitting ? 'Creating...' : 'Create' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- About Modal -->
     <Teleport to="body">
       <div v-if="showAboutModal" class="about-modal-overlay" @click.self="showAboutModal = false">
@@ -501,6 +541,7 @@
 
 <script>
 import { ref, onMounted, onBeforeUnmount, computed, nextTick } from 'vue';
+import { useBacklogStore } from '@/stores/backlogStore';
 import { useBoardStore } from '@/stores/boardStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useDropbox } from '@/utils/dropbox';
@@ -540,6 +581,7 @@ export default {
     const boardToDelete = ref(null);
     const dropbox = useDropbox();
     const boardStore = useBoardStore();
+    const backlogStore = useBacklogStore();
     const isConnecting = ref(false);
     const dropboxError = ref(null);
     const editingBoardId = ref(null);
@@ -554,6 +596,7 @@ export default {
     const buildNavIconItems = [
       { view: 'workspace', label: 'Workspace', icon: 'mdi-view-dashboard-outline' },
       { view: 'kanban', label: 'Board', icon: 'mdi-view-column' },
+      { action: 'minor-fix', label: 'Minor Fix', icon: 'mdi-wrench-outline' },
       { view: 'backlog', label: 'Backlog', icon: 'mdi-format-list-bulleted' },
       { view: 'automation', label: 'Automation', icon: 'mdi-lightning-bolt-outline' },
     ];
@@ -564,6 +607,7 @@ export default {
         items: [
           { view: 'workspace', label: 'Workspace' },
           { view: 'kanban', label: 'Board' },
+          { action: 'minor-fix', label: 'Minor Fix' },
           { view: 'backlog', label: 'Backlog' },
           { view: 'requests', label: 'Feature Requests' },
         ]
@@ -575,6 +619,67 @@ export default {
         ]
       },
     ];
+
+    // ── Minor Fix: ad-hoc ticket created straight into TODO ──
+    const showMinorFixModal = ref(false);
+    const minorFixPrompt = ref('');
+    const minorFixMessage = ref('');
+    const minorFixSubmitting = ref(false);
+    const minorFixTextareaRef = ref(null);
+
+    function openMinorFixModal() {
+      minorFixMessage.value = '';
+      showMinorFixModal.value = true;
+      nextTick(() => {
+        minorFixTextareaRef.value?.focus();
+      });
+    }
+
+    function cancelMinorFix(force = false) {
+      if (!force && minorFixSubmitting.value) return;
+      showMinorFixModal.value = false;
+      minorFixPrompt.value = '';
+      minorFixMessage.value = '';
+    }
+
+    async function createMinorFixTicket() {
+      if (minorFixSubmitting.value) return;
+
+      const promptText = minorFixPrompt.value.trim();
+      if (!promptText) {
+        minorFixMessage.value = 'Please describe the minor fix before creating.';
+        return;
+      }
+
+      minorFixSubmitting.value = true;
+      minorFixMessage.value = '';
+
+      try {
+        const result = await backlogStore.createAdHocFromPrompt(promptText, { status: 'todo' });
+        await backlogStore.loadBacklog();
+        const createdTicketId = result?.data?.ticketId || null;
+        if (createdTicketId) {
+          backlogStore.selectTicket(createdTicketId);
+          cancelMinorFix(true);
+          // Show the new ticket where it landed.
+          emit('change-view', 'kanban');
+        } else {
+          minorFixMessage.value = 'Ticket creation succeeded but no ticket ID was returned. Please refresh to verify.';
+        }
+      } catch (e) {
+        minorFixMessage.value = e?.message || 'Failed to create the minor fix ticket. Please try again.';
+      } finally {
+        minorFixSubmitting.value = false;
+      }
+    }
+
+    function onBuildMenuClick(item) {
+      if (item.action === 'minor-fix') {
+        openMinorFixModal();
+        return;
+      }
+      emit('change-view', item.view);
+    }
 
     const reviewNavIconItems = [
       { view: 'epics', label: 'Epics', icon: 'mdi-shape-outline' },
@@ -633,6 +738,7 @@ export default {
       { view: 'plan-prd', label: 'PRD', icon: 'mdi-file-document-outline' },
       { view: 'plan-architecture', label: 'Architecture', icon: 'mdi-layers-outline' },
       { view: 'plan-initiate-stack', label: 'Initiate Stack', icon: 'mdi-cog-play-outline' },
+      { view: 'plan-bootstrap-prototype', label: 'Bootstrap Prototype', icon: 'mdi-rocket-launch-outline' },
       { view: 'plan-structure', label: 'Structure', icon: 'mdi-sitemap' },
       { view: 'plan-bdd-use-cases', label: 'BDD User Stories', icon: 'mdi-format-list-checks' },
       { view: 'plan-use-case-diagrams', label: 'Use Case Diagrams', icon: 'mdi-vector-polygon' },
@@ -650,6 +756,7 @@ export default {
           { view: 'plan-prd', label: 'PRD' },
           { view: 'plan-architecture', label: 'Architecture' },
           { view: 'plan-initiate-stack', label: 'Initiate Stack' },
+          { view: 'plan-bootstrap-prototype', label: 'Bootstrap Prototype' },
           { view: 'plan-epics', label: 'Epic Creation' },
           { view: 'plan-ticket-gen', label: 'Ticket Generation' },
           { view: 'plan-bdd-use-cases', label: 'BDD User Stories' },
@@ -1412,6 +1519,15 @@ export default {
       switchMode,
       buildNavIconItems,
       buildNavGroups,
+      onBuildMenuClick,
+      showMinorFixModal,
+      minorFixPrompt,
+      minorFixMessage,
+      minorFixSubmitting,
+      minorFixTextareaRef,
+      openMinorFixModal,
+      cancelMinorFix,
+      createMinorFixTicket,
       reviewNavIconItems,
       reviewNavGroups,
       showAboutModal,
@@ -2387,6 +2503,76 @@ export default {
 
 .prd-btn-danger:hover {
   background: #c94040;
+}
+
+.prd-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #6dd4a0;
+  color: #10261c;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prd-btn-primary:hover:not(:disabled) {
+  background: #8ae5b8;
+}
+
+.prd-btn-primary:disabled,
+.prd-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Minor Fix modal */
+.minor-fix-dialog {
+  width: 460px;
+  text-align: left;
+}
+
+.minor-fix-dialog h3,
+.minor-fix-dialog .plan-delete-icon {
+  text-align: center;
+}
+
+.minor-fix-icon .mdi {
+  color: #6dd4a0;
+}
+
+.minor-fix-dialog p {
+  margin-bottom: 0.75rem;
+}
+
+.minor-fix-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.minor-fix-input:focus {
+  outline: none;
+  border-color: #6dd4a0;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.minor-fix-message {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  color: #e5a830;
 }
 
 /* ══════════════════════════════════════════════

@@ -53,12 +53,13 @@ constexpr int IDC_MIGRATE_BTN   = 106;
 constexpr int IDC_LOG           = 107;
 constexpr int IDC_CLEAR_BTN     = 108;
 
-// Canonical skills and their category sub-folders under docs/Skills/.
+// Pre-0.2.4 skills and the category sub-folder each one moved into.
 // v0.2.4 introduced skill categories as a one-level folder structure
 // (PRD, Architecture, Styling, Epics, BDD, Ticket Generation, Diagnostics,
-// Bootstrapping, Other). The migration moves a target's existing flat
-// skill files into their category folder and additively copies any skills
-// the target is missing. Keep in sync with docs/Skills/ in the repo.
+// Bootstrapping, Other). This list exists ONLY to move a target's existing
+// flat skill files into the right folder — it is a historical mapping and
+// does not need new entries. Skills added after 0.2.4 reach the target
+// through copyNewSkills(), which walks the source tree instead.
 struct SkillEntry { const wchar_t* category; const wchar_t* file; };
 static const std::vector<SkillEntry> kSkills = {
     { L"PRD",               L"PRD Skill.md" },
@@ -210,6 +211,46 @@ static size_t removeTree(const fs::path& p) {
     return fs::remove_all(p);
 }
 
+// Agent CLI tools shipped in .ombutocode/tools/. They are CommonJS, so they
+// are named .cjs — a project whose package.json says "type": "module" would
+// otherwise make Node parse them as ESM and every `require` call dies with
+// "require is not defined in ES module scope". These are the pre-rename
+// filenames, deleted from the target so nothing keeps invoking a broken copy.
+static const std::vector<std::wstring> kStaleToolFiles = {
+    L"db-query.js",
+    L"ticket-write.js",
+    L"svg-to-png.js"
+};
+
+// Refresh .ombutocode/tools/ (overwrite) and drop the superseded .js tools.
+// Returns a log line per action. apply=false is a dry run.
+static std::vector<std::wstring> migrateTools(const fs::path& src, const fs::path& tgt, bool apply) {
+    std::vector<std::wstring> actions;
+    auto srcTools = src / L".ombutocode" / L"tools";
+    auto tgtTools = tgt / L".ombutocode" / L"tools";
+    if (!fs::exists(srcTools)) return actions;
+
+    for (auto& entry : fs::directory_iterator(srcTools)) {
+        if (!entry.is_regular_file()) continue;
+        auto dst = tgtTools / entry.path().filename();
+        const bool existed = fs::exists(dst);
+        if (apply) {
+            fs::create_directories(tgtTools);
+            fs::copy_file(entry.path(), dst, fs::copy_options::overwrite_existing);
+        }
+        actions.push_back((existed ? L"overwrite " : L"add ") + entry.path().filename().wstring());
+    }
+
+    for (auto& stale : kStaleToolFiles) {
+        auto dead = tgtTools / stale;
+        if (!fs::exists(dead)) continue;
+        if (apply) fs::remove(dead);
+        actions.push_back(L"remove superseded " + stale);
+    }
+
+    return actions;
+}
+
 // Migrate one skill within a root folder (docs/Skills or templates/skills):
 // move a flat pre-0.2.4 copy into its category sub-folder, otherwise copy
 // the file from the source when missing entirely. With apply=false this is
@@ -238,6 +279,57 @@ static std::wstring migrateSkillAt(const fs::path& srcFile, const fs::path& root
         return L"add";
     }
     return L"missing in source";
+}
+
+static bool isCanonicalSkill(const fs::path& rel) {
+    for (auto& sk : kSkills) {
+        if (rel == fs::path(sk.category) / sk.file) return true;
+    }
+    return false;
+}
+
+// Copy every skill the source has and the target lacks, whatever its category
+// and whether or not it appears in kSkills. kSkills only knows the skills that
+// existed when this tool was written, so without this pass any skill shipped
+// later (Bootstrap Prototype, and whatever follows it) silently never reaches
+// a migrated project. Additive only — an existing file is never touched.
+static std::vector<std::wstring> copyNewSkills(const fs::path& src, const fs::path& tgt, bool apply) {
+    std::vector<std::wstring> added;
+    auto srcRoot = src / L"docs" / L"Skills";
+    if (!fs::exists(srcRoot)) return added;
+
+    const fs::path roots[] = {
+        tgt / L"docs" / L"Skills",
+        tgt / L".ombutocode" / L"templates" / L"skills"
+    };
+
+    // doPreview has no try/catch of its own — keep a bad entry from taking the
+    // whole preview down.
+    try {
+        for (auto& entry : fs::recursive_directory_iterator(srcRoot)) {
+            if (!entry.is_regular_file()) continue;
+            if (entry.path().extension() != L".md") continue;
+
+            auto rel = fs::relative(entry.path(), srcRoot);
+            // kSkills already handles these, including the flat -> category move.
+            if (isCanonicalSkill(rel)) continue;
+
+            for (auto& root : roots) {
+                auto dst = root / rel;
+                // A pre-0.2.4 flat copy of the same skill counts as present.
+                auto flat = root / rel.filename();
+                if (fs::exists(dst) || fs::exists(flat)) continue;
+                if (apply) {
+                    fs::create_directories(dst.parent_path());
+                    fs::copy_file(entry.path(), dst);
+                }
+                added.push_back(rel.wstring() + L"  -> " + root.wstring());
+            }
+        }
+    } catch (const std::exception&) {
+        // Fall through with whatever was collected; the caller logs it.
+    }
+    return added;
 }
 
 // ── Preview ────────────────────────────────────────────────────────────────
@@ -270,6 +362,20 @@ static void doPreview(const fs::path& src, const fs::path& tgt) {
         std::wstring tplState  = migrateSkillAt(from, tplRoot,  sk, /*apply=*/false);
         appendLog(L"  [docs:" + docsState + L" / tpl:" + tplState + L"] "
                   + std::wstring(sk.category) + L"\\" + sk.file);
+    }
+
+    auto toolActions = migrateTools(src, tgt, /*apply=*/false);
+    if (!toolActions.empty()) {
+        appendLog(L"");
+        appendLog(L"Agent tools (.ombutocode\\tools\\):");
+        for (auto& a : toolActions) appendLog(L"  " + a);
+    }
+
+    auto newSkills = copyNewSkills(src, tgt, /*apply=*/false);
+    if (!newSkills.empty()) {
+        appendLog(L"");
+        appendLog(L"Newer skills the target is missing (would be added):");
+        for (auto& s : newSkills) appendLog(L"  [add] " + s);
     }
 
     appendLog(L"");
@@ -340,6 +446,16 @@ static void doMigrate(const fs::path& src, const fs::path& tgt) {
                 appendLog(L"Skill " + std::wstring(sk.category) + L"\\" + sk.file
                           + L"  [docs:" + docsState + L" / tpl:" + tplState + L"]");
             }
+        }
+
+        for (auto& s : copyNewSkills(src, tgt, /*apply=*/true)) {
+            appendLog(L"Added skill " + s);
+        }
+
+        // 4b. Agent tools: refresh .ombutocode\tools\ and drop the .js copies
+        //     that ESM projects cannot run.
+        for (auto& a : migrateTools(src, tgt, /*apply=*/true)) {
+            appendLog(L"Tools: " + a);
         }
 
         // 5. Remove target's node_modules + dist so the next launch rebuilds cleanly

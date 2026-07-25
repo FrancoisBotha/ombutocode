@@ -3,10 +3,10 @@
  * Ombuto Code Ticket Write Tool
  *
  * A Node.js CLI tool for inserting tickets into the ombutocode backlog database.
- * Companion to the read-only db-query.js tool — this one handles mutations.
+ * Companion to the read-only db-query.cjs tool — this one handles mutations.
  *
  * Usage:
- *   node .ombutocode/tools/ticket-write.js insert <file.json> [--dry-run] [--no-backup] [--force]
+ *   node .ombutocode/tools/ticket-write.cjs insert <file.json> [--dry-run] [--no-backup] [--force]
  *
  * The input JSON file must contain an array of ticket objects. Each ticket must
  * have at minimum: id, title, status, epic_ref. Every other field becomes part
@@ -25,8 +25,8 @@
  *   7. Prints a summary of inserted ticket ids
  *
  * Examples:
- *   node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json
- *   node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json --dry-run
+ *   node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json
+ *   node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json --dry-run
  *
  * Input file shape:
  *   [
@@ -268,7 +268,7 @@ async function cmdInsert(args) {
   for (const t of tickets) console.log(`  + ${t.id}  ${t.title}`);
   console.log('');
   console.log('Verify with:');
-  console.log('  node .ombutocode/tools/db-query.js tickets --status backlog');
+  console.log('  node .ombutocode/tools/db-query.cjs tickets --status backlog');
   if (backupPath) {
     console.log('');
     console.log(`Backup retained at ${backupPath}`);
@@ -299,8 +299,8 @@ Other common fields: assignee, acceptance_criteria, dependencies,
 references, notes, description, last_updated.
 
 Example:
-  node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json
-  node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json --dry-run
+  node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json
+  node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json --dry-run
 `);
     return;
   }

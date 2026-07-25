@@ -70,7 +70,7 @@
       </div>
 
       <!-- Listing -->
-      <div v-if="bddUseCases.length" class="bdd-list-section">
+      <div class="bdd-list-section">
         <h2>Existing BDD User Stories</h2>
         <div class="bdd-split">
           <table class="bdd-table">
@@ -82,6 +82,9 @@
               </tr>
             </thead>
             <tbody>
+              <tr v-if="!bddUseCases.length" class="bdd-row-empty">
+                <td colspan="3">No BDD User Stories yet. Use the card above to create one.</td>
+              </tr>
               <tr
                 v-for="uc in bddUseCases"
                 :key="uc.path"
@@ -91,7 +94,15 @@
               >
                 <td class="col-name">{{ uc.displayName }}</td>
                 <td class="col-status">
-                  <span class="bdd-status-badge" :class="'status-' + (uc.status || 'NEW').toLowerCase()">{{ uc.status || 'NEW' }}</span>
+                  <select
+                    class="bdd-status-select"
+                    :class="'status-' + (uc.status || 'NEW').toLowerCase()"
+                    :value="uc.status || 'NEW'"
+                    @click.stop
+                    @change="changeStatus(uc, $event.target.value)"
+                  >
+                    <option v-for="s in STATUS_OPTIONS" :key="s" :value="s">{{ s }}</option>
+                  </select>
                 </td>
                 <td class="col-actions">
                   <button
@@ -117,19 +128,23 @@
           <aside v-if="selectedBdd" class="bdd-detail markdown-body">
             <h3 class="bdd-detail-title">{{ selectedBdd.displayName }}</h3>
             <div class="bdd-detail-meta">
-              <span class="bdd-status-badge" :class="'status-' + (selectedBdd.status || 'NEW').toLowerCase()">{{ selectedBdd.status || 'NEW' }}</span>
+              <select
+                class="bdd-status-select"
+                :class="'status-' + (selectedBdd.status || 'NEW').toLowerCase()"
+                :value="selectedBdd.status || 'NEW'"
+                @change="changeStatus(selectedBdd, $event.target.value)"
+              >
+                <option v-for="s in STATUS_OPTIONS" :key="s" :value="s">{{ s }}</option>
+              </select>
               <span class="bdd-detail-path">{{ selectedBdd.path }}</span>
             </div>
             <div class="bdd-detail-body" v-html="selectedBddRenderedHtml"></div>
           </aside>
           <aside v-else class="bdd-detail bdd-detail-empty">
-            <span class="mdi mdi-arrow-left"></span>
-            <p>Select a BDD User Story to preview it here.</p>
+            <span class="mdi" :class="bddUseCases.length ? 'mdi-arrow-left' : 'mdi-file-document-outline'"></span>
+            <p>{{ bddUseCases.length ? 'Select a BDD User Story to preview it here.' : 'BDD User Story previews will appear here.' }}</p>
           </aside>
         </div>
-      </div>
-      <div v-else class="bdd-empty">
-        <p>No BDD User Stories yet. Use the card above to create one.</p>
       </div>
     </div>
 
@@ -302,6 +317,32 @@ export default {
 
     function selectBdd(uc) { selectedBdd.value = uc; }
 
+    const STATUS_OPTIONS = ['NEW', 'TICKETS', 'BUILDING', 'DONE'];
+
+    async function changeStatus(uc, newStatus) {
+      if (!uc || !newStatus || newStatus === uc.status) return;
+      const prev = uc.status;
+      try {
+        let content = uc.content || '';
+        if (/^status:.*$/im.test(content)) {
+          content = content.replace(/^status:.*$/im, `Status: ${newStatus}`);
+        } else {
+          // No status line yet — insert one after the first heading (or at the top).
+          const lines = content.split(/\r?\n/);
+          const headingIdx = lines.findIndex(l => /^#\s/.test(l));
+          const insertAt = headingIdx === -1 ? 0 : headingIdx + 1;
+          lines.splice(insertAt, 0, headingIdx === -1 ? `Status: ${newStatus}\n` : `\nStatus: ${newStatus}`);
+          content = lines.join('\n');
+        }
+        await window.electron.ipcRenderer.invoke('filetree:writeFile', uc.path, content);
+        uc.content = content;
+        uc.status = newStatus;
+      } catch (e) {
+        uc.status = prev;
+        console.error('Failed to update BDD status:', e);
+      }
+    }
+
     async function deleteBdd(uc) {
       if (!confirm(`Delete "${uc.displayName}"? This removes the BDD user story file only — generated tickets stay in the backlog.`)) return;
       try {
@@ -457,6 +498,7 @@ ${instruction}`;
       sessionActive, sessionMode, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
       bddUseCases, selectedBdd, currentBdd, selectedBddRenderedHtml,
       skillFiles, skillGroups, selectedCreateSkill, createSkillContent, showCreateSkillPreview,
+      STATUS_OPTIONS, changeStatus,
       selectBdd, deleteBdd,
       startCreateSession, startTicketSession, stopSession, startResize,
       loadCreateSkillContent,
@@ -535,11 +577,21 @@ ${instruction}`;
 .col-actions { width: 200px; text-align: right; white-space: nowrap; }
 
 .bdd-status-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
+.bdd-status-select {
+  padding: 0.18rem 1.4rem 0.18rem 0.5rem; border-radius: 10px;
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+  border: 1px solid transparent; cursor: pointer; outline: none;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 0.35rem center; background-size: 0.7rem;
+}
+.bdd-status-select:focus { border-color: currentColor; }
 .status-new { background: rgba(91,155,213,0.18); color: #4a90e2; }
 .status-tickets { background: rgba(229,168,48,0.18); color: #b87f0e; }
 .status-building { background: rgba(109,212,160,0.2); color: #2aa05f; }
 .status-done { background: rgba(60,199,122,0.18); color: #2aa05f; }
 [data-theme="dark"] .status-building { background: rgba(109,212,160,0.15); color: #6dd4a0; }
+.bdd-status-select option { background: var(--card-bg); color: var(--text-color); text-transform: none; }
 
 .bdd-ticket-btn {
   display: inline-flex; align-items: center; gap: 0.3rem;
@@ -570,7 +622,7 @@ ${instruction}`;
 .bdd-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; color: var(--text-muted); text-align: center; }
 .bdd-detail-empty .mdi { font-size: 1.8rem; opacity: 0.4; }
 
-.bdd-empty { padding: 2rem; text-align: center; color: var(--text-muted); font-size: 0.88rem; }
+.bdd-row-empty td { padding: 1.5rem 0.75rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; border-bottom: none; }
 
 /* Session */
 .bdd-session-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }

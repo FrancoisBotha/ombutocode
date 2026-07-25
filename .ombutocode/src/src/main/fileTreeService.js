@@ -78,6 +78,21 @@ function readFile(relativePath) {
 }
 
 /**
+ * Check whether a file exists relative to docs/, without reading it.
+ * Used for optional/generated artifacts (e.g. AI HTML previews) so the
+ * caller can probe for presence without readFile throwing ENOENT.
+ * @param {string} relativePath - path relative to docs/
+ * @returns {boolean}
+ */
+function fileExists(relativePath) {
+  const resolved = path.resolve(DOCS_DIR, relativePath);
+  if (!resolved.startsWith(DOCS_DIR)) {
+    throw new Error('Path is outside docs/ directory');
+  }
+  return fs.existsSync(resolved) && fs.statSync(resolved).isFile();
+}
+
+/**
  * Write content to a .md file relative to docs/.
  * @param {string} relativePath - path relative to docs/
  * @param {string} content - file content to write
@@ -279,4 +294,4 @@ function scanClassDiagrams() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-module.exports = { init, scan, readFile, writeFile, deleteFile, createFolder, deleteFolder, renameFile, scanMockups, readImageAsDataUrl, scanUseCaseDiagrams, scanUseCases, scanAllFiles, scanClassDiagrams };
+module.exports = { init, scan, readFile, fileExists, writeFile, deleteFile, createFolder, deleteFolder, renameFile, scanMockups, readImageAsDataUrl, scanUseCaseDiagrams, scanUseCases, scanAllFiles, scanClassDiagrams };

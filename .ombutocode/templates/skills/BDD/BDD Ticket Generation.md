@@ -75,11 +75,11 @@ Sequence numbers restart at 001 within each BDD UC's prefix.
 ## Workflow
 
 1. **Read** the BDD UC file completely.
-2. **Check existing tickets** — `node .ombutocode/tools/db-query.js tickets` — to avoid id collisions.
+2. **Check existing tickets** — `node .ombutocode/tools/db-query.cjs tickets` — to avoid id collisions.
 3. **Propose a summary table** with: ID, Title, Type, Dependencies, including the closeout eval ticket as the final row. Maximum 4 rows total (3 impl + 1 eval).
 4. **Wait for user confirmation.**
-5. **Insert** the tickets via `node .ombutocode/tools/ticket-write.js insert /tmp/<bdd>-tickets.json`. Each ticket's `epic_ref` field should point at the BDD UC file (e.g. `epic_ref: docs/BDD Use Cases/bdd_CREATE_BINDER.md`) — the backlog reads `epic_ref` as "source spec", and the BDD UC fills that role for ticket purposes.
-6. **Verify** with `node .ombutocode/tools/db-query.js tickets --status backlog`.
+5. **Insert** the tickets via `node .ombutocode/tools/ticket-write.cjs insert /tmp/<bdd>-tickets.json`. Each ticket's `epic_ref` field should point at the BDD UC file (e.g. `epic_ref: docs/BDD Use Cases/bdd_CREATE_BINDER.md`) — the backlog reads `epic_ref` as "source spec", and the BDD UC fills that role for ticket purposes.
+6. **Verify** with `node .ombutocode/tools/db-query.cjs tickets --status backlog`.
 7. **Update** the BDD UC's `Status:` line from `NEW` to `TICKETS`.
 
 ---
@@ -103,5 +103,5 @@ Confirm the prefix `CRBIND` and the four-ticket breakdown with the user, then wr
 
 - `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md` — ticket workflow and conventions
 - `docs/Skills/Ticket Generation.md` — full Ticket Generation skill (canonical field shape, ticket-write usage, db-query usage)
-- `.ombutocode/tools/ticket-write.js` — canonical ticket insert tool
-- `.ombutocode/tools/db-query.js` — canonical read-only query tool
+- `.ombutocode/tools/ticket-write.cjs` — canonical ticket insert tool
+- `.ombutocode/tools/db-query.cjs` — canonical read-only query tool

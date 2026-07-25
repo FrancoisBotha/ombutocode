@@ -64,6 +64,36 @@
       </div>
     </div>
 
+    <!-- Promote All Confirmation Modal -->
+    <div v-if="showPromoteAllModal" class="modal-overlay" @click.self="cancelPromoteAll">
+      <div class="modal modal-promote">
+        <div class="modal-header">
+          <span class="mdi mdi-arrow-up-bold-box modal-icon modal-icon-primary"></span>
+          <h3>Promote All Tickets</h3>
+        </div>
+        <div class="modal-body">
+          <p>
+            Promote all <strong>{{ backlogTickets.length }}</strong>
+            backlog ticket{{ backlogTickets.length === 1 ? '' : 's' }} to TODO?
+          </p>
+          <p class="add-ticket-message">Tickets are promoted lowest ticket number first.</p>
+        </div>
+        <div class="modal-actions">
+          <button
+            ref="cancelPromoteAllButtonRef"
+            class="btn btn-secondary"
+            :disabled="promotingAll"
+            @click="cancelPromoteAll"
+          >
+            Cancel
+          </button>
+          <button class="btn btn-primary" :disabled="promotingAll" @click="confirmPromoteAll">
+            {{ promotingAll ? 'Promoting...' : 'Promote All' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="loading" class="backlog-loading">
       Loading backlog...
     </div>
@@ -82,7 +112,7 @@
               class="btn btn-secondary btn-promote-all"
               :disabled="promotingAll"
               title="Promote every backlog ticket to TODO, lowest ticket number first"
-              @click="promoteAll"
+              @click="openPromoteAllModal"
             >
               <span class="mdi" :class="promotingAll ? 'mdi-loading mdi-spin' : 'mdi-arrow-up-bold-box-outline'"></span>
               {{ promotingAll ? 'Promoting...' : 'Promote All' }}
@@ -94,13 +124,7 @@
           </div>
         </div>
 
-        <div v-if="backlogTickets.length === 0" class="backlog-empty">
-          <span class="mdi mdi-clipboard-text-outline"></span>
-          <p>No backlog items found</p>
-        </div>
-
         <div
-          v-show="backlogTickets.length > 0"
           ref="tabulatorTable"
           class="tabulator-table"
           tabindex="0"
@@ -110,7 +134,6 @@
       </div>
 
       <div
-        v-if="selectedTicket"
         class="resize-handle"
         role="separator"
         aria-orientation="vertical"
@@ -119,8 +142,12 @@
         @pointerdown="startResize"
       ></div>
 
-      <div v-if="selectedTicket" class="backlog-detail-container" :style="detailPanelStyle">
-        <BacklogDetail :ticket="selectedTicket" />
+      <div class="backlog-detail-container" :style="detailPanelStyle">
+        <BacklogDetail v-if="selectedTicket" :ticket="selectedTicket" />
+        <div v-else class="backlog-detail-empty">
+          <span class="mdi mdi-gesture-tap"></span>
+          <p>Select a ticket to view its details.</p>
+        </div>
       </div>
     </template>
   </div>
@@ -180,6 +207,7 @@ export default {
         data: backlogTickets.value,
         index: 'id',
         layout: 'fitColumns',
+        placeholder: 'No backlog items found',
         selectable: false,
         columns: [
           {
@@ -324,16 +352,30 @@ export default {
     }
 
     const promotingAll = ref(false);
+    const showPromoteAllModal = ref(false);
+    const cancelPromoteAllButtonRef = ref(null);
 
-    async function promoteAll() {
+    function openPromoteAllModal() {
+      if (backlogTickets.value.length === 0) return;
+      showPromoteAllModal.value = true;
+    }
+
+    function cancelPromoteAll() {
       if (promotingAll.value) return;
-      const count = backlogTickets.value.length;
-      if (count === 0) return;
-      if (!confirm(`Promote all ${count} backlog ticket${count === 1 ? '' : 's'} to TODO?`)) return;
+      showPromoteAllModal.value = false;
+    }
+
+    async function confirmPromoteAll() {
+      if (promotingAll.value) return;
+      if (backlogTickets.value.length === 0) {
+        showPromoteAllModal.value = false;
+        return;
+      }
 
       promotingAll.value = true;
       try {
         await backlogStore.promoteAllToTodo();
+        showPromoteAllModal.value = false;
       } catch (e) {
         console.error('Failed to promote all tickets:', e);
       } finally {
@@ -416,6 +458,14 @@ export default {
       }
     });
 
+    watch(showPromoteAllModal, (newVal) => {
+      if (newVal) {
+        nextTick(() => {
+          cancelPromoteAllButtonRef.value?.focus();
+        });
+      }
+    });
+
     watch(showAddTicketModal, (newVal) => {
       if (newVal) {
         nextTick(() => {
@@ -474,7 +524,6 @@ export default {
     }
 
     function startResize(event) {
-      if (!selectedTicket.value) return;
       isResizing.value = true;
       dragStartX.value = event.clientX;
       dragStartWidth.value = detailWidth.value;
@@ -512,7 +561,11 @@ export default {
       selectNext,
       promote,
       promotingAll,
-      promoteAll,
+      showPromoteAllModal,
+      cancelPromoteAllButtonRef,
+      openPromoteAllModal,
+      cancelPromoteAll,
+      confirmPromoteAll,
       deleteTicketHandler,
       showDeleteModal,
       ticketToDelete,
@@ -641,6 +694,34 @@ export default {
   min-width: 0;
   max-width: 100%;
   height: 100%;
+}
+
+.backlog-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.5rem;
+  color: #6b778c;
+  font-size: 0.9rem;
+  background-color: #ffffff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.backlog-detail-empty .mdi {
+  font-size: 2.5rem;
+  color: #c1c7d0;
+}
+
+.backlog-detail-empty p {
+  margin: 0;
+}
+
+[data-theme='dark'] .backlog-detail-empty {
+  background-color: var(--card-bg, #1a2030);
+  color: var(--text-muted, #8b929a);
 }
 
 .tabulator-table {
@@ -783,6 +864,10 @@ export default {
 .modal-add-ticket {
   border-top: 4px solid #4a90e2;
   max-width: 560px;
+}
+
+.modal-promote {
+  border-top: 4px solid #4a90e2;
 }
 
 .modal-header {

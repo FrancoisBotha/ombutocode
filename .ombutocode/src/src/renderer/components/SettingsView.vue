@@ -19,6 +19,14 @@
           <span class="mdi mdi-robot-outline"></span>
           Coding Agents
         </button>
+        <button
+          class="settings-tab"
+          :class="{ 'is-active': settingsTab === 'models' }"
+          @click="settingsTab = 'models'"
+        >
+          <span class="mdi mdi-brain"></span>
+          Models
+        </button>
       </div>
     </div>
 
@@ -561,11 +569,130 @@
       </section>
     </div>
 
+    <!-- ===== Models Tab ===== -->
+    <div v-if="settingsTab === 'models'" class="settings-content">
+      <section class="settings-section">
+        <div class="section-header">
+          <span class="section-icon mdi mdi-brain"></span>
+          <div class="section-title-group">
+            <h2>Models</h2>
+            <p class="section-description">
+              Maintain the models available to each coding agent. Changes are written straight to
+              <code>.ombutocode/codingagents/codingagents.yml</code>.
+            </p>
+          </div>
+        </div>
+
+        <div class="section-content">
+          <p class="models-note">
+            <span class="mdi mdi-information-outline"></span>
+            <span>
+              Model selection is fully implemented for <strong>Claude</strong> only. Codex and Kimi
+              currently run their own CLI default model — models listed here for those agents are
+              still used for scheduling, but the identifier is not yet passed to the CLI.
+            </span>
+          </p>
+
+          <p v-if="modelError" class="models-error">
+            <span class="mdi mdi-alert-circle-outline"></span> {{ modelError }}
+          </p>
+
+          <p v-if="!modelTools.length" class="models-empty">
+            No coding agents configured yet. Add one under <strong>Build &gt; Coding Agents</strong>.
+          </p>
+
+          <div v-for="tool in modelTools" :key="tool.id" class="models-agent">
+            <div class="models-agent-header">
+              <span class="mdi mdi-robot-outline"></span>
+              <h3>{{ tool.name || tool.id }}</h3>
+              <span class="models-agent-count">{{ (tool.models || []).length }} model{{ (tool.models || []).length === 1 ? '' : 's' }}</span>
+              <span v-if="!agentSupportsModelSelection(tool.id)" class="models-agent-flag">
+                model not passed to CLI
+              </span>
+            </div>
+
+            <table class="models-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Identifier</th>
+                  <th class="models-centre">Enabled</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="model in tool.models"
+                  :key="model.id"
+                  :class="{ 'is-disabled': !model.enabled }"
+                >
+                  <td>
+                    <input
+                      type="text"
+                      class="models-input"
+                      :value="model.name"
+                      @change="saveModelField(tool.id, model, 'name', $event.target.value)"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="text"
+                      class="models-input models-input-mono"
+                      :value="model.modelId"
+                      @change="saveModelField(tool.id, model, 'modelId', $event.target.value)"
+                    />
+                  </td>
+                  <td class="models-centre">
+                    <input
+                      type="checkbox"
+                      :checked="model.enabled"
+                      @change="toggleModel(tool.id, model)"
+                    />
+                  </td>
+                  <td class="models-centre">
+                    <button
+                      type="button"
+                      class="models-delete-btn"
+                      :title="'Remove ' + (model.name || model.modelId)"
+                      @click="removeModel(tool, model)"
+                    >
+                      <span class="mdi mdi-trash-can-outline"></span>
+                    </button>
+                  </td>
+                </tr>
+                <tr v-if="!(tool.models || []).length">
+                  <td colspan="4" class="models-table-empty">No models configured for this agent.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <form class="models-add-row" @submit.prevent="addModel(tool.id)">
+              <input
+                type="text"
+                class="models-input"
+                placeholder="Opus 5"
+                v-model="getModelDraft(tool.id).name"
+              />
+              <input
+                type="text"
+                class="models-input models-input-mono"
+                placeholder="claude-opus-5"
+                v-model="getModelDraft(tool.id).modelId"
+              />
+              <button type="submit" class="models-add-btn">
+                <span class="mdi mdi-plus"></span> Add Model
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+    </div>
+
   </div>
 </template>
 
 <script>
-import { onMounted, computed, ref, watch } from 'vue';
+import { onMounted, computed, reactive, ref, watch } from 'vue';
 import { useSettingsStore } from '../stores/settingsStore';
 import { useAgentToolsStore } from '../stores/agentToolsStore';
 import { useBacklogStore } from '../stores/backlogStore';
@@ -625,6 +752,71 @@ export default {
       if (defaultAgentId.value === agentId) {
         await settingsStore.setEvalDefaultModel(modelId);
       }
+    }
+
+    // ── Models tab ──
+    // Edits go straight through the agent tools store, which persists the whole
+    // tool list back to codingagents.yml on every mutation.
+    const modelTools = computed(() => agentToolsStore.tools);
+    const modelError = ref('');
+    const newModelDrafts = reactive({});
+
+    // Only Claude's command template carries --model {{modelId}}; the others
+    // run their CLI default. Surfaced in the UI so the list isn't misleading.
+    const MODEL_SELECTION_AGENTS = ['claude'];
+    function agentSupportsModelSelection(toolId) {
+      return MODEL_SELECTION_AGENTS.includes(toolId);
+    }
+
+    function getModelDraft(toolId) {
+      if (!newModelDrafts[toolId]) {
+        newModelDrafts[toolId] = { name: '', modelId: '' };
+      }
+      return newModelDrafts[toolId];
+    }
+
+    function saveModelField(toolId, model, field, value) {
+      modelError.value = '';
+      try {
+        agentToolsStore.updateModel(toolId, model.id, { [field]: String(value).trim() });
+      } catch (e) {
+        modelError.value = e.message;
+      }
+    }
+
+    function toggleModel(toolId, model) {
+      modelError.value = '';
+      try {
+        agentToolsStore.toggleModelEnabled(toolId, model.id);
+      } catch (e) {
+        modelError.value = e.message;
+      }
+    }
+
+    function addModel(toolId) {
+      modelError.value = '';
+      const draft = getModelDraft(toolId);
+      try {
+        // rate/cost stay in the YAML schema (the scheduler reads them) but are
+        // not surfaced here — new models start at 0 for both.
+        agentToolsStore.addModel(toolId, {
+          name: draft.name,
+          modelId: draft.modelId,
+          ratePerHour: 0,
+          costPerRun: 0,
+          enabled: true,
+        });
+        newModelDrafts[toolId] = { name: '', modelId: '' };
+      } catch (e) {
+        modelError.value = e.message;
+      }
+    }
+
+    function removeModel(tool, model) {
+      modelError.value = '';
+      const label = model.name || model.modelId;
+      if (!window.confirm(`Remove "${label}" from ${tool.name || tool.id}?`)) return;
+      agentToolsStore.deleteModel(tool.id, model.id);
     }
 
     function getAgentConcurrent(agentId) {
@@ -1279,7 +1471,15 @@ export default {
       getAgentConcurrent,
       setAgentConcurrent,
       getAgentCooldown,
-      setAgentCooldown
+      setAgentCooldown,
+      modelTools,
+      modelError,
+      agentSupportsModelSelection,
+      getModelDraft,
+      saveModelField,
+      toggleModel,
+      addModel,
+      removeModel
     };
   }
 };
@@ -2173,6 +2373,169 @@ export default {
   font-size: 0.72rem;
   color: #a0a8b4;
 }
+
+/* ── Models tab ── */
+.models-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #f0dcb0;
+  background: #fdf6e3;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #7a5c12;
+}
+
+.models-note .mdi { font-size: 1rem; flex-shrink: 0; margin-top: 0.1rem; }
+
+.models-error {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #c0392b;
+  font-size: 0.82rem;
+}
+
+.models-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b778c;
+}
+
+.models-agent { margin-bottom: 1.75rem; }
+.models-agent:last-child { margin-bottom: 0; }
+
+.models-agent-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.models-agent-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.models-agent-header .mdi { color: #6b778c; }
+
+.models-agent-count {
+  font-size: 0.75rem;
+  color: #6b778c;
+}
+
+.models-agent-flag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  background: #fdf6e3;
+  color: #b87f0e;
+  border: 1px solid #f0dcb0;
+}
+
+.models-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  border: 1px solid #e1e4e8;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.models-table th {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  background: #f8f9fa;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b778c;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.models-table td {
+  padding: 0.3rem 0.5rem;
+  border-bottom: 1px solid #f1f2f4;
+}
+
+.models-table tr:last-child td { border-bottom: none; }
+.models-table tr.is-disabled { opacity: 0.55; }
+.models-table .models-centre { text-align: center; width: 5rem; }
+
+.models-table-empty {
+  padding: 0.75rem 0.6rem !important;
+  color: #6b778c;
+  font-style: italic;
+  text-align: center;
+}
+
+.models-input {
+  width: 100%;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #2c3e50;
+  font-size: 0.84rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.models-input:hover { border-color: #e1e4e8; }
+.models-input:focus { border-color: #5b9bd5; background: #fff; }
+.models-input-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.79rem; }
+
+.models-delete-btn {
+  border: none;
+  background: transparent;
+  color: #a0a8b4;
+  cursor: pointer;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.models-delete-btn:hover { color: #c0392b; background: rgba(192, 57, 43, 0.08); }
+
+.models-add-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.6rem;
+}
+
+.models-add-row .models-input {
+  border-color: #e1e4e8;
+  background: #fff;
+}
+
+.models-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid #d0d7de;
+  border-radius: 5px;
+  background: #f8f9fa;
+  color: #2c3e50;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.models-add-btn:hover { background: #eef1f4; border-color: #b6bec7; }
 </style>
 
 <style>
@@ -2352,4 +2715,53 @@ export default {
   background-color: #1a2230;
   color: #5b9bd5;
 }
+
+/* ── Models tab (dark) ── */
+[data-theme="dark"] .models-note,
+[data-theme="dark"] .models-agent-flag {
+  background: #332a10;
+  border-color: #4a3d1a;
+  color: #e5a830;
+}
+
+[data-theme="dark"] .models-error {
+  background: #2e1a1a;
+  color: #e06060;
+}
+
+[data-theme="dark"] .models-empty,
+[data-theme="dark"] .models-agent-count,
+[data-theme="dark"] .models-table-empty,
+[data-theme="dark"] .models-agent-header .mdi {
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .models-agent-header h3 { color: var(--text-color); }
+
+[data-theme="dark"] .models-table { border-color: var(--border-color); }
+
+[data-theme="dark"] .models-table th {
+  background: #161a1f;
+  color: var(--text-muted);
+  border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .models-table td { border-bottom-color: rgba(255, 255, 255, 0.06); }
+
+[data-theme="dark"] .models-input { color: var(--text-color); }
+[data-theme="dark"] .models-input:hover { border-color: var(--border-color); }
+[data-theme="dark"] .models-input:focus { border-color: #5b9bd5; background: #161a1f; }
+
+[data-theme="dark"] .models-add-row .models-input {
+  background: #161a1f;
+  border-color: var(--border-color);
+}
+
+[data-theme="dark"] .models-add-btn {
+  background: #2d333b;
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .models-add-btn:hover { background: #373d45; }
 </style>

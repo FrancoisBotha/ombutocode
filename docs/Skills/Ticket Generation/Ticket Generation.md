@@ -175,33 +175,33 @@ Before creating tickets, read the tools manifest at `.ombutocode/tools/tools.jso
 
 Two CLI tools cover the ticket-generation workflow — do NOT use Python, sqlite3, or hand-written sql.js scripts.
 
-**Database Query Tool** (`.ombutocode/tools/db-query.js`) — read-only:
+**Database Query Tool** (`.ombutocode/tools/db-query.cjs`) — read-only:
 
 ```bash
 # Check existing tickets to avoid ID collisions
-node .ombutocode/tools/db-query.js tickets
+node .ombutocode/tools/db-query.cjs tickets
 
 # Check ticket counts by status
-node .ombutocode/tools/db-query.js stats
+node .ombutocode/tools/db-query.cjs stats
 
 # List epics and their statuses
-node .ombutocode/tools/db-query.js epics
+node .ombutocode/tools/db-query.cjs epics
 
 # Verify inserted tickets after creation
-node .ombutocode/tools/db-query.js tickets --status backlog
+node .ombutocode/tools/db-query.cjs tickets --status backlog
 
 # Inspect a specific ticket
-node .ombutocode/tools/db-query.js ticket SCAFF-001
+node .ombutocode/tools/db-query.cjs ticket SCAFF-001
 ```
 
-**Ticket Write Tool** (`.ombutocode/tools/ticket-write.js`) — the canonical writer for new tickets. Accepts a JSON array file, validates it, runs all inserts in one transaction, auto-backs-up the DB, and bumps `backlog:updated_at`. Use `--dry-run` first to preview.
+**Ticket Write Tool** (`.ombutocode/tools/ticket-write.cjs`) — the canonical writer for new tickets. Accepts a JSON array file, validates it, runs all inserts in one transaction, auto-backs-up the DB, and bumps `backlog:updated_at`. Use `--dry-run` first to preview.
 
 ```bash
 # Preview (no writes)
-node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json --dry-run
+node .ombutocode/tools/ticket-write.cjs insert /tmp/<epic>-tickets.json --dry-run
 
 # Insert for real
-node .ombutocode/tools/ticket-write.js insert /tmp/<epic>-tickets.json
+node .ombutocode/tools/ticket-write.cjs insert /tmp/<epic>-tickets.json
 ```
 
 Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticket-write`.
@@ -209,15 +209,15 @@ Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticke
 ## Workflow
 
 1. **Read** the epic specification completely
-2. **Check existing tickets** — run `node .ombutocode/tools/db-query.js tickets` to see current backlog and avoid ID collisions
+2. **Check existing tickets** — run `node .ombutocode/tools/db-query.cjs tickets` to see current backlog and avoid ID collisions
 3. **Identify** the logical work units
 4. **Order** them by dependency (setup → core → integration → UI)
 5. **Append** the three mandatory closeout tickets (epic-eval → regression-tests → help-docs) at the END of the list, after all feature work. See the "Mandatory Closeout Tickets" section above. Skipping them is a workflow error.
 6. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
 7. **Propose** a summary table with: ID, Title, Type, Dependencies — and confirm the chosen epic-derived prefix. The closeout tickets MUST appear in this table as the last three rows.
 8. **Wait** for user confirmation
-9. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.js` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
-10. **Verify** — run `node .ombutocode/tools/db-query.js tickets --status backlog` to confirm the tickets were inserted correctly
+9. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.cjs` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
+10. **Verify** — run `node .ombutocode/tools/db-query.cjs tickets --status backlog` to confirm the tickets were inserted correctly
 11. **Update** the epic status from `NEW` to `TICKETS`
 
 ## Writing Tickets to the Database
@@ -241,13 +241,13 @@ Use the `ticket-write` tool. Do NOT write a one-shot sql.js script — that patt
 **Step 2 — Preview with `--dry-run`** to confirm validation passes and the planned sort_order range looks right:
 
 ```bash
-node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json --dry-run
+node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json --dry-run
 ```
 
 **Step 3 — Insert for real:**
 
 ```bash
-node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json
+node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json
 ```
 
 The tool will:
@@ -263,13 +263,13 @@ The tool will:
 
 ```bash
 # List all newly created tickets
-node .ombutocode/tools/db-query.js tickets --status backlog
+node .ombutocode/tools/db-query.cjs tickets --status backlog
 
 # Inspect a specific ticket to verify all fields
-node .ombutocode/tools/db-query.js ticket <TICKET-ID>
+node .ombutocode/tools/db-query.cjs ticket <TICKET-ID>
 
 # Confirm counts
-node .ombutocode/tools/db-query.js stats
+node .ombutocode/tools/db-query.cjs stats
 ```
 
 **Step 5 — Clean up.** Once verification passes, delete the temp JSON file and the backup file the tool created (`.ombutocode/data/ombutocode.db.before-insert-<timestamp>`).
@@ -333,8 +333,8 @@ A full insert payload is simply an array of these objects wrapped in `[ ... ]`.
 ## References
 
 - `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md` — ticket workflow and conventions
-- `.ombutocode/tools/ticket-write.js` — canonical ticket insert tool (CLI)
-- `.ombutocode/tools/db-query.js` — canonical read-only query tool (CLI)
+- `.ombutocode/tools/ticket-write.cjs` — canonical ticket insert tool (CLI)
+- `.ombutocode/tools/db-query.cjs` — canonical read-only query tool (CLI)
 - `.ombutocode/tools/tools.json` — tools manifest; read this first
 - `.ombutocode/data/ombutocode.db` — canonical backlog database (`backlog_tickets` table)
 - `.ombutocode/src/src/main/backlogDb.js` — canonical in-app reader/writer; defines the field shape the UI and scheduler consume

@@ -31,7 +31,7 @@ Before touching code:
 1. Read the ticket from the backlog database. The recommended way:
 
    ```
-   node .ombutocode/tools/db-query.js ticket <TICKET-ID>
+   node .ombutocode/tools/db-query.cjs ticket <TICKET-ID>
    ```
 
    This gives you title, status, dependencies, acceptance criteria, `notes` (which contain the prior failure history), `eval_summary`, `test_summary`, `fail_count`, and `eval_fail_count`.

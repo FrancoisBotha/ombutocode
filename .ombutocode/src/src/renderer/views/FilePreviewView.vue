@@ -282,8 +282,7 @@ export default {
 
     async function checkAiPreviewExists() {
       try {
-        await window.electron.ipcRenderer.invoke('filetree:readFile', 'Style Guide/StyleGuide_Preview_AI.html');
-        aiPreviewExists.value = true;
+        aiPreviewExists.value = await window.electron.ipcRenderer.invoke('filetree:fileExists', 'Style Guide/StyleGuide_Preview_AI.html');
       } catch (_) {
         aiPreviewExists.value = false;
       }

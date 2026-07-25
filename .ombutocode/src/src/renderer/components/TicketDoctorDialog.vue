@@ -105,6 +105,7 @@ import { useBacklogStore } from '@/stores/backlogStore';
 
 let termInstance = null;
 let fitAddon = null;
+let resizeObserver = null;
 let shellDataCleanup = null;
 let shellExitCleanup = null;
 let shellCounter = 0;
@@ -131,6 +132,14 @@ export default {
     // Buffer for the last ~4KB of output so we can pattern-match the result
     // marker even when it arrives split across pty data chunks.
     let outputBuffer = '';
+    // The agent's prompt embeds the Fix Ticket skill, which itself contains
+    // example TICKET_DOCTOR_RESULT lines. The terminal echoes that prompt back,
+    // so we must NOT match markers until the prompt has finished echoing —
+    // otherwise the echoed examples fire a premature SUCCESS. We append a unique
+    // sync token to the very end of the prompt and only start matching once it
+    // has echoed (everything before it, including the skill examples, is discarded).
+    let readyToken = '';
+    let promptEchoComplete = false;
 
     const defaultAgent = computed(() =>
       settingsStore.settings.eval_default_agent || settingsStore.settings.ad_hoc_ticket_agent || ''
@@ -170,18 +179,40 @@ You are running inside this ticket's existing git worktree on branch ticket/${t.
 
 Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCTOR_RESULT marker so the UI can offer the human a Move to Review action.`;
 
-      return skillContent.value
+      const base = skillContent.value
         ? `${skillContent.value}\n\n---\n\n${intro}`
         : intro;
+
+      readyToken = 'DOCTOR_SYNC_' + Math.random().toString(36).slice(2, 12).toUpperCase();
+      return `${base}\n\n---\n_Session sync marker — ignore this line: ${readyToken}_`;
     }
 
     function watchForResultMarker(chunk) {
-      // Strip ANSI escape sequences before pattern-matching so colour codes
-      // inserted by the agent's TUI don't break the regex.
-      outputBuffer = (outputBuffer + chunk).replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
+      // Strip ANSI escape sequences before pattern-matching so the agent's TUI
+      // (colour codes, cursor moves, private modes, OSC title strings) doesn't
+      // break the regex. Covers CSI (incl. `?`/intermediate bytes) and OSC.
+      outputBuffer = (outputBuffer + chunk)
+        .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')
+        .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '');
       if (outputBuffer.length > 8192) outputBuffer = outputBuffer.slice(-8192);
       if (doctorResult.value) return;
-      const m = outputBuffer.match(/TICKET_DOCTOR_RESULT:\s*(SUCCESS|FAIL)/i);
+
+      // Gate: ignore all output until the prompt's trailing sync token has echoed.
+      // This discards the echoed skill text (and its example result markers) so
+      // only the agent's own final output can set the result.
+      if (!promptEchoComplete) {
+        if (!readyToken) return;
+        const tokenIdx = outputBuffer.lastIndexOf(readyToken);
+        if (tokenIdx === -1) return;
+        promptEchoComplete = true;
+        outputBuffer = outputBuffer.slice(tokenIdx + readyToken.length);
+      }
+
+      // The skill mandates the marker on a line of its own, so anchor to line
+      // start to avoid matching an inline mention mid-sentence. Allow leading
+      // whitespace and the bullet/box glyphs the agent's TUI prefixes to message
+      // lines (e.g. "⏺", "│", "> ") so an indented marker still matches.
+      const m = outputBuffer.match(/(?:^|\n)[\s>│┃|*\-⏺•]*TICKET_DOCTOR_RESULT:\s*(SUCCESS|FAIL)\b/i);
       if (m) doctorResult.value = m[1].toUpperCase();
     }
 
@@ -214,6 +245,23 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
         const shellId = 'doctor-' + props.ticket.id + '-' + (++shellCounter);
         currentShellId.value = shellId;
 
+        // Keep the PTY's dimensions locked to the rendered terminal. Without this
+        // the agent's TUI lays out at a default width that differs from xterm's,
+        // wrapping lines at the wrong column — the output looks garbled and the
+        // result marker gets split across lines so success is never detected.
+        resizeObserver = new ResizeObserver(() => {
+          if (!fitAddon || !termInstance) return;
+          try {
+            fitAddon.fit();
+            window.electron.ipcRenderer.invoke(
+              'workspace:resizeShell', shellId, termInstance.cols, termInstance.rows
+            );
+          } catch (_) { /* terminal disposed mid-resize */ }
+        });
+        resizeObserver.observe(terminalContainer.value);
+
+        outputBuffer = '';
+        promptEchoComplete = false;
         const prompt = buildPrompt();
         const agentCmd = defaultAgent.value;
         let args;
@@ -224,7 +272,8 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
         }
 
         const spawnResult = await window.electron.ipcRenderer.invoke(
-          'doctor:spawn', shellId, props.ticket.id, agentCmd, args
+          'doctor:spawn', shellId, props.ticket.id, agentCmd, args,
+          { cols: term.cols, rows: term.rows }
         );
         if (!spawnResult?.usedWorktree) {
           term.write('\x1b[33mNote: ticket worktree not found, running in project root instead.\x1b[0m\r\n');
@@ -254,7 +303,6 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
           }
         });
 
-        setTimeout(() => { if (fitAddon) fitAddon.fit(); }, 300);
       } catch (e) {
         console.error('[TicketDoctor] Failed to start session:', e);
         sessionStarted.value = false;
@@ -283,6 +331,7 @@ Follow the Fix Ticket skill above precisely. End with the structured TICKET_DOCT
         window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
         currentShellId.value = '';
       }
+      if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
       if (shellDataCleanup) { shellDataCleanup(); shellDataCleanup = null; }
       if (shellExitCleanup) { shellExitCleanup(); shellExitCleanup = null; }
       if (termInstance) { termInstance.dispose(); termInstance = null; }

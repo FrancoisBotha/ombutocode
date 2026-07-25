@@ -1,70 +1,71 @@
 {
   "$schema": "Ombuto Code Tools Manifest — describes available CLI tools for AI coding agents",
   "version": 1,
+  "note": "Tools use the .cjs extension because they are CommonJS. A project whose package.json declares \"type\": \"module\" makes Node parse .js as ESM, and every require() call then fails with 'require is not defined in ES module scope'. Keep new tools .cjs unless they are written as ES modules.",
   "tools": [
     {
       "name": "db-query",
       "description": "Query the Ombuto Code SQLite database. Read-only — no modifications allowed. Use this instead of Python/sqlite3.",
-      "path": ".ombutocode/tools/db-query.js",
+      "path": ".ombutocode/tools/db-query.cjs",
       "runtime": "node",
-      "invocation": "node .ombutocode/tools/db-query.js <command> [options]",
+      "invocation": "node .ombutocode/tools/db-query.cjs <command> [options]",
       "commands": [
         {
           "name": "tables",
           "description": "List all tables in the database",
-          "usage": "node .ombutocode/tools/db-query.js tables",
+          "usage": "node .ombutocode/tools/db-query.cjs tables",
           "input": "none",
           "output": "Formatted table: Name | Type"
         },
         {
           "name": "schema",
           "description": "Show the CREATE TABLE statement for a specific table",
-          "usage": "node .ombutocode/tools/db-query.js schema <table_name>",
+          "usage": "node .ombutocode/tools/db-query.cjs schema <table_name>",
           "input": "table_name (string) — name of the table",
           "output": "SQL CREATE TABLE statement"
         },
         {
           "name": "query",
           "description": "Run an arbitrary read-only SELECT query against the database",
-          "usage": "node .ombutocode/tools/db-query.js query \"<SQL>\"",
+          "usage": "node .ombutocode/tools/db-query.cjs query \"<SQL>\"",
           "input": "SQL SELECT statement (string, must start with SELECT)",
           "output": "Formatted table with column headers and rows",
           "notes": "Only SELECT queries are allowed. The database uses json_extract() for accessing ticket fields stored as JSON in the 'data' column.",
           "examples": [
-            "node .ombutocode/tools/db-query.js query \"SELECT id, json_extract(data, '$.title') as title FROM backlog_tickets LIMIT 10\"",
-            "node .ombutocode/tools/db-query.js query \"SELECT id, json_extract(data, '$.status') as status, json_extract(data, '$.epic_ref') as epic FROM backlog_tickets WHERE json_extract(data, '$.status') = 'todo'\""
+            "node .ombutocode/tools/db-query.cjs query \"SELECT id, json_extract(data, '$.title') as title FROM backlog_tickets LIMIT 10\"",
+            "node .ombutocode/tools/db-query.cjs query \"SELECT id, json_extract(data, '$.status') as status, json_extract(data, '$.epic_ref') as epic FROM backlog_tickets WHERE json_extract(data, '$.status') = 'todo'\""
           ]
         },
         {
           "name": "tickets",
           "description": "List all backlog tickets with key fields. Optionally filter by status.",
-          "usage": "node .ombutocode/tools/db-query.js tickets [--status <status>]",
+          "usage": "node .ombutocode/tools/db-query.cjs tickets [--status <status>]",
           "input": "--status (optional) — filter by ticket status (e.g. backlog, todo, in_progress, review, done)",
           "output": "Formatted table: id | title | status | assignee | epic_ref",
           "examples": [
-            "node .ombutocode/tools/db-query.js tickets",
-            "node .ombutocode/tools/db-query.js tickets --status todo",
-            "node .ombutocode/tools/db-query.js tickets --status backlog"
+            "node .ombutocode/tools/db-query.cjs tickets",
+            "node .ombutocode/tools/db-query.cjs tickets --status todo",
+            "node .ombutocode/tools/db-query.cjs tickets --status backlog"
           ]
         },
         {
           "name": "ticket",
           "description": "Show full JSON details of a single ticket by ID",
-          "usage": "node .ombutocode/tools/db-query.js ticket <id>",
+          "usage": "node .ombutocode/tools/db-query.cjs ticket <id>",
           "input": "id (string) — ticket ID (e.g. AUTH-001, SCAFF-003)",
           "output": "Full ticket JSON including all fields: title, status, assignee, epic_ref, references, acceptance_criteria, dependencies, notes"
         },
         {
           "name": "epics",
           "description": "List all epic files from docs/Epics/ with their title and status (reads from filesystem, not database)",
-          "usage": "node .ombutocode/tools/db-query.js epics",
+          "usage": "node .ombutocode/tools/db-query.cjs epics",
           "input": "none",
           "output": "Formatted table: File | Title | Status"
         },
         {
           "name": "stats",
           "description": "Show ticket counts grouped by status",
-          "usage": "node .ombutocode/tools/db-query.js stats",
+          "usage": "node .ombutocode/tools/db-query.cjs stats",
           "input": "none",
           "output": "Formatted table: status | count"
         }
@@ -87,14 +88,14 @@
     {
       "name": "ticket-write",
       "description": "Insert new tickets into the ombutocode backlog database from a JSON array file. This is the canonical way to write tickets — do NOT hand-roll sql.js scripts. Use db-query for reads and this tool for writes.",
-      "path": ".ombutocode/tools/ticket-write.js",
+      "path": ".ombutocode/tools/ticket-write.cjs",
       "runtime": "node",
-      "invocation": "node .ombutocode/tools/ticket-write.js <command> [options]",
+      "invocation": "node .ombutocode/tools/ticket-write.cjs <command> [options]",
       "commands": [
         {
           "name": "insert",
           "description": "Insert tickets from a JSON array file. Validates required fields, checks for id collisions, appends after MAX(sort_order), bumps the 'backlog:updated_at' metadata key, and creates a pre-insert database backup by default.",
-          "usage": "node .ombutocode/tools/ticket-write.js insert <file.json> [--dry-run] [--no-backup] [--force]",
+          "usage": "node .ombutocode/tools/ticket-write.cjs insert <file.json> [--dry-run] [--no-backup] [--force]",
           "input": "Path to a JSON file containing an array of ticket objects. Each ticket must have at minimum: id, title, status, epic_ref. Other common fields: assignee, acceptance_criteria, dependencies, references, notes, description, last_updated.",
           "output": "Summary of planned inserts and, on success, list of inserted ticket ids and verification hint.",
           "flags": [
@@ -105,13 +106,13 @@
           "notes": [
             "The id field is stored in its own column and stripped from the JSON blob written to backlog_tickets.data.",
             "By default the tool creates a backup at ombutocode.db.before-insert-<timestamp> and leaves it in place; remove it after verifying the inserts.",
-            "Verify inserts with: node .ombutocode/tools/db-query.js tickets --status backlog",
+            "Verify inserts with: node .ombutocode/tools/db-query.cjs tickets --status backlog",
             "All inserts run inside a single transaction — either every ticket in the batch is written, or none are."
           ],
           "examples": [
-            "node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json",
-            "node .ombutocode/tools/ticket-write.js insert /tmp/jobs-tickets.json --dry-run",
-            "node .ombutocode/tools/ticket-write.js insert /tmp/fixup.json --force"
+            "node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json",
+            "node .ombutocode/tools/ticket-write.cjs insert /tmp/jobs-tickets.json --dry-run",
+            "node .ombutocode/tools/ticket-write.cjs insert /tmp/fixup.json --force"
           ]
         }
       ],
@@ -140,20 +141,20 @@
     {
       "name": "svg-to-png",
       "description": "Convert SVG files to PNG images. Use this for generating UI mockups: write SVG markup (text-based, agents can do this reliably), then convert to PNG. No Python or native build tools required.",
-      "path": ".ombutocode/tools/svg-to-png.js",
+      "path": ".ombutocode/tools/svg-to-png.cjs",
       "runtime": "node",
-      "invocation": "node .ombutocode/tools/svg-to-png.js <input.svg> [output.png] [options]",
-      "workflow": "1. Write an SVG file to docs/Mockups/Name.svg  2. Convert to PNG: node .ombutocode/tools/svg-to-png.js docs/Mockups/Name.svg  3. PNG is saved alongside the SVG",
+      "invocation": "node .ombutocode/tools/svg-to-png.cjs <input.svg> [output.png] [options]",
+      "workflow": "1. Write an SVG file to docs/Mockups/Name.svg  2. Convert to PNG: node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Name.svg  3. PNG is saved alongside the SVG",
       "options": [
         { "flag": "--width N", "description": "Output width in pixels (default: from SVG or 1200)" },
         { "flag": "--height N", "description": "Output height in pixels (default: from SVG or 800)" },
         { "flag": "--scale N", "description": "Scale factor for higher resolution (e.g. 2 for retina)" }
       ],
       "examples": [
-        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg",
-        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg docs/Mockups/Dashboard.png",
-        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Dashboard.svg --scale 2",
-        "node .ombutocode/tools/svg-to-png.js docs/Mockups/Login.svg --width 1920 --height 1080"
+        "node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg",
+        "node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg docs/Mockups/Dashboard.png",
+        "node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Dashboard.svg --scale 2",
+        "node .ombutocode/tools/svg-to-png.cjs docs/Mockups/Login.svg --width 1920 --height 1080"
       ],
       "notes": {
         "svg_tips": "Write standard SVG with inline styles. Use viewBox for dimensions. Use web-safe fonts (Segoe UI, system-ui, sans-serif). The SVG source is kept alongside the PNG for future editing.",

@@ -47,11 +47,21 @@ active `docs/Skills/` and `.ombutocode/templates/skills/`):
   Styling, Epics, BDD, Ticket Generation, Diagnostics, Bootstrapping, Other.
 - Existing flat skill files are **moved** into their category folder
   (content preserved — user edits travel with the file).
-- Skills missing from the target are copied from the source.
+- Skills missing from the target are copied from the source. The source
+  tree is walked, so skills added to Ombuto Code after this tool was built
+  (e.g. Bootstrapping/Bootstrap Prototype) come across too — no code change
+  needed here for each new skill.
 - A flat file that also exists in categorised form is left in place
   (never deleted — it may carry user edits) and noted in the log.
 - Custom user skills not in the canonical list are untouched; the app
   shows them under the "Other" category until moved into a folder.
+
+**Refreshes the agent CLI tools** (`.ombutocode/tools/`):
+- Every file in the source's `tools/` folder is copied over the target's.
+- The pre-rename `db-query.js`, `ticket-write.js` and `svg-to-png.js` are
+  deleted. The tools are CommonJS and are now named `.cjs`; in a project whose
+  `package.json` has `"type": "module"`, the `.js` versions die with
+  `require is not defined in ES module scope`.
 
 **Deletes** (so the next launch rebuilds cleanly):
 - Target's `.ombutocode/src/node_modules/`

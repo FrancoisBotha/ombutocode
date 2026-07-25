@@ -1,6 +1,6 @@
 <template>
   <div ref="featuresViewRef" class="epics-view" :class="{ 'is-resizing': isResizing }">
-    <div v-if="loading" class="epics-loading">
+    <div v-if="loading && features.length === 0" class="epics-loading">
       Loading epics...
     </div>
 
@@ -111,6 +111,12 @@
         </aside>
       </div>
     </template>
+
+    <EpicTicketsDialog
+      v-if="ticketsDialogEpic"
+      :epic="ticketsDialogEpic"
+      @close="ticketsDialogEpic = null"
+    />
   </div>
 </template>
 
@@ -120,6 +126,7 @@ import { useEpicStore } from '@/stores/epicStore';
 import { marked } from 'marked';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
+import EpicTicketsDialog from '@/components/EpicTicketsDialog.vue';
 
 const RESIZE_HANDLE_WIDTH = 10;
 const MIN_TABLE_WIDTH = 420;
@@ -128,6 +135,7 @@ const MAX_DETAIL_WIDTH = 880;
 
 export default {
   name: 'EpicsTable',
+  components: { EpicTicketsDialog },
   setup() {
     const epicStore = useEpicStore();
     const featuresViewRef = ref(null);
@@ -141,6 +149,12 @@ export default {
     // Search state
     const searchQuery = ref('');
     const searchDebounceTimer = ref(null);
+
+    // Epic that owns the open "Tickets" dialog (null when closed).
+    const ticketsDialogEpic = ref(null);
+    function openTicketsDialog(epic) {
+      if (epic) ticketsDialogEpic.value = epic;
+    }
 
     const features = computed(() => epicStore.epics);
     const selectedEpicId = computed(() => epicStore.selectedEpicId);
@@ -273,6 +287,28 @@ export default {
               return select;
             },
             cssClass: 'col-status'
+          },
+          {
+            title: 'Tickets',
+            field: 'id',
+            width: 110,
+            headerSort: false,
+            hozAlign: 'center',
+            formatter: function() {
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'epic-tickets-btn';
+              btn.title = 'View tickets linked to this epic';
+              btn.innerHTML = '<span class="mdi mdi-ticket-outline"></span> Tickets';
+              return btn;
+            },
+            cellClick: function(e, cell) {
+              // Open the dialog without letting the row's cellClick also fire
+              // (which would just re-select the epic).
+              e.stopPropagation();
+              openTicketsDialog(cell.getRow().getData());
+            },
+            cssClass: 'col-tickets'
           },
         ]
       });
@@ -477,6 +513,7 @@ export default {
       resultCountText,
       renderedContent,
       selectedEpicBlockers,
+      ticketsDialogEpic,
       selectEpic: (id) => epicStore.selectEpic(id),
       startSelectedFeature,
       evaluateSelectedFeature,
@@ -610,6 +647,39 @@ export default {
 
 [data-theme='dark'] .epics-view :deep(.epic-status-select:focus) {
   border-color: #5b9bd5;
+}
+
+/* "Tickets" row button rendered by the Tabulator formatter (needs :deep) */
+:deep(.epic-tickets-btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid #e1e4e8;
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: #4a5568;
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+:deep(.epic-tickets-btn .mdi) { font-size: 0.95rem; }
+:deep(.epic-tickets-btn:hover) {
+  border-color: #4a90e2;
+  color: #4a90e2;
+  background-color: #f0f6ff;
+}
+
+[data-theme='dark'] .epics-view :deep(.epic-tickets-btn) {
+  background-color: #1a1e24;
+  border-color: var(--border-color, #373d45);
+  color: var(--text-color, #d4d8dd);
+}
+[data-theme='dark'] .epics-view :deep(.epic-tickets-btn:hover) {
+  border-color: #5b9bd5;
+  color: #6dd4a0;
+  background-color: rgba(109, 212, 160, 0.08);
 }
 
 .resize-handle {

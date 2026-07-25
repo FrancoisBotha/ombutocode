@@ -550,10 +550,10 @@ export default {
 
 WORKFLOW — read ".ombutocode/tools/tools.json" for available tools:
 1. Write an SVG file to "docs/Mockups/${svgFilename}" — use viewBox="0 0 1200 800", inline CSS styles, web-safe fonts
-2. Convert to PNG: node .ombutocode/tools/svg-to-png.js docs/Mockups/${svgFilename}
+2. Convert to PNG: node .ombutocode/tools/svg-to-png.cjs docs/Mockups/${svgFilename}
 3. Verify the PNG was created
 
-If Python/PIL is not available, use the SVG-to-PNG tool: node .ombutocode/tools/svg-to-png.js
+If Python/PIL is not available, use the SVG-to-PNG tool: node .ombutocode/tools/svg-to-png.cjs
 ${contextNote ? '\n' + contextNote : ''}
 Before saving, confirm the file path with me and let me modify it if needed.
 

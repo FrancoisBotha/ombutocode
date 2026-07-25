@@ -4,6 +4,35 @@ const fs = require('fs');
 const path = require('path');
 
 /**
+ * Recursively copy every file under srcDir into dstDir, skipping any that
+ * already exist at the destination. Never overwrites, never deletes.
+ *
+ * @param {string} srcDir
+ * @param {string} dstDir
+ * @returns {string[]} destination paths that were created
+ */
+function copyMissingFiles(srcDir, dstDir) {
+  const copied = [];
+  if (!fs.existsSync(srcDir)) return copied;
+  // Dogfooding case: the app IS the project, so source and destination are the
+  // same tree and there is nothing to do.
+  if (path.resolve(srcDir) === path.resolve(dstDir)) return copied;
+
+  for (const entry of fs.readdirSync(srcDir, { withFileTypes: true })) {
+    const src = path.join(srcDir, entry.name);
+    const dst = path.join(dstDir, entry.name);
+    if (entry.isDirectory()) {
+      copied.push(...copyMissingFiles(src, dst));
+    } else if (entry.isFile() && !fs.existsSync(dst)) {
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.copyFileSync(src, dst);
+      copied.push(dst);
+    }
+  }
+  return copied;
+}
+
+/**
  * Ensure the .ombutocode/ directory structure exists in the target project.
  * Creates subdirectories, copies template files from APP_ROOT if not present,
  * and generates a .gitignore for runtime files.
@@ -33,18 +62,22 @@ function ensureOmbutocodeStructure(projectRoot, appRoot) {
     }
   }
 
-  // Copy template files from APP_ROOT/.ombutocode/templates/ if not present
+  // Copy template files from APP_ROOT/.ombutocode/templates/ if not present.
+  // Recursive: templates/skills/ and templates/mockups/ are sub-folders, and a
+  // flat copy would leave every project stuck with whatever templates shipped
+  // on the day it was created.
   const templateSrc = path.join(appRoot, '.ombutocode', 'templates');
   const templateDst = path.join(ombutocodeDir, 'templates');
-  if (fs.existsSync(templateSrc)) {
-    for (const file of fs.readdirSync(templateSrc)) {
-      const src = path.join(templateSrc, file);
-      const dst = path.join(templateDst, file);
-      if (!fs.existsSync(dst) && fs.statSync(src).isFile()) {
-        fs.copyFileSync(src, dst);
-      }
-    }
-  }
+  copyMissingFiles(templateSrc, templateDst);
+
+  // Seed docs/Skills/<Category>/<skill>.md from the skill templates. Only ever
+  // adds files that aren't there — user edits and deletions are never undone
+  // for a skill that already exists, but newly shipped skills reach existing
+  // projects instead of waiting for an initombuto reset.
+  copyMissingFiles(
+    path.join(templateDst, 'skills'),
+    path.join(projectRoot, 'docs', 'Skills')
+  );
 
   // Copy OMBUTOCODE_ENGINEERING_GUIDE.md to target .ombutocode/ if not present
   const guideSrc = path.join(appRoot, '.ombutocode', 'OMBUTOCODE_ENGINEERING_GUIDE.md');
@@ -83,4 +116,4 @@ function ensureOmbutocodeStructure(projectRoot, appRoot) {
   }
 }
 
-module.exports = { ensureOmbutocodeStructure };
+module.exports = { ensureOmbutocodeStructure, copyMissingFiles };

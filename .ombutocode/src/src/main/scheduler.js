@@ -1369,7 +1369,15 @@ function createScheduler(deps) {
 
           const retryContext = buildRetryContext(ticket);
 
-          const ticketFilePath = path.join('.ombutocode', 'data', 'tickets', `${ticket.id}.json`);
+          // Absolute, and rooted at the MAIN repo — not the run's working
+          // directory. Ticket JSON files are gitignored (.ombutocode/.gitignore
+          // ignores data/tickets/*.json), so `git worktree add` never brings
+          // them into a ticket worktree. A relative path resolved against the
+          // worktree cwd simply doesn't exist, and the agent would fall back to
+          // title + acceptance criteria without saying so.
+          const ticketFilePath = projectRoot
+            ? path.join(projectRoot, '.ombutocode', 'data', 'tickets', `${ticket.id}.json`)
+            : path.join('.ombutocode', 'data', 'tickets', `${ticket.id}.json`);
 
           const enrichedPayload = {
             ticketId: ticket.id,

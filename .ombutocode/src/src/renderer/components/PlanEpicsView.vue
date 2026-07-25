@@ -50,6 +50,89 @@
             </div>
           </div>
 
+          <!-- Decomposition strategy — only for the initial breakdown; adding a
+               single epic later follows whatever the existing set established. -->
+          <div class="epics-strategy" v-if="!epics.length">
+            <label class="epics-context-label">Epic Strategy</label>
+            <p class="epics-strategy-hint">
+              How should the PRD be sliced? This decides what "epic done" means for the whole
+              project — pick one and stay with it.
+            </p>
+            <div class="epics-strategy-options">
+              <button
+                type="button"
+                class="epics-strategy-card"
+                :class="{ 'is-selected': epicStrategy === 'vertical' }"
+                @click="setEpicStrategy('vertical')"
+              >
+                <span class="mdi mdi-layers-triple-outline epics-strategy-icon"></span>
+                <span class="epics-strategy-title">Vertical Slice (working MVP)</span>
+                <span class="epics-strategy-desc">
+                  Every epic ends with an app that builds, runs and lets a user complete a real
+                  task end to end. Epic 1 is the thinnest usable product; each epic after it adds
+                  one more capability.
+                </span>
+                <span class="epics-strategy-when">
+                  Best when you want something demoable early, requirements will evolve once you
+                  see it running, or a stakeholder needs to try it. Costs some parallelism —
+                  slices stack on each other.
+                </span>
+              </button>
+              <button
+                type="button"
+                class="epics-strategy-card"
+                :class="{ 'is-selected': epicStrategy === 'layered' }"
+                @click="setEpicStrategy('layered')"
+              >
+                <span class="mdi mdi-view-sequential-outline epics-strategy-icon"></span>
+                <span class="epics-strategy-title">Layered (maximum parallelism)</span>
+                <span class="epics-strategy-desc">
+                  Epics follow subsystems and layers — scaffold, schema, auth, services, then the
+                  screens that consume them. Interfaces are designed up front.
+                </span>
+                <span class="epics-strategy-when">
+                  Best when requirements are stable, the architecture is settled, and throughput
+                  matters more than early feedback. The product isn't usable until the layers
+                  meet, and integration risk lands late.
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Skill picker on the landing card so the skill can be chosen and
+               previewed BEFORE the agent launches. The strategy cards above set
+               it; changing it here overrides that choice for this run. -->
+          <div class="epics-skill-picker">
+            <label class="epics-skill-picker-label">Skill / system prompt</label>
+            <select
+              class="epics-skill-picker-select"
+              v-model="selectedSkill"
+              @change="onSkillPicked"
+            >
+              <option value="">-- None --</option>
+              <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
+                <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
+              </optgroup>
+            </select>
+            <button
+              v-if="selectedSkillContent"
+              class="epics-skill-toggle"
+              type="button"
+              @click="showSkillPreview = !showSkillPreview"
+            >
+              <span class="mdi" :class="showSkillPreview ? 'mdi-chevron-up' : 'mdi-chevron-down'"></span>
+              {{ showSkillPreview ? 'Hide' : 'Show' }} preview
+            </button>
+          </div>
+          <p class="epics-skill-override" v-if="skillManuallyChosen">
+            <span class="mdi mdi-information-outline"></span>
+            Using the skill you picked — the strategy selection above won't override it.
+          </p>
+          <pre
+            v-if="selectedSkillContent && showSkillPreview"
+            class="epics-skill-preview-inline"
+          >{{ selectedSkillContent }}</pre>
+
           <p class="epics-agent-info" v-if="defaultAgent">
             Using <strong>{{ defaultAgent }}</strong> as the coding agent.
           </p>
@@ -159,7 +242,7 @@
             </div>
             <div class="epics-field-group" style="margin-top: 0.75rem;">
               <label class="epics-panel-label">Skill</label>
-              <select class="epics-skill-select" v-model="selectedSkill" @change="loadSelectedSkillContent">
+              <select class="epics-skill-select" v-model="selectedSkill" @change="onSkillPicked">
                 <option value="">— No skill —</option>
                 <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
                   <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
@@ -325,6 +408,46 @@ export default {
     const selectedSkill = ref('');
     const selectedSkillContent = ref('');
 
+    // Toggle for the landing-card inline skill preview.
+    const showSkillPreview = ref(false);
+    // Set once the user picks a skill by hand — from then on neither the
+    // strategy cards nor startSession() swap it out from under them.
+    const skillManuallyChosen = ref(false);
+
+    // Decomposition strategy for the initial breakdown. Each value maps to its
+    // own Epic Generation skill variant; the default is the working-MVP one.
+    const epicStrategy = ref('vertical');
+    const STRATEGY_SKILLS = {
+      vertical: 'epic generation - vertical slice',
+      layered: 'epic generation - layered',
+    };
+
+    async function onSkillPicked() {
+      skillManuallyChosen.value = true;
+      await loadSelectedSkillContent();
+    }
+
+    async function setEpicStrategy(strategy) {
+      epicStrategy.value = strategy;
+      // Picking a strategy is an explicit choice of skill — it wins over an
+      // earlier manual pick.
+      skillManuallyChosen.value = false;
+      await selectStrategySkill();
+    }
+
+    // Point the skill picker at the variant matching the chosen strategy.
+    // Falls back to any Epic Generation skill so older projects that still
+    // have the single un-suffixed file keep working.
+    async function selectStrategySkill() {
+      const wanted = STRATEGY_SKILLS[epicStrategy.value];
+      const match = skillFiles.value.find(s => s.name.toLowerCase().includes(wanted))
+        || skillFiles.value.find(s => s.name.toLowerCase().includes('epic generation'));
+      if (match && match.path !== selectedSkill.value) {
+        selectedSkill.value = match.path;
+        await loadSelectedSkillContent();
+      }
+    }
+
     const showNewInput = ref(false);
     const newName = ref('');
     const newNameInput = ref(null);
@@ -465,15 +588,20 @@ export default {
       if (!defaultAgent.value || !selectedPrd.value) return;
 
       // Pick the most appropriate skill for the chosen mode. Bulk uses the
-      // whole-PRD breakdown skill; single/refine uses the focused per-epic
-      // skill. Fall back to whatever's currently selected if neither match
-      // exists (user may have a custom skill set).
-      const preferredSkillKeyword = (mode === 'refine' || mode === 'single') ? 'refinement' : 'generation';
-      const skillMatch = skillFiles.value.find(s => s.name.toLowerCase().includes(`epic ${preferredSkillKeyword}`))
-        || skillFiles.value.find(s => s.name.toLowerCase().includes(preferredSkillKeyword));
-      if (skillMatch && skillMatch.path !== selectedSkill.value) {
-        selectedSkill.value = skillMatch.path;
-        await loadSelectedSkillContent();
+      // Epic Generation variant matching the selected strategy; single/refine
+      // uses the focused per-epic skill. Fall back to whatever's currently
+      // selected if neither match exists (user may have a custom skill set).
+      if (skillManuallyChosen.value) {
+        // The user chose a skill on the card — respect it.
+      } else if (mode === 'refine' || mode === 'single') {
+        const skillMatch = skillFiles.value.find(s => s.name.toLowerCase().includes('epic refinement'))
+          || skillFiles.value.find(s => s.name.toLowerCase().includes('refinement'));
+        if (skillMatch && skillMatch.path !== selectedSkill.value) {
+          selectedSkill.value = skillMatch.path;
+          await loadSelectedSkillContent();
+        }
+      } else {
+        await selectStrategySkill();
       }
 
       sessionActive.value = true;
@@ -525,8 +653,10 @@ ${existingEpicLines}`;
 
 Existing epics (do not duplicate scope):
 ${existingEpicLines}`;
+      } else if (epicStrategy.value === 'layered') {
+        instruction = `Apply the Epic Generation - Layered skill above to produce the initial epic set. Decompose by subsystem and architectural layer, favouring seams that let epics be built in parallel, and declare real prerequisites in \`Depends On:\`. Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
       } else {
-        instruction = `Apply the Epic Generation skill above to produce the initial epic set. Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
+        instruction = `Apply the Epic Generation - Vertical Slice skill above to produce the initial epic set. Every epic must end with an application that builds, runs, and lets a user complete a real task end to end — no epic whose value only materialises in a later epic. Apply "The test" from the skill to each proposed epic before showing it to me. Propose the list as a table of sequence number, title, and what a user can do once that epic is DONE. Ask me to confirm before creating the files.`;
       }
 
       const prompt = `${skillPrefix}${baseContext}
@@ -606,14 +736,17 @@ ${instruction}`;
       try {
         const tree = await window.electron.ipcRenderer.invoke('filetree:scan');
         skillFiles.value = filterSkillsByCategory(collectSkillFiles(tree), 'Epics');
-        // Default to Epic Generation on mount — it's the right starting point
-        // for the bulk-create flow on a fresh project. startSession() switches
-        // to Epic Refinement when the user picks the single/refine mode.
-        const match = skillFiles.value.find(s => s.name.toLowerCase().includes('epic generation'))
-          || skillFiles.value.find(s => s.name.toLowerCase().includes('epic'));
-        if (match) {
-          selectedSkill.value = match.path;
-          await loadSelectedSkillContent();
+        // Default to the Epic Generation variant for the selected strategy —
+        // it's the right starting point for the bulk-create flow on a fresh
+        // project. startSession() switches to Epic Refinement when the user
+        // picks the single/refine mode.
+        await selectStrategySkill();
+        if (!selectedSkill.value) {
+          const fallback = skillFiles.value.find(s => s.name.toLowerCase().includes('epic'));
+          if (fallback) {
+            selectedSkill.value = fallback.path;
+            await loadSelectedSkillContent();
+          }
         }
       } catch (_) {}
     }
@@ -672,6 +805,8 @@ ${instruction}`;
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
       epics, prdFiles, archFiles, dataModelFiles, styleGuideFiles, selectedPrd, selectedArch, selectedDataModel, selectedStyleGuide,
       skillFiles, skillGroups, selectedSkill, loadSelectedSkillContent,
+      epicStrategy, setEpicStrategy,
+      selectedSkillContent, showSkillPreview, skillManuallyChosen, onSkillPicked,
       showNewInput, newName, newNameInput,
       openEpic, deleteEpic, onNewEpic, createManualEpic,
       startSession, stopSession, startResize,
@@ -712,6 +847,113 @@ ${instruction}`;
   background: var(--bg-color); color: var(--text-color); font-size: 0.82rem; cursor: pointer; outline: none; max-width: 350px;
 }
 .epics-context-select:focus { border-color: #6dd4a0; }
+
+/* Skill picker on the landing card */
+.epics-skill-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+.epics-skill-picker-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.epics-skill-picker-select {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+}
+.epics-skill-picker-select:focus { border-color: #6dd4a0; }
+.epics-skill-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.epics-skill-toggle:hover { color: var(--text-color); border-color: #6dd4a0; }
+.epics-skill-override {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0 !important;
+  font-size: 0.76rem !important;
+  color: var(--text-muted) !important;
+}
+.epics-skill-preview-inline {
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0.5rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  background: var(--bg-color);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--text-color);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Epic strategy chooser */
+.epics-strategy { margin: 1rem 0 0.25rem; }
+.epics-strategy-hint {
+  margin: 0.1rem 0 0.6rem !important;
+  font-size: 0.8rem !important;
+  color: var(--text-muted) !important;
+}
+.epics-strategy-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+.epics-strategy-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.epics-strategy-card:hover { border-color: #6dd4a0; }
+.epics-strategy-card.is-selected {
+  border-color: #6dd4a0;
+  box-shadow: inset 0 0 0 1px #6dd4a0;
+}
+.epics-strategy-icon { font-size: 1.25rem; color: #6dd4a0; }
+.epics-strategy-title { font-size: 0.9rem; font-weight: 600; }
+.epics-strategy-desc { font-size: 0.8rem; line-height: 1.5; color: var(--text-muted); font-weight: 300; }
+.epics-strategy-when {
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  font-weight: 300;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--border-color);
+}
 
 /* Buttons */
 .epics-btn {

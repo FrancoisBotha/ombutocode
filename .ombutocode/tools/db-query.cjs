@@ -6,7 +6,7 @@
  * No Python or sqlite3 binary required — uses the bundled sql.js package.
  *
  * Usage:
- *   node .ombutocode/tools/db-query.js <command> [options]
+ *   node .ombutocode/tools/db-query.cjs <command> [options]
  *
  * Commands:
  *   tables                        List all tables
@@ -18,13 +18,13 @@
  *   stats                         Show ticket count by status
  *
  * Examples:
- *   node .ombutocode/tools/db-query.js tables
- *   node .ombutocode/tools/db-query.js schema backlog_tickets
- *   node .ombutocode/tools/db-query.js query "SELECT id, json_extract(data, '$.title') as title FROM backlog_tickets LIMIT 10"
- *   node .ombutocode/tools/db-query.js tickets
- *   node .ombutocode/tools/db-query.js tickets --status todo
- *   node .ombutocode/tools/db-query.js ticket SCAFF-001
- *   node .ombutocode/tools/db-query.js stats
+ *   node .ombutocode/tools/db-query.cjs tables
+ *   node .ombutocode/tools/db-query.cjs schema backlog_tickets
+ *   node .ombutocode/tools/db-query.cjs query "SELECT id, json_extract(data, '$.title') as title FROM backlog_tickets LIMIT 10"
+ *   node .ombutocode/tools/db-query.cjs tickets
+ *   node .ombutocode/tools/db-query.cjs tickets --status todo
+ *   node .ombutocode/tools/db-query.cjs ticket SCAFF-001
+ *   node .ombutocode/tools/db-query.cjs stats
  */
 
 'use strict';
@@ -206,10 +206,10 @@ Commands:
   stats                         Show ticket counts grouped by status
 
 Examples:
-  node .ombutocode/tools/db-query.js tables
-  node .ombutocode/tools/db-query.js tickets --status todo
-  node .ombutocode/tools/db-query.js ticket AUTH-001
-  node .ombutocode/tools/db-query.js query "SELECT id, json_extract(data, '$.title') FROM backlog_tickets LIMIT 5"
+  node .ombutocode/tools/db-query.cjs tables
+  node .ombutocode/tools/db-query.cjs tickets --status todo
+  node .ombutocode/tools/db-query.cjs ticket AUTH-001
+  node .ombutocode/tools/db-query.cjs query "SELECT id, json_extract(data, '$.title') FROM backlog_tickets LIMIT 5"
 `);
     return;
   }

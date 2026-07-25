@@ -3,6 +3,11 @@ const { spawn } = require('child_process');
 const DEFAULT_EPIC_REF = 'docs/Epics/epic_AD_HOC.md';
 const MAX_PROMPT_CHARS = 12000;
 const DEFAULT_COMMAND_TIMEOUT_MS = 180000;
+// Ad-hoc tickets normally land in the backlog. The Board "Minor Fix" action
+// creates the same kind of ticket but drops it straight into TODO so the
+// scheduler can pick it up without a manual promote step.
+const ALLOWED_CREATE_STATUSES = new Set(['backlog', 'todo']);
+const DEFAULT_CREATE_STATUS = 'backlog';
 
 function normalizePromptPayload(payload = {}) {
   const promptRaw = typeof payload.promptText === 'string'
@@ -32,7 +37,20 @@ function normalizePromptPayload(payload = {}) {
     };
   }
 
-  return { ok: true, promptText };
+  const statusRaw = typeof payload.status === 'string' ? payload.status.trim().toLowerCase() : '';
+  const status = statusRaw || DEFAULT_CREATE_STATUS;
+
+  if (!ALLOWED_CREATE_STATUSES.has(status)) {
+    return {
+      ok: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: `Unsupported ticket status "${statusRaw}". Expected one of: ${[...ALLOWED_CREATE_STATUSES].join(', ')}.`
+      }
+    };
+  }
+
+  return { ok: true, promptText, status };
 }
 
 function buildCodexDraftPrompt(userPrompt) {
@@ -193,7 +211,16 @@ function generateNextAdHocId(tickets = [], archivedMax = 0) {
   return `AD_HOC-${String(nextValue).padStart(3, '0')}`;
 }
 
-function buildTicketFromDraft({ draft, existingTickets = [], archivedMax = 0, promptText, nowIso, assignee = 'codex' }) {
+function buildTicketFromDraft({
+  draft,
+  existingTickets = [],
+  archivedMax = 0,
+  promptText,
+  nowIso,
+  assignee = 'codex',
+  status = DEFAULT_CREATE_STATUS,
+  origin = 'Backlog Add Ticket'
+}) {
   const timestamp = nowIso || new Date().toISOString();
   const promptSummary = String(promptText || '').replace(/\s+/g, ' ').trim();
   const promptPreview = promptSummary.length <= 220
@@ -201,13 +228,13 @@ function buildTicketFromDraft({ draft, existingTickets = [], archivedMax = 0, pr
     : `${promptSummary.slice(0, 220)}...`;
 
   const draftNote = draft.notes || 'Created from ad-hoc prompt.';
-  const auditLine = `[${timestamp}] Created via Backlog Add Ticket prompt: ${promptPreview}`;
+  const auditLine = `[${timestamp}] Created via ${origin} prompt: ${promptPreview}`;
 
   return {
     id: generateNextAdHocId(existingTickets, archivedMax),
     title: draft.title,
     epic_ref: DEFAULT_EPIC_REF,
-    status: 'backlog',
+    status: ALLOWED_CREATE_STATUSES.has(status) ? status : DEFAULT_CREATE_STATUS,
     last_updated: timestamp,
     dependencies: draft.dependencies,
     acceptance_criteria: draft.acceptance_criteria,
@@ -425,7 +452,9 @@ function createAdHocTicketCreator({
           archivedMax,
           promptText: prompt.promptText,
           nowIso: createdAt,
-          assignee: selectedAgent
+          assignee: selectedAgent,
+          status: prompt.status,
+          origin: prompt.status === 'todo' ? 'Board Minor Fix' : 'Backlog Add Ticket'
         });
         const updatedBacklog = appendTicketToBacklog(backlogData, ticket, createdAt);
 
@@ -461,6 +490,8 @@ function createAdHocTicketCreator({
 module.exports = {
   DEFAULT_EPIC_REF,
   MAX_PROMPT_CHARS,
+  ALLOWED_CREATE_STATUSES,
+  DEFAULT_CREATE_STATUS,
   normalizePromptPayload,
   buildCodexDraftPrompt,
   parseCodexDraftOutput,

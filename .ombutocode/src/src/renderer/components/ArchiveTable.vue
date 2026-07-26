@@ -120,6 +120,11 @@
               </ul>
             </dd>
 
+            <dt v-if="hasTestSummary(selectedTicket)">Test Summary</dt>
+            <dd v-if="hasTestSummary(selectedTicket)" class="test-summary-section">
+              <TestSummaryPanel :ticket="selectedTicket" />
+            </dd>
+
             <dt>Files Touched</dt>
             <dd>
               <ul v-if="selectedTicket.files_touched && selectedTicket.files_touched.length" class="files-list">
@@ -140,6 +145,7 @@
 <script>
 import { computed, onMounted, onUnmounted, ref, nextTick } from 'vue';
 import { useArchiveStore } from '@/stores/archiveStore';
+import TestSummaryPanel from './TestSummaryPanel.vue';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
 
@@ -150,6 +156,7 @@ const MAX_DETAIL_WIDTH = 760;
 
 export default {
   name: 'ArchiveTable',
+  components: { TestSummaryPanel },
   setup() {
     const archiveStore = useArchiveStore();
     const archiveViewRef = ref(null);
@@ -382,6 +389,13 @@ export default {
 
     const hasEvalSummary = (ticket) => !!getEvalSummary(ticket);
 
+    const hasTestSummary = (ticket) => {
+      const summary = ticket?.test_summary;
+      if (!summary || typeof summary !== 'object') return false;
+      const verdict = String(summary.verdict || '').toUpperCase();
+      return verdict === 'PASS' || verdict === 'FAIL';
+    };
+
     const getEvalVerdict = (ticket) => String(getEvalSummary(ticket)?.verdict || '').toUpperCase();
 
     const getEvalVerdictBadgeClass = (ticket) => (
@@ -488,6 +502,7 @@ export default {
       onSearchInput,
       onFilterChange,
       hasEvalSummary,
+      hasTestSummary,
       getEvalVerdict,
       getEvalVerdictBadgeClass,
       formatEvalSummaryTimestamp,

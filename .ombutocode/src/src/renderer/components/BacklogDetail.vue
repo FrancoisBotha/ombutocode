@@ -86,6 +86,11 @@
         </ul>
       </dd>
 
+      <dt v-if="hasTestSummary(ticket)">Test Summary</dt>
+      <dd v-if="hasTestSummary(ticket)" class="test-summary-section">
+        <TestSummaryPanel :ticket="ticket" />
+      </dd>
+
       <dt v-if="hasFailureCounts(ticket)">Failure Counts</dt>
       <dd v-if="hasFailureCounts(ticket)" class="failure-counts-section">
         <span v-if="ticket.fail_count > 0" class="failure-count-item">
@@ -132,9 +137,11 @@
 <script>
 import { computed, ref } from 'vue';
 import { useBacklogStore } from '@/stores/backlogStore';
+import TestSummaryPanel from './TestSummaryPanel.vue';
 
 export default {
   name: 'BacklogDetail',
+  components: { TestSummaryPanel },
   props: {
     ticket: {
       type: Object,
@@ -218,6 +225,13 @@ export default {
 
     const hasEvalSummary = (ticket) => !!getEvalSummary(ticket);
 
+    const hasTestSummary = (ticket) => {
+      const summary = ticket?.test_summary;
+      if (!summary || typeof summary !== 'object') return false;
+      const verdict = String(summary.verdict || '').toUpperCase();
+      return verdict === 'PASS' || verdict === 'FAIL';
+    };
+
     const getEvalVerdict = (ticket) => String(getEvalSummary(ticket)?.verdict || '').toUpperCase();
 
     const getEvalVerdictBadgeClass = (ticket) => (
@@ -273,6 +287,7 @@ export default {
       assignToHuman,
       unassignHuman,
       hasEvalSummary,
+      hasTestSummary,
       getEvalVerdict,
       getEvalVerdictBadgeClass,
       formatEvalSummaryTimestamp,

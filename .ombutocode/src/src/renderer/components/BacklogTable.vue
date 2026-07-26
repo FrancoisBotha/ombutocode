@@ -94,7 +94,7 @@
       </div>
     </div>
 
-    <div v-if="loading" class="backlog-loading">
+    <div v-if="showInitialLoading" class="backlog-loading">
       Loading backlog...
     </div>
 
@@ -194,13 +194,35 @@ export default {
     const selectedTicket = computed(() => backlogStore.selectedTicket);
     const loading = computed(() => backlogStore.loading);
     const error = computed(() => backlogStore.error);
+    // True once the table has been built. Every store mutation (promote,
+    // delete, add) reloads the backlog, which flips `loading` — showing the
+    // full-page loading state for those would unmount the table mid-refresh.
+    // Only the very first load replaces the table.
+    const tableReady = ref(false);
+    const showInitialLoading = computed(() => loading.value && !tableReady.value);
     const detailPanelStyle = computed(() => ({
       width: `${detailWidth.value}px`
     }));
 
     let currentSelectedRow = null;
 
+    // Tabulator owns a DOM element. If Vue ever unmounts that element (the
+    // loading/error branches replace the whole table container), the instance
+    // is left pointing at a detached node and nothing renders again. Drop the
+    // stale instance so the caller can rebuild against the live element.
+    function discardDetachedTable() {
+      const instance = tabulatorInstance.value;
+      if (!instance) return false;
+      const element = instance.element;
+      if (element && element.isConnected) return false;
+      try { instance.destroy(); } catch (e) { /* already gone */ }
+      tabulatorInstance.value = null;
+      currentSelectedRow = null;
+      return true;
+    }
+
     function initTabulator() {
+      discardDetachedTable();
       if (!tabulatorTable.value || tabulatorInstance.value) return;
 
       tabulatorInstance.value = new Tabulator(tabulatorTable.value, {
@@ -271,6 +293,8 @@ export default {
           highlightRow(row);
         }
       });
+
+      tableReady.value = true;
 
       nextTick(() => {
         if (selectedTicketId.value) {
@@ -480,9 +504,17 @@ export default {
 
     // Sync table data and selection when the backlog changes
     // (e.g., after promoting, deleting, or adding a ticket)
-    watch(backlogTickets, (newTickets) => {
+    watch(backlogTickets, async (newTickets) => {
       if (newTickets.length === 0 && selectedTicketId.value) {
         backlogStore.selectTicket(null);
+      }
+      // The error branch can still unmount the container. If that happened,
+      // rebuild against the live element rather than writing data into a
+      // detached one — which renders nothing and looks like a vanished table.
+      if (discardDetachedTable()) {
+        await nextTick();
+        initTabulator();
+        return;
       }
       if (tabulatorInstance.value) {
         currentSelectedRow = null;
@@ -552,6 +584,7 @@ export default {
       selectedTicketId,
       selectedTicket,
       loading,
+      showInitialLoading,
       error,
       detailPanelStyle,
       backlogViewRef,

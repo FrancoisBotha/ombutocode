@@ -137,6 +137,7 @@
               </ul>
             </div>
           </div>
+          <TestSummaryPanel class="detail-row" :ticket="selectedTask" />
           <div class="detail-row" v-if="hasFailureCounts(selectedTask)">
             <span class="detail-label">Failure Counts:</span>
             <div class="detail-value failure-counts-container">
@@ -460,6 +461,12 @@
             <span class="mdi mdi-alert-circle"></span>
             <span>Eval failed</span>
           </div>
+          <!-- Same treatment for a failed test phase — it also bounces the
+               ticket back to todo, and previously said so nowhere on the card. -->
+          <div v-if="columnId === 'todo' && isTestFailure(task)" class="task-eval-failed-badge">
+            <span class="mdi mdi-alert-circle"></span>
+            <span>Test failed</span>
+          </div>
         </div>
         <!-- AD_HOC-032: Dependency error message display -->
         <div v-if="startErrorTicketId === task.id && startErrorMessage" class="start-error-message">
@@ -484,10 +491,11 @@ import { useBacklogStore } from '@/stores/backlogStore';
 import { useAgentToolsStore } from '@/stores/agentToolsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import TicketDoctorDialog from './TicketDoctorDialog.vue';
+import TestSummaryPanel from './TestSummaryPanel.vue';
 
 export default {
   name: 'KanbanColumn',
-  components: { TicketDoctorDialog },
+  components: { TicketDoctorDialog, TestSummaryPanel },
   props: {
     title: {
       type: String,
@@ -755,6 +763,12 @@ export default {
     const getEvalVerdict = (task) => String(getEvalSummary(task)?.verdict || '').toUpperCase();
 
     const isEvalFailure = (task) => getEvalVerdict(task) === 'FAIL';
+
+    const isTestFailure = (task) => {
+      const summary = task?.test_summary;
+      if (!summary || typeof summary !== 'object') return false;
+      return String(summary.verdict || '').toUpperCase() === 'FAIL';
+    };
 
     const getEvalVerdictBadgeClass = (task) => (
       getEvalVerdict(task) === 'PASS' ? 'is-pass' : 'is-fail'
@@ -1364,6 +1378,7 @@ export default {
       hasEvalSummary,
       getEvalVerdict,
       isEvalFailure,
+      isTestFailure,
       getEvalVerdictBadgeClass,
       formatEvalSummaryTimestamp,
       getEvalCriteriaChecks,

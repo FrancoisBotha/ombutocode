@@ -59,6 +59,31 @@ notes: "This is the safety net before the BDD UC's Status flips to DONE. Stricte
 
 ---
 
+## Run to completion without prompting
+
+**Do not ask the user anything. Decide, write the tickets, verify, and finish.**
+
+This session is frequently left unattended. A question — about the ID prefix, the ticket split, whether to proceed — stops the run dead, and if nobody is watching the session is closed and **nothing is written at all**. A half-guessed ticket set that exists beats a perfect one that was never created; the backlog is editable afterwards.
+
+- Never ask the user to confirm the prefix, the ticket list, the split, or permission to write.
+- Never end a turn with a question and wait. Pick the most reasonable option and proceed.
+- Record any assumption in the ticket's `notes` field so the decision is visible in the backlog rather than lost in terminal scrollback.
+- Only stop early if writing is genuinely impossible (the BDD UC file is unreadable, or `ticket-write` fails) — then report the error and finish with the FAILED marker.
+
+The last line of your output MUST be exactly one of:
+
+```
+DONE - TICKETS WRITTEN
+```
+
+```
+FAILED - NO TICKETS WRITTEN
+```
+
+Emit `DONE - TICKETS WRITTEN` only after verifying the tickets are in the database. The user reads this line to know whether an unattended run succeeded.
+
+---
+
 ## ID Prefix Convention
 
 Use the BDD UC's `<SHORT_NAME>` (the uppercase part after `bdd_` in the filename) as the prefix. Examples:
@@ -66,7 +91,7 @@ Use the BDD UC's `<SHORT_NAME>` (the uppercase part after `bdd_` in the filename
 - File: `bdd_CREATE_BINDER.md` → IDs: `CREATE_BINDER-001`, `CREATE_BINDER-002`, …
 - File: `bdd_SEARCH_PROMPTS.md` → IDs: `SEARCH_PROMPTS-001`, …
 
-If the short name is long, shorten to a 4-8 letter mnemonic when proposing the prefix to the user, e.g. `bdd_CREATE_BINDER.md` → `CRBIND-001`. Confirm the chosen prefix with the user before writing.
+If the short name is long, shorten to a 4-8 letter mnemonic, e.g. `bdd_CREATE_BINDER.md` → `CRBIND-001`. **Choose the prefix yourself** and state it in the summary table — do not ask the user to approve it.
 
 Sequence numbers restart at 001 within each BDD UC's prefix.
 
@@ -76,11 +101,11 @@ Sequence numbers restart at 001 within each BDD UC's prefix.
 
 1. **Read** the BDD UC file completely.
 2. **Check existing tickets** — `node .ombutocode/tools/db-query.cjs tickets` — to avoid id collisions.
-3. **Propose a summary table** with: ID, Title, Type, Dependencies, including the closeout eval ticket as the final row. Maximum 4 rows total (3 impl + 1 eval).
-4. **Wait for user confirmation.**
-5. **Insert** the tickets via `node .ombutocode/tools/ticket-write.cjs insert /tmp/<bdd>-tickets.json`. Each ticket's `epic_ref` field should point at the BDD UC file (e.g. `epic_ref: docs/BDD Use Cases/bdd_CREATE_BINDER.md`) — the backlog reads `epic_ref` as "source spec", and the BDD UC fills that role for ticket purposes.
-6. **Verify** with `node .ombutocode/tools/db-query.cjs tickets --status backlog`.
-7. **Update** the BDD UC's `Status:` line from `NEW` to `TICKETS`.
+3. **Print a summary table** with: ID, Title, Type, Dependencies, including the closeout eval ticket as the final row. Maximum 4 rows total (3 impl + 1 eval). This is a record of what you are about to write; do NOT pause for approval.
+4. **Insert** the tickets via `node .ombutocode/tools/ticket-write.cjs insert /tmp/<bdd>-tickets.json`. Each ticket's `epic_ref` field should point at the BDD UC file (e.g. `epic_ref: docs/BDD Use Cases/bdd_CREATE_BINDER.md`) — the backlog reads `epic_ref` as "source spec", and the BDD UC fills that role for ticket purposes.
+5. **Verify** with `node .ombutocode/tools/db-query.cjs tickets --status backlog`.
+6. **Update** the BDD UC's `Status:` line from `NEW` to `TICKETS`.
+7. **Finish** with `DONE - TICKETS WRITTEN` as the last line of your output — or `FAILED - NO TICKETS WRITTEN` if the write or verification did not succeed. See "Run to completion without prompting" above.
 
 ---
 
@@ -95,7 +120,7 @@ For `bdd_CREATE_BINDER.md`:
 | 3 | CRBIND-003 | Wire creation into the binder list view | Integration | CRBIND-002 |
 | 4 | CRBIND-004 | Evaluate BDD UC scenarios end-to-end | Closeout — BDD Eval | CRBIND-001, CRBIND-002, CRBIND-003 |
 
-Confirm the prefix `CRBIND` and the four-ticket breakdown with the user, then write to the database.
+Print that table, then write the tickets straight to the database — no confirmation step.
 
 ---
 

@@ -5,7 +5,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const Store = require('electron-store');
 const { AgentInvocationError, AgentRuntime, resolveAgentTemplateConfig, agentDisplayName } = require('./src/main/codingAgentRuntime');
-const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcomeNote, extractTextFromStreamJson } = require('./src/main/runLifecycle');
+const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcomeNote, extractTextFromStreamJson, extractImplTestMarkers } = require('./src/main/runLifecycle');
 const { createScheduler, buildRetryContext } = require('./src/main/scheduler');
 const { checkGitVersionSupport } = require('./src/main/gitVersionCheck');
 const { cleanupOnDoneTransition } = require('./src/main/statusTransitionCleanup');
@@ -668,6 +668,28 @@ agentRuntime = new AgentRuntime({
         finishedAt: run.finishedAt
       });
       const previousStatus = ticket.status;
+
+      // Carry the implementation phase's TDD markers onto the ticket so the
+      // test phase can read them. They only ever appear in the impl run's
+      // stdout, which the test agent (a separate process) cannot see — see
+      // coreCallbacks.js for the sibling copy of this block.
+      if (previousStatus === 'in_progress' && !run.isTest && !run.isEval) {
+        const implOutput = extractTextFromStreamJson(`${run.stdout || ''}
+${run.stderr || ''}`);
+        const markers = extractImplTestMarkers(implOutput);
+        if (markers.testsSkipped) {
+          ticket.tests_skipped_reason = markers.testsSkipped;
+          appendTicketNote(ticket, `TESTS_SKIPPED: ${markers.testsSkipped}`);
+        }
+        if (markers.buildGates) {
+          ticket.build_gates = markers.buildGates;
+          appendTicketNote(ticket, `BUILD_GATES: ${markers.buildGates}`);
+        }
+        if (markers.testCommand && markers.testCommand.toLowerCase() !== 'none') {
+          ticket.test_command = markers.testCommand;
+          appendTicketNote(ticket, `TEST_COMMAND: ${markers.testCommand}`);
+        }
+      }
 
       // Merging-specific outcome handling — skip normal eval/status flow
       if (previousStatus === 'merging') {

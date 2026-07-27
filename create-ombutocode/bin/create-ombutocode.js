@@ -53,8 +53,9 @@ const UPSTREAM_FILES_TO_STRIP = [
   'eslint.config.js',
   'tsconfig.json',
 
-  // Maintainer-only tooling — not part of what a user's new project needs
+  // Maintainer-only tooling & content — not part of what a user's new project needs
   'migration-tool',
+  'marketing',
 ];
 
 // Files in create-ombutocode/template/ that are copied into the scaffolded
@@ -235,7 +236,8 @@ if (fs.existsSync(initScript)) {
     'Structure', 'Product Requirements Document', 'Architecture',
     'Functional Requirements', 'Non-Functional Requirements', 'Epics',
     'BDD Use Cases', 'Use Cases', 'Use Case Diagrams', 'Class Diagrams',
-    'Data Model', 'Style Guide', 'Mockups', 'References', 'Skills', 'ScratchPad'
+    'Data Model', 'Style Guide', 'Mockups', 'References', 'Skills',
+    'Test Strategy', 'ScratchPad'
   ];
   for (const dir of dirs) {
     fs.mkdirSync(path.join(projectDir, 'docs', dir), { recursive: true });

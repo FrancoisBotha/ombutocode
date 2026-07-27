@@ -399,7 +399,7 @@ export default {
       let instruction = '';
       if (sessionMode.value === 'ticket' && currentBdd.value) {
         skillBody = ticketGenSkillContent.value;
-        instruction = `Generate tickets from the BDD Use Case at "docs/${currentBdd.value.path}". Read that file in full, propose a 1-3 ticket breakdown plus the mandatory closeout BDD-eval ticket, and follow the BDD Ticket Generation skill above to write them to the backlog. Confirm the ID prefix with me before writing.`;
+        instruction = `Generate tickets from the BDD Use Case at "docs/${currentBdd.value.path}". Read that file in full, print a 1-3 ticket breakdown plus the mandatory closeout BDD-eval ticket, and follow the BDD Ticket Generation skill above to write them to the backlog. DO NOT ASK ME ANYTHING — choose the ID prefix yourself and write the tickets; this session is often left unattended, and a question stalls the run so nothing gets written. Finish with exactly "DONE - TICKETS WRITTEN" as your last line once you have verified the tickets are in the database, or "FAILED - NO TICKETS WRITTEN" if writing did not succeed.`;
       } else {
         skillBody = createSkillContent.value;
         instruction = `Apply the Simple BDD Use Case skill above. Ask me one question at a time: the capability, then the As-A/I-Want/So-That, then each acceptance scenario. Write the file to docs/BDD Use Cases/ with Status: NEW only after I confirm the full draft.`;

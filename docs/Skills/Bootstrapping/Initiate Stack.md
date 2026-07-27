@@ -50,7 +50,7 @@ Before anything else, take inventory of what already exists. Report it to the us
 Check for:
 - **Existing source tree.** Are there any source files outside `docs/` and `.ombutocode/`? Are there language-specific manifests at the repo root (`*.csproj`, `*.sln`, `package.json`, `Cargo.toml`, `go.mod`, `pom.xml`, `build.gradle`, `pyproject.toml`, `requirements.txt`, `Gemfile`)? List them.
 - **Existing `.gitignore`.** Does one exist? Read it. Note the categories already covered (Ombuto Code's own, language-specific entries, OS/editor entries).
-- **Existing `docs/Test Strategy/test-strategy.md`.** Does it exist? If so, read it. Identify which of the 9 mandatory sections are filled, which are stub/empty, and which look hand-authored vs auto-generated.
+- **Existing `docs/Test Strategy/test-strategy.md`.** Does it exist? If so, read it. Identify which of the 10 mandatory sections are filled, which are stub/empty, and which look hand-authored vs auto-generated.
 - **Existing dependency lock state.** Has a build/install ever run successfully? (Look for `package-lock.json`, `obj/project.assets.json`, `Cargo.lock`, `go.sum`, `Pipfile.lock`, etc.)
 - **Existing test scaffolds.** Any test directories or test files at all? Note their location and what framework they appear to use.
 
@@ -180,17 +180,17 @@ Procedure depends on the mode you decided in Step 0:
 
 **First-run mode (file does not exist):**
 - Create the `docs/Test Strategy/` folder.
-- Write `test-strategy.md` with all 9 sections below, fully populated with specific, runnable commands.
+- Write `test-strategy.md` with all 10 sections below, fully populated with specific, runnable commands.
 
 **Refresh mode (file already exists):**
 - Read the existing file in full.
-- For each of the 9 mandatory sections:
+- For each of the 10 mandatory sections:
   1. If the section is missing entirely, add it (with a comment marker `<!-- added by Initiate Stack refresh on <date> -->` immediately under the section heading).
   2. If the section is present but its commands are stale (e.g. the manifest now declares a different test framework), propose the replacement to the user and wait for confirmation before editing. Preserve any prose the user has added around the commands.
   3. If the section is present and current, leave it alone.
 - Never delete user-authored content. If you think something the user wrote is no longer accurate, flag it in the report at the end — do not silently rewrite it.
 
-The 9 mandatory sections:
+The 10 mandatory sections:
 
 ```
 # Test Strategy
@@ -234,6 +234,92 @@ integrations, etc.) so the per-ticket agent doesn't blow its budget on them.
 ## 9. Known pitfalls on this project
 e.g. "MSBuild keeps file handles open — `dotnet build-server shutdown`
 before exit", "tests must run with HOME=<workdir> on macOS", etc.
+
+## 10. Phase gates — what each agent runs
+
+Which checks belong to the BUILD phase (the agent writing the code) and which
+belong to the TEST phase. The build agent reads this section and runs its own
+gates before finishing, so problems are fixed by the agent that caused them
+instead of bouncing the ticket back a phase later.
+
+**The rule for deciding where something goes:**
+
+| Put it in the BUILD phase when it is | Put it in the TEST phase when it is |
+|---|---|
+| Fast (seconds) | Slow (minutes) |
+| Scopable to the files just changed | Only meaningful across the whole project |
+| Deterministic, no external services | Needs a browser, database, network or fixture data |
+| Catching mistakes in code just written | Catching regressions elsewhere |
+
+**This section is stack-specific and every row is optional.** Many stacks have
+no linter, no formatter, or no type-checker — that is normal. Write
+`none — <short reason>` for anything the project genuinely does not have, e.g.
+`none — no linter configured for this stack`. Do NOT invent a tool, and do NOT
+add a dependency just to fill a row. An honest `none` is what tells the build
+agent to stop looking; a blank row makes it guess.
+
+### Build phase (in_progress) — MUST run before finishing, CHANGED FILES ONLY
+
+List only what this project actually has:
+
+- Formatter (write):  <command, or `none — ...`>
+- Linter / vet:       <command, or `none — ...`>
+- Type / compile check: <command, or `none — ...`>
+- Tests written for this ticket: <how to run just those — see section 3>
+
+For a compiled language the compile step often IS the type check. For a
+dynamic language with no type checker, say so. If the stack has none of the
+first three, the build phase still runs the ticket's own tests — that alone is
+a valid gate list.
+
+### Build phase — MUST NOT run (too slow, or owned by a later phase)
+
+- Full test suite:    <the section 4 command>
+- Repo-wide lint:     <command, or `none — no linter`>
+- Integration / E2E:  <command, or `none — none in this project`>
+- Production build / packaging: <command, or `none — ...`>
+
+### Test phase — runs regardless
+
+- The ticket's tests (section 3), plus whichever of the build-phase checks
+  above exist, scoped to the ticket's files. This is verification, not first
+  discovery.
+
+### Splitting the tests themselves
+
+Not all tests belong to the same phase. State which is which:
+
+- **Build agent runs:** the unit tests it wrote for this ticket, and any
+  existing unit tests covering the files it changed.
+- **Test agent only:** anything slow or wide — integration suites, E2E/browser
+  runs, contract tests, snapshot suites needing regeneration, tests requiring
+  a running server, database or external credentials.
+- **Regression closeout ticket only:** the full suite (section 4).
+
+If a category does not exist in this project, say `none`.
+
+### Notes
+
+- If a checker cannot be scoped to individual files (e.g. `tsc --noEmit` or a
+  whole-crate compile), say so here and state that only errors in the ticket's
+  own files count against it.
+- Pre-existing failures in untouched files are never the current ticket's
+  responsibility, in either phase.
+- See also section 8 — what to leave out of the per-ticket TDD cycle.
+
+**Worked examples** (write the equivalent for THIS project's stack):
+
+- *TypeScript + Vitest*: build → `npx prettier --write <files>`,
+  `npx eslint <files>`, `npx tsc --noEmit` (whole-project, own errors only),
+  `npx vitest run <file>`. Never → `npx vitest run`, `npx eslint .`.
+- *Go*: build → `gofmt -w <files>`, `go vet ./<pkg>`, `go build ./<pkg>`,
+  `go test ./<pkg>`. Formatter and vet are in the toolchain; there is no
+  separate linter unless golangci-lint is configured.
+- *Python + pytest*: build → `ruff format <files>`, `ruff check <files>`,
+  `pytest <file>`. Type check → `none — mypy not configured`.
+- *C with make, no tooling*: formatter `none`, linter `none`, type check →
+  `make <target>` (the compiler is the check), tests → `make check TEST=<name>`.
+  A stack can legitimately have only one row filled.
 ```
 
 Fill every section with **specific, runnable commands**, not abstract advice. If a section legitimately has nothing to say (e.g. no coverage tracking), write that explicitly — the file is the agent's playbook, and "TBD" is not a playbook entry.

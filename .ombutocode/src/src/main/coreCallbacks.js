@@ -1,6 +1,6 @@
 'use strict';
 
-const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcomeNote, extractTextFromStreamJson } = require('./runLifecycle');
+const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcomeNote, extractTextFromStreamJson, extractImplTestMarkers } = require('./runLifecycle');
 const { squashMergeTicketBranchSync, commitWorktreeChangesSync, branchHasCommitsAheadSync, removeWorktree } = require('./worktreeManager');
 const { agentDisplayName } = require('./codingAgentRuntime');
 
@@ -236,6 +236,28 @@ function createRuntimeCallbacks(deps) {
 
       // Test-specific outcome handling (test → eval on pass, test → todo on fail)
       const previousStatus = ticket.status;
+
+      // Carry the implementation phase's TDD markers onto the ticket so the
+      // test phase can read them. They are only ever emitted to the impl run's
+      // stdout, which the test agent (a separate process) cannot see — without
+      // this, a legitimately test-free ticket fails the test phase forever.
+      if (previousStatus === 'in_progress' && !run.isTest && !run.isEval) {
+        const implOutput = extractTextFromStreamJson(`${run.stdout || ''}\n${run.stderr || ''}`);
+        const markers = extractImplTestMarkers(implOutput);
+        if (markers.testsSkipped) {
+          ticket.tests_skipped_reason = markers.testsSkipped;
+          appendTicketNote(ticket, `TESTS_SKIPPED: ${markers.testsSkipped}`);
+        }
+        if (markers.buildGates) {
+          ticket.build_gates = markers.buildGates;
+          appendTicketNote(ticket, `BUILD_GATES: ${markers.buildGates}`);
+        }
+        if (markers.testCommand && markers.testCommand.toLowerCase() !== 'none') {
+          ticket.test_command = markers.testCommand;
+          appendTicketNote(ticket, `TEST_COMMAND: ${markers.testCommand}`);
+        }
+      }
+
       if (previousStatus === 'test') {
         const testOutcome = resolveTestOutcomeAfterRun({
           runState: run.state,

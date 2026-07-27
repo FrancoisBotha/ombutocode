@@ -734,11 +734,45 @@ function formatTestOutcomeNote({ previousStatus, verdict, reasons, testSummary }
   return null;
 }
 
+/**
+ * Pull the implementation phase's TDD markers out of its output.
+ *
+ * The impl prompt asks the agent to emit TESTS_ADDED / TESTS_SKIPPED and
+ * TEST_COMMAND on their own lines. Those live only in that run's stdout, which
+ * the *test* phase — a separate process with a fresh context — cannot see. When
+ * the marker went missing the test agent had nowhere to look and failed the
+ * ticket for "no TESTS_SKIPPED rationale found", repeatedly, with no way for
+ * the impl phase to fix it. Extracting the markers here lets the caller persist
+ * them on the ticket, which the test phase does read.
+ *
+ * @param {string} text plain-text agent output
+ * @returns {{testsSkipped: string|null, testsAdded: string|null, testCommand: string|null}}
+ */
+function extractImplTestMarkers(text) {
+  const source = String(text || '');
+  const pick = (label) => {
+    const match = source.match(new RegExp(`^\\s*\`?${label}\\s*:\\s*(.+?)\`?\\s*$`, 'im'));
+    if (!match) return null;
+    const value = match[1].trim();
+    return value || null;
+  };
+
+  return {
+    testsSkipped: pick('TESTS_SKIPPED'),
+    testsAdded: pick('TESTS_ADDED'),
+    testCommand: pick('TEST_COMMAND'),
+    // Which build-phase gates (formatter / lint / type-check / own tests) the
+    // implementation agent ran, per section 10 of the project test strategy.
+    buildGates: pick('BUILD_GATES')
+  };
+}
+
 module.exports = {
   resolveTicketStatusAfterRun,
   resolveEvalOutcomeAfterRun,
   resolveTestOutcomeAfterRun,
   formatEvaluationOutcomeNote,
   formatTestOutcomeNote,
-  extractTextFromStreamJson
+  extractTextFromStreamJson,
+  extractImplTestMarkers
 };

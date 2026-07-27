@@ -10,6 +10,38 @@ This skill guides AI coding agents in breaking down epics into well-structured i
 
 The output is a set of tickets added to the project backlog, each linked back to the originating epic.
 
+---
+
+## Run to completion without prompting
+
+**Do not ask the user anything. Decide, write the tickets, verify, and finish.**
+
+This session is frequently left unattended. A question — about the ID prefix, the ticket split, whether to proceed — stops the run dead, and if nobody is watching, the session is closed and **nothing is written at all**. A half-guessed ticket set that exists is worth far more than a perfect one that was never created; the backlog is editable afterwards, and the user can delete or regenerate.
+
+Concretely:
+- **Never** ask the user to confirm the ID prefix, the ticket list, the split, the ordering, or permission to write.
+- **Never** end a turn with a question and wait. If you find yourself about to ask, pick the most reasonable option and proceed.
+- Resolve ambiguity with your best judgement and **record the assumption in the ticket's `notes` field**, so the decision is visible in the backlog rather than lost in terminal scrollback.
+- Only stop early if writing is genuinely impossible — the epic file is missing or unreadable, or `ticket-write` fails. Then report the error and finish with the FAILED marker below.
+
+Still print the summary table before writing. It is a record of what you are about to do, not a request for approval — do not pause after it.
+
+### Finish with a machine-readable marker
+
+The last line of your output MUST be exactly one of:
+
+```
+DONE - TICKETS WRITTEN
+```
+
+```
+FAILED - NO TICKETS WRITTEN
+```
+
+Emit `DONE - TICKETS WRITTEN` only after the verification step has confirmed the tickets are actually in the database. If any part failed, emit `FAILED - NO TICKETS WRITTEN` with a short explanation on the lines above it. The user reads this line to know whether an unattended run succeeded, so never emit it speculatively and never emit both.
+
+---
+
 ## Guidelines
 
 - **Read the epic thoroughly** before proposing tickets — understand scope, acceptance criteria, and dependencies
@@ -19,14 +51,14 @@ The output is a set of tickets added to the project backlog, each linked back to
 - **Do not create per-criterion unit-test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket. (The mandatory closeout regression-test ticket described below is a separate, project-level concern — that one IS required.)
 - **Size tickets appropriately** — aim for 3-8 tickets per epic, each completable in one agent session
 - **Always append the three mandatory closeout tickets** described in the section below — every epic ends with epic-eval, regression-tests, and help-docs. Non-negotiable.
-- **Always confirm** with the user before writing to the backlog
+- **Never ask for permission — write the tickets.** See "Run to completion without prompting" below.
 
 ## Ticket Structure
 
 Each ticket added to the backlog must include:
 
 ### Required Fields
-- **id** — Sequential ID using an **informative epic-derived prefix**, not a generic project prefix. The prefix should be a short uppercase mnemonic of the parent epic (typically 4–6 letters drawn from the epic name), followed by a zero-padded sequence number — e.g. `SCAFF-001` for `epic_APP_SCAFFOLD`, `AUTH-001` for `epic_USER_AUTH`, `DBFND-001` for `epic_DATABASE_FOUNDATION`. This makes it immediately obvious which epic a ticket belongs to when scanning the backlog. Confirm the chosen prefix with the user when proposing the summary table. Sequence numbers restart at 001 within each epic prefix.
+- **id** — Sequential ID using an **informative epic-derived prefix**, not a generic project prefix. The prefix should be a short uppercase mnemonic of the parent epic (typically 4–6 letters drawn from the epic name), followed by a zero-padded sequence number — e.g. `SCAFF-001` for `epic_APP_SCAFFOLD`, `AUTH-001` for `epic_USER_AUTH`, `DBFND-001` for `epic_DATABASE_FOUNDATION`. This makes it immediately obvious which epic a ticket belongs to when scanning the backlog. **Choose the prefix yourself** from the epic name and state it in the summary table — do not ask the user to approve it. Sequence numbers restart at 001 within each epic prefix.
 - **title** — Clear, actionable title in imperative form (e.g. "Create user authentication API endpoint")
 - **status** — Always `backlog` for new tickets
 - **assignee** — `null` (assigned later by the scheduler or user)
@@ -214,11 +246,11 @@ Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticke
 4. **Order** them by dependency (setup → core → integration → UI)
 5. **Append** the three mandatory closeout tickets (epic-eval → regression-tests → help-docs) at the END of the list, after all feature work. See the "Mandatory Closeout Tickets" section above. Skipping them is a workflow error.
 6. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
-7. **Propose** a summary table with: ID, Title, Type, Dependencies — and confirm the chosen epic-derived prefix. The closeout tickets MUST appear in this table as the last three rows.
-8. **Wait** for user confirmation
-9. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.cjs` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
-10. **Verify** — run `node .ombutocode/tools/db-query.cjs tickets --status backlog` to confirm the tickets were inserted correctly
-11. **Update** the epic status from `NEW` to `TICKETS`
+7. **Print** a summary table with: ID, Title, Type, Dependencies — stating the epic-derived prefix you chose. The closeout tickets MUST appear in this table as the last three rows. This is a record of what you are about to write; do NOT pause for approval.
+8. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.cjs` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
+9. **Verify** — run `node .ombutocode/tools/db-query.cjs tickets --status backlog` to confirm the tickets were inserted correctly
+10. **Update** the epic status from `NEW` to `TICKETS`
+11. **Finish** with `DONE - TICKETS WRITTEN` as the last line of your output (or `FAILED - NO TICKETS WRITTEN` if step 8 or 9 did not succeed). See "Run to completion without prompting" above.
 
 ## Writing Tickets to the Database
 

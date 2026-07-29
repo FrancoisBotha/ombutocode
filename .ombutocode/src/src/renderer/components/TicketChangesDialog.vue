@@ -114,7 +114,19 @@ import { javascript } from '@codemirror/lang-javascript';
 import { html as htmlLang } from '@codemirror/lang-html';
 import { css as cssLang } from '@codemirror/lang-css';
 import { markdown as markdownLang } from '@codemirror/lang-markdown';
+import { cpp as cppLang } from '@codemirror/lang-cpp';
+import { python as pythonLang } from '@codemirror/lang-python';
+import { rust as rustLang } from '@codemirror/lang-rust';
+import { StreamLanguage } from '@codemirror/language';
+import { csharp as csharpMode } from '@codemirror/legacy-modes/mode/clike';
+import { ruby as rubyMode } from '@codemirror/legacy-modes/mode/ruby';
 import { oneDark } from '@codemirror/theme-one-dark';
+
+// C# and Ruby have no Lezer grammar published, so they use the legacy
+// CodeMirror 5 stream modes. Highlighting is coarser than a real parser gives,
+// but it beats plain text and needs no third-party package.
+const csharp = () => StreamLanguage.define(csharpMode);
+const ruby = () => StreamLanguage.define(rubyMode);
 
 /**
  * Only these language packs are installed. Anything else renders as plain text
@@ -127,7 +139,14 @@ const LANGUAGE_BY_EXTENSION = {
   json: javascript,
   html: htmlLang, htm: htmlLang, vue: htmlLang,
   css: cssLang, scss: cssLang,
-  md: markdownLang, markdown: markdownLang
+  md: markdownLang, markdown: markdownLang,
+  // C/C++ — the pack covers both, plus the usual header extensions.
+  c: cppLang, h: cppLang, cpp: cppLang, cxx: cppLang, cc: cppLang,
+  hpp: cppLang, hxx: cppLang, hh: cppLang,
+  cs: csharp,
+  py: pythonLang, pyw: pythonLang, pyi: pythonLang,
+  rs: rustLang,
+  rb: ruby, rake: ruby, gemspec: ruby
 };
 
 function languageExtension(filePath) {

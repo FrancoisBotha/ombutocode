@@ -135,9 +135,23 @@
 
             <dt>Notes</dt>
             <dd>{{ selectedTicket.notes || 'None' }}</dd>
+
+            <dt>Code Changes</dt>
+            <dd>
+              <button class="changes-link" @click="showChanges = true">
+                <span class="mdi mdi-source-branch"></span>
+                View code changes
+              </button>
+            </dd>
           </dl>
         </aside>
       </div>
+
+      <TicketChangesDialog
+        v-if="showChanges && selectedTicket"
+        :ticket="selectedTicket"
+        @close="showChanges = false"
+      />
     </template>
   </div>
 </template>
@@ -146,6 +160,7 @@
 import { computed, onMounted, onUnmounted, ref, nextTick } from 'vue';
 import { useArchiveStore } from '@/stores/archiveStore';
 import TestSummaryPanel from './TestSummaryPanel.vue';
+import TicketChangesDialog from './TicketChangesDialog.vue';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
 
@@ -156,9 +171,10 @@ const MAX_DETAIL_WIDTH = 760;
 
 export default {
   name: 'ArchiveTable',
-  components: { TestSummaryPanel },
+  components: { TestSummaryPanel, TicketChangesDialog },
   setup() {
     const archiveStore = useArchiveStore();
+    const showChanges = ref(false);
     const archiveViewRef = ref(null);
     const tabulatorTable = ref(null);
     const tabulatorInstance = ref(null);
@@ -486,6 +502,7 @@ export default {
       archiveTickets,
       selectedTicketId,
       selectedTicket,
+      showChanges,
       loading,
       error,
       detailPanelStyle,
@@ -1011,4 +1028,21 @@ export default {
 [data-theme="dark"] .eval-check-suggestion {
   color: #5eead4;
 }
+
+.changes-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.changes-link:hover { text-decoration: underline; }
+
+[data-theme="dark"] .changes-link { color: #7aa7ff; }
 </style>

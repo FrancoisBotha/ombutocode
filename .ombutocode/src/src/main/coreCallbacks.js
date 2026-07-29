@@ -4,6 +4,7 @@ const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcom
 const { squashMergeTicketBranchSync, commitWorktreeChangesSync, branchHasCommitsAheadSync, removeWorktree } = require('./worktreeManager');
 const { agentDisplayName } = require('./codingAgentRuntime');
 const { resolveRunPhase, recordRunLogEntry } = require('./runSummary');
+const { recordMergeCommitOnTicket } = require('./gitDiffService');
 
 /**
  * Create the agent runtime callbacks (onRunStarted, onRunUpdated, onRunFinished)
@@ -409,6 +410,7 @@ function createRuntimeCallbacks(deps) {
                   error: null
                 };
                 appendTicketNote(ticket, 'Merge resolved. Squash merge completed.');
+                recordMergeCommitOnTicket(ticket, mergeResult);
                 startRunSummary(ticket);
                 logSchedulerEvent('merge_resolve.success', 'info', `Merge resolve succeeded and squash merge completed for ${ticket.id}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
                 scheduler.recordSquashMerge();
@@ -513,6 +515,7 @@ function createRuntimeCallbacks(deps) {
             title: ticket.title
           });
           appendTicketNote(ticket, 'Eval passed. Squash merge completed.');
+          recordMergeCommitOnTicket(ticket, mergeResult);
           startRunSummary(ticket);
           logSchedulerEvent('eval.squash_merge', 'info', `Squash merge completed: ${mergeResult.branch} -> ${mergeResult.baseBranch}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
           scheduler.recordSquashMerge();

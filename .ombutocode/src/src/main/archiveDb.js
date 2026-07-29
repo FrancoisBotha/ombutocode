@@ -93,9 +93,30 @@ function initializeSchema() {
       files_touched       TEXT DEFAULT '[]',
       notes               TEXT DEFAULT '',
       assignee            TEXT DEFAULT NULL,
-      agent               TEXT DEFAULT NULL
+      agent               TEXT DEFAULT NULL,
+      merge_commit_sha    TEXT DEFAULT NULL,
+      run_summary         TEXT DEFAULT NULL
     )
   `);
+
+  // Add columns introduced after the table shipped. This table has fixed
+  // columns (unlike the backlog's JSON blob), so anything not listed here is
+  // silently dropped when a ticket is archived.
+  for (const [column, definition] of [
+    ['merge_commit_sha', 'TEXT DEFAULT NULL'],
+    ['run_summary', 'TEXT DEFAULT NULL']
+  ]) {
+    try {
+      const cols = db.exec('PRAGMA table_info(tickets)');
+      const exists = cols.length && cols[0].values.some(row => row[1] === column);
+      if (!exists) {
+        db.run(`ALTER TABLE tickets ADD COLUMN ${column} ${definition}`);
+        console.log(`[ArchiveDb] Added ${column} column`);
+      }
+    } catch (error) {
+      console.warn(`[ArchiveDb] Unable to add ${column} column:`, error?.message);
+    }
+  }
 
   // Migrate feature_ref → epic_ref if old column exists
   try {
@@ -205,7 +226,9 @@ function deserializeTicket(row) {
     acceptance_criteria: row.acceptance_criteria ? JSON.parse(row.acceptance_criteria) : [],
     files_touched: row.files_touched ? JSON.parse(row.files_touched) : [],
     agent: parseJsonField(row.agent),
-    assignee: parseJsonField(row.assignee)
+    assignee: parseJsonField(row.assignee),
+    merge_commit_sha: row.merge_commit_sha || null,
+    run_summary: parseJsonField(row.run_summary)
   };
 }
 
@@ -231,15 +254,17 @@ function insertTicket(ticket) {
     files_touched = [],
     notes = '',
     assignee = null,
-    agent = null
+    agent = null,
+    merge_commit_sha = null,
+    run_summary = null
   } = ticket;
 
   const stmt = db.prepare(`
     INSERT OR REPLACE INTO tickets (
       id, title, epic_ref, status, last_updated,
       dependencies, acceptance_criteria, files_touched,
-      notes, assignee, agent
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      notes, assignee, agent, merge_commit_sha, run_summary
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   stmt.bind([
@@ -253,7 +278,9 @@ function insertTicket(ticket) {
     JSON.stringify(files_touched),
     notes,
     assignee ? JSON.stringify(assignee) : null,
-    agent ? JSON.stringify(agent) : null
+    agent ? JSON.stringify(agent) : null,
+    merge_commit_sha || null,
+    run_summary ? JSON.stringify(run_summary) : null
   ]);
 
   stmt.step();
@@ -272,7 +299,9 @@ function insertTicket(ticket) {
     files_touched,
     notes,
     assignee,
-    agent
+    agent,
+    merge_commit_sha,
+    run_summary
   };
 }
 

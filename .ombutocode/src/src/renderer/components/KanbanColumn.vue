@@ -20,6 +20,13 @@
       @close="closeRunSummary"
     />
 
+    <!-- Code changes: opened from the branch button on merged tickets -->
+    <TicketChangesDialog
+      v-if="changesTask"
+      :ticket="changesTask"
+      @close="closeChanges"
+    />
+
     <!-- Ticket Detail Modal -->
     <div v-if="selectedTask" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
@@ -389,6 +396,13 @@
           </button>
           <div v-if="columnId === 'review'" class="review-actions">
             <button
+              class="changes-btn"
+              @click.stop="openChanges(task)"
+              title="View code changes"
+            >
+              <span class="mdi mdi-source-branch"></span>
+            </button>
+            <button
               v-if="runSummaryState(task)"
               class="run-summary-btn"
               :class="`is-${runSummaryState(task)}`"
@@ -415,6 +429,14 @@
               <span class="mdi mdi-close"></span>
             </button>
           </div>
+          <button
+            v-if="columnId === 'done'"
+            class="changes-btn"
+            @click.stop="openChanges(task)"
+            title="View code changes"
+          >
+            <span class="mdi mdi-source-branch"></span>
+          </button>
           <button
             v-if="columnId === 'done'"
             class="archive-btn"
@@ -510,10 +532,11 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import TicketDoctorDialog from './TicketDoctorDialog.vue';
 import TestSummaryPanel from './TestSummaryPanel.vue';
 import RunSummaryDialog from './RunSummaryDialog.vue';
+import TicketChangesDialog from './TicketChangesDialog.vue';
 
 export default {
   name: 'KanbanColumn',
-  components: { TicketDoctorDialog, TestSummaryPanel, RunSummaryDialog },
+  components: { TicketDoctorDialog, TestSummaryPanel, RunSummaryDialog, TicketChangesDialog },
   props: {
     title: {
       type: String,
@@ -809,6 +832,14 @@ export default {
     const runSummaryTask = ref(null);
     const openRunSummary = (task) => { runSummaryTask.value = task; };
     const closeRunSummary = () => { runSummaryTask.value = null; };
+
+    // Code changes. A merged ticket always has a squash commit, but the sha was
+    // only persisted from this release on — for older tickets the main process
+    // recovers it from the commit subject, so offer the button regardless and
+    // let the dialog report if nothing can be found.
+    const changesTask = ref(null);
+    const openChanges = (task) => { changesTask.value = task; };
+    const closeChanges = () => { changesTask.value = null; };
 
     const isTestFailure = (task) => {
       const summary = task?.test_summary;
@@ -1431,6 +1462,9 @@ export default {
       runSummaryTask,
       openRunSummary,
       closeRunSummary,
+      changesTask,
+      openChanges,
+      closeChanges,
       getEvalVerdictBadgeClass,
       formatEvalSummaryTimestamp,
       getEvalCriteriaChecks,
@@ -1676,6 +1710,23 @@ export default {
   color: #e5a830;
 }
 [data-theme="dark"] .doctor-btn:hover { background-color: rgba(229, 168, 48, 0.32); }
+
+.changes-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background-color: #4338ca;
+  color: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease;
+}
+
+.changes-btn:hover { background-color: #3730a3; }
 
 .run-summary-btn {
   display: flex;

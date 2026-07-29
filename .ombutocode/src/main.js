@@ -16,6 +16,8 @@ const {
   createRunSummarizer,
   resetStaleRunSummaries
 } = require('./src/main/runSummary');
+const gitDiffService = require('./src/main/gitDiffService');
+const { recordMergeCommitOnTicket } = gitDiffService;
 const { migrateToOmbutocodeStructure } = require('./src/main/projectMigration');
 const { ensureOmbutocodeStructure } = require('./src/main/projectInit');
 const { squashMergeTicketBranchSync, commitWorktreeChangesSync, createWorktreeSync, removeWorktree } = require('./src/main/worktreeManager');
@@ -811,6 +813,7 @@ ${run.stderr || ''}`);
                   error: null
                 };
                 appendTicketNote(ticket, 'Merge resolved. Squash merge completed.');
+                recordMergeCommitOnTicket(ticket, mergeResult);
                 startRunSummary(ticket);
                 logSchedulerEvent('merge_resolve.success', 'info', `Merge resolve succeeded and squash merge completed for ${ticket.id}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
                 removeWorktree(ticket.id, { projectRoot: PROJECT_ROOT }).catch((err) => {
@@ -982,6 +985,7 @@ ${run.stderr || ''}`);
             title: ticket.title
           });
           appendTicketNote(ticket, 'Eval passed. Squash merge completed.');
+          recordMergeCommitOnTicket(ticket, mergeResult);
           startRunSummary(ticket);
           logSchedulerEvent('eval.squash_merge', 'info', `Squash merge completed: ${mergeResult.branch} -> ${mergeResult.baseBranch}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
           // Clean up worktree and branch after successful merge
@@ -4076,6 +4080,78 @@ const versionService = require('./src/main/versionService');
 
 ipcMain.handle('artifact:list', async (_, filters) => {
   return artifactService.list(filters || {});
+});
+
+/**
+ * Find a ticket in the live backlog, falling back to the archive.
+ *
+ * Archived tickets keep their merge_commit_sha, so the changes view works the
+ * same way once a ticket has left the board.
+ */
+function findTicketForDiff(ticketId) {
+  const id = String(ticketId || '').trim();
+  if (!id) throw new Error('Ticket id is required');
+
+  const live = backlogDb.getTicketById(id);
+  if (live) return live;
+
+  // Required lazily: main.js destructures specific archiveDb functions at the
+  // top rather than binding the module namespace.
+  const archived = require('./src/main/archiveDb').readTicketById(id);
+  if (archived) return archived;
+
+  throw new Error(`Ticket ${id} not found`);
+}
+
+/**
+ * Persist a sha recovered from commit-message search so the next open skips it.
+ */
+function cacheRecoveredSha(ticketId, sha) {
+  try {
+    if (!backlogDb.getTicketById(ticketId)) return;
+    backlogDb.updateTicketFields(ticketId, { merge_commit_sha: sha });
+    ombutocodeDb.saveDb();
+  } catch (error) {
+    console.warn(`[GitDiff] Could not cache merge sha for ${ticketId}:`, error?.message);
+  }
+}
+
+function toGitDiffError(error) {
+  return {
+    success: false,
+    error: {
+      code: error?.code || 'GIT_DIFF_ERROR',
+      message: error?.message || 'Unable to read changes for this ticket.'
+    }
+  };
+}
+
+ipcMain.handle('gitdiff:changedFiles', async (_, ticketId) => {
+  try {
+    const ticket = findTicketForDiff(ticketId);
+    const result = gitDiffService.getChangedFiles({ projectRoot: PROJECT_ROOT, ticket });
+    if (result.recovered) cacheRecoveredSha(ticket.id, result.sha);
+    return { success: true, data: result, error: null };
+  } catch (error) {
+    return toGitDiffError(error);
+  }
+});
+
+ipcMain.handle('gitdiff:fileDiff', async (_, payload = {}) => {
+  try {
+    const { ticketId, filePath, oldPath = null, allowLarge = false } = payload;
+    const ticket = findTicketForDiff(ticketId);
+    const result = gitDiffService.getFileDiff({
+      projectRoot: PROJECT_ROOT,
+      ticket,
+      filePath,
+      oldPath,
+      allowLarge: allowLarge === true
+    });
+    return { success: true, data: result, error: null };
+  } catch (error) {
+    return toGitDiffError(error);
+  }
 });
 
 ipcMain.handle('artifact:get', async (_, id) => {

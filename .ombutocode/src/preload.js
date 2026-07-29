@@ -115,6 +115,8 @@ const validChannels = [
   'filetree:scanClassDiagrams',
   'version:log',
   'version:fileAtCommit',
+  'gitdiff:changedFiles',
+  'gitdiff:fileDiff',
   'excel:exportRequirements',
   'excel:importRequirements',
   'tree:build',

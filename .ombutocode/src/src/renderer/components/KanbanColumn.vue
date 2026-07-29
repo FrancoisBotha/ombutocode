@@ -13,6 +13,13 @@
       @moved-to-review="closeDoctor"
     />
 
+    <!-- Run summary: opened from the document button on review tickets -->
+    <RunSummaryDialog
+      v-if="runSummaryTask"
+      :ticket="runSummaryTask"
+      @close="closeRunSummary"
+    />
+
     <!-- Ticket Detail Modal -->
     <div v-if="selectedTask" class="modal-overlay" @click.self="closeModal">
       <div class="modal-content">
@@ -382,6 +389,16 @@
           </button>
           <div v-if="columnId === 'review'" class="review-actions">
             <button
+              v-if="runSummaryState(task)"
+              class="run-summary-btn"
+              :class="`is-${runSummaryState(task)}`"
+              :disabled="runSummaryState(task) === 'generating'"
+              @click.stop="openRunSummary(task)"
+              :title="runSummaryTitle(task)"
+            >
+              <span class="mdi" :class="runSummaryIcon(task)"></span>
+            </button>
+            <button
               class="approve-btn"
               :disabled="isReviewActionDisabled(task)"
               @click.stop="approveTicket(task.id)"
@@ -492,10 +509,11 @@ import { useAgentToolsStore } from '@/stores/agentToolsStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import TicketDoctorDialog from './TicketDoctorDialog.vue';
 import TestSummaryPanel from './TestSummaryPanel.vue';
+import RunSummaryDialog from './RunSummaryDialog.vue';
 
 export default {
   name: 'KanbanColumn',
-  components: { TicketDoctorDialog, TestSummaryPanel },
+  components: { TicketDoctorDialog, TestSummaryPanel, RunSummaryDialog },
   props: {
     title: {
       type: String,
@@ -763,6 +781,34 @@ export default {
     const getEvalVerdict = (task) => String(getEvalSummary(task)?.verdict || '').toUpperCase();
 
     const isEvalFailure = (task) => getEvalVerdict(task) === 'FAIL';
+
+    // Run summary — null hides the icon entirely (feature off, or a ticket that
+    // merged before summaries existed).
+    const runSummaryState = (task) => {
+      const status = task?.run_summary?.status;
+      return ['generating', 'ready', 'failed', 'unavailable'].includes(status) ? status : null;
+    };
+
+    const runSummaryIcon = (task) => {
+      switch (runSummaryState(task)) {
+        case 'generating': return 'mdi-loading mdi-spin';
+        case 'ready': return 'mdi-text-box-search-outline';
+        default: return 'mdi-text-box-remove-outline';
+      }
+    };
+
+    const runSummaryTitle = (task) => {
+      switch (runSummaryState(task)) {
+        case 'generating': return 'Summarising run output…';
+        case 'ready': return 'View run summary';
+        case 'failed': return `Run summary failed: ${task?.run_summary?.error || 'unknown error'}`;
+        default: return 'No run summary available';
+      }
+    };
+
+    const runSummaryTask = ref(null);
+    const openRunSummary = (task) => { runSummaryTask.value = task; };
+    const closeRunSummary = () => { runSummaryTask.value = null; };
 
     const isTestFailure = (task) => {
       const summary = task?.test_summary;
@@ -1379,6 +1425,12 @@ export default {
       getEvalVerdict,
       isEvalFailure,
       isTestFailure,
+      runSummaryState,
+      runSummaryIcon,
+      runSummaryTitle,
+      runSummaryTask,
+      openRunSummary,
+      closeRunSummary,
       getEvalVerdictBadgeClass,
       formatEvalSummaryTimestamp,
       getEvalCriteriaChecks,
@@ -1624,6 +1676,34 @@ export default {
   color: #e5a830;
 }
 [data-theme="dark"] .doctor-btn:hover { background-color: rgba(229, 168, 48, 0.32); }
+
+.run-summary-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background-color: #5e6c84;
+  color: white;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.15s ease;
+}
+
+.run-summary-btn:hover { background-color: #42526e; }
+
+/* Generating and unavailable are both non-actionable — mute them so the eye
+   goes to the approve/reject pair instead. */
+.run-summary-btn:disabled,
+.run-summary-btn.is-unavailable {
+  background-color: #a5adba;
+  cursor: not-allowed;
+}
+
+.run-summary-btn.is-failed { background-color: #e0a800; }
+.run-summary-btn.is-failed:hover { background-color: #c69500; }
 
 .approve-btn {
   display: flex;

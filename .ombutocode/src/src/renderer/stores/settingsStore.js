@@ -8,6 +8,9 @@ function createDefaultSettings() {
     eval_default_model: null,
     ad_hoc_ticket_agent: null,
     ad_hoc_ticket_model: null,
+    run_summary_enabled: true,
+    run_summary_agent: null,
+    run_summary_model: null,
     app_refresh_interval: 30,
     enable_review_notification_sound: true,
     auto_assign_promoted_tickets: false,
@@ -31,6 +34,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const evalDefaultModel = computed(() => _settings.value.eval_default_model);
   const adHocTicketAgent = computed(() => _settings.value.ad_hoc_ticket_agent);
   const adHocTicketModel = computed(() => _settings.value.ad_hoc_ticket_model);
+  const runSummaryEnabled = computed(() => _settings.value.run_summary_enabled);
+  const runSummaryAgent = computed(() => _settings.value.run_summary_agent);
+  const runSummaryModel = computed(() => _settings.value.run_summary_model);
   const appRefreshInterval = computed(() => _settings.value.app_refresh_interval);
   const enableReviewNotificationSound = computed(() => _settings.value.enable_review_notification_sound);
   const autoAssignPromotedTickets = computed(() => _settings.value.auto_assign_promoted_tickets);
@@ -63,6 +69,15 @@ export const useSettingsStore = defineStore('settings', () => {
         : null,
       ad_hoc_ticket_model: payload.ad_hoc_ticket_model === null || typeof payload.ad_hoc_ticket_model === 'string'
         ? payload.ad_hoc_ticket_model
+        : null,
+      run_summary_enabled: typeof payload.run_summary_enabled === 'boolean'
+        ? payload.run_summary_enabled
+        : true,
+      run_summary_agent: payload.run_summary_agent === null || typeof payload.run_summary_agent === 'string'
+        ? payload.run_summary_agent
+        : null,
+      run_summary_model: payload.run_summary_model === null || typeof payload.run_summary_model === 'string'
+        ? payload.run_summary_model
         : null,
       app_refresh_interval: Number.isFinite(payload.app_refresh_interval) && payload.app_refresh_interval > 0
         ? payload.app_refresh_interval
@@ -212,6 +227,27 @@ export const useSettingsStore = defineStore('settings', () => {
    * Update app refresh interval setting
    * @param {number} value - refresh interval in seconds (must be > 0)
    */
+  async function setRunSummaryEnabled(value) {
+    if (typeof value !== 'boolean') {
+      throw new Error('run_summary_enabled must be a boolean');
+    }
+    return saveSettings({ run_summary_enabled: value });
+  }
+
+  async function setRunSummaryAgent(value) {
+    if (value !== null && typeof value !== 'string') {
+      throw new Error('run_summary_agent must be a string or null');
+    }
+    return saveSettings({ run_summary_agent: value });
+  }
+
+  async function setRunSummaryModel(value) {
+    if (value !== null && typeof value !== 'string') {
+      throw new Error('run_summary_model must be a string or null');
+    }
+    return saveSettings({ run_summary_model: value });
+  }
+
   async function setAppRefreshInterval(value) {
     const numValue = Number(value);
     if (!Number.isFinite(numValue) || numValue < 1) {
@@ -306,6 +342,9 @@ export const useSettingsStore = defineStore('settings', () => {
     evalDefaultModel,
     adHocTicketAgent,
     adHocTicketModel,
+    runSummaryEnabled,
+    runSummaryAgent,
+    runSummaryModel,
     appRefreshInterval,
     enableReviewNotificationSound,
     autoAssignPromotedTickets,
@@ -324,6 +363,9 @@ export const useSettingsStore = defineStore('settings', () => {
     setEvalDefaultModel,
     setAdHocTicketAgent,
     setAdHocTicketModel,
+    setRunSummaryEnabled,
+    setRunSummaryAgent,
+    setRunSummaryModel,
     setAppRefreshInterval,
     setEnableReviewNotificationSound,
     setAutoAssignPromotedTickets,

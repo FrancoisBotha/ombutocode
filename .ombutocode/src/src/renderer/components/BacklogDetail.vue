@@ -91,6 +91,30 @@
         <TestSummaryPanel :ticket="ticket" />
       </dd>
 
+      <dt v-if="runSummaryStatus(ticket)">Run Summary</dt>
+      <dd v-if="runSummaryStatus(ticket)" class="run-summary-section">
+        <button
+          v-if="runSummaryStatus(ticket) === 'ready'"
+          class="run-summary-link"
+          @click="showRunSummary = true"
+        >
+          <span class="mdi mdi-text-box-search-outline"></span>
+          View run summary
+        </button>
+        <span v-else-if="runSummaryStatus(ticket) === 'generating'" class="run-summary-note">
+          <span class="mdi mdi-loading mdi-spin"></span> Summarising run output…
+        </span>
+        <span v-else class="run-summary-note">
+          {{ ticket.run_summary?.error || ticket.run_summary?.reason || 'Not available' }}
+        </span>
+      </dd>
+
+      <RunSummaryDialog
+        v-if="showRunSummary"
+        :ticket="ticket"
+        @close="showRunSummary = false"
+      />
+
       <dt v-if="hasFailureCounts(ticket)">Failure Counts</dt>
       <dd v-if="hasFailureCounts(ticket)" class="failure-counts-section">
         <span v-if="ticket.fail_count > 0" class="failure-count-item">
@@ -138,10 +162,11 @@
 import { computed, ref } from 'vue';
 import { useBacklogStore } from '@/stores/backlogStore';
 import TestSummaryPanel from './TestSummaryPanel.vue';
+import RunSummaryDialog from './RunSummaryDialog.vue';
 
 export default {
   name: 'BacklogDetail',
-  components: { TestSummaryPanel },
+  components: { TestSummaryPanel, RunSummaryDialog },
   props: {
     ticket: {
       type: Object,
@@ -225,6 +250,13 @@ export default {
 
     const hasEvalSummary = (ticket) => !!getEvalSummary(ticket);
 
+    const showRunSummary = ref(false);
+
+    const runSummaryStatus = (ticket) => {
+      const status = ticket?.run_summary?.status;
+      return ['generating', 'ready', 'failed', 'unavailable'].includes(status) ? status : null;
+    };
+
     const hasTestSummary = (ticket) => {
       const summary = ticket?.test_summary;
       if (!summary || typeof summary !== 'object') return false;
@@ -288,6 +320,8 @@ export default {
       unassignHuman,
       hasEvalSummary,
       hasTestSummary,
+      runSummaryStatus,
+      showRunSummary,
       getEvalVerdict,
       getEvalVerdictBadgeClass,
       formatEvalSummaryTimestamp,
@@ -610,4 +644,30 @@ export default {
   font-weight: 600;
   color: #dc2626;
 }
+
+.run-summary-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.run-summary-link:hover { text-decoration: underline; }
+
+.run-summary-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  color: #5e6c84;
+}
+
+[data-theme="dark"] .run-summary-link { color: #7aa7ff; }
+[data-theme="dark"] .run-summary-note { color: var(--text-muted); }
 </style>

@@ -163,6 +163,27 @@ try {
   const { createRuntimeCallbacks } = require('./src/main/coreCallbacks');
   const runOutputFilesByRunId = new Map();
 
+  const { createRunSummarizer } = require('./src/main/runSummary');
+  const { resolveAgentTemplateConfig: resolveTemplateForSummary } = require('./src/main/codingAgentRuntime');
+  const readRunSummaryAgentId = () => (
+    settingsStore.get('run_summary_agent', null)
+    || settingsStore.get('eval_default_agent', null)
+    || 'codex'
+  );
+  const isRunSummaryEnabled = () => settingsStore.get('run_summary_enabled', true) !== false;
+  const runSummarizer = createRunSummarizer({
+    projectRoot: PROJECT_ROOT,
+    runOutputDir: RUN_OUTPUT_DIR,
+    resolveTemplateConfig: resolveTemplateForSummary,
+    readSummaryAgent: readRunSummaryAgentId,
+    readSummaryModel: () => settingsStore.get('run_summary_model', null),
+    getTicketById: (id) => backlogDb.getTicketById(id),
+    updateTicketFields: (id, fields) => {
+      backlogDb.updateTicketFields(id, fields);
+      ombutocodeDb.saveDb();
+    }
+  });
+
   const callbacks = createRuntimeCallbacks({
     appendAgentLog: utils.appendAgentLog,
     updateTicket: utils.updateTicket,
@@ -179,7 +200,18 @@ try {
     summarizeTrialMergeFailure,
     readMaxEvalRetries: () => settingsStore.get('max_eval_retries', 2),
     projectRoot: PROJECT_ROOT,
-    onTitleBrandingUpdate: null  // No Electron windows in headless mode
+    onTitleBrandingUpdate: null,  // No Electron windows in headless mode
+    isRunSummaryEnabled,
+    startRunSummary: (ticket) => {
+      if (!isRunSummaryEnabled()) return;
+      if (!Array.isArray(ticket?.run_log_index) || ticket.run_log_index.length === 0) return;
+      ticket.run_summary = { status: 'generating', started_at: new Date().toISOString() };
+      setImmediate(() => {
+        runSummarizer.summarizeTicketRuns(ticket.id).catch((error) => {
+          console.error(`[RunSummary] Unexpected failure for ${ticket.id}:`, error?.message);
+        });
+      });
+    }
   });
 
   // 9. Agent runtime

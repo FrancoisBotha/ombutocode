@@ -394,6 +394,83 @@
             </div>
           </div>
 
+          <!-- Run Summary Toggle -->
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="setting-name">Summarise Run Output</span>
+              <span class="setting-hint">
+                After a ticket merges, have an agent summarise its run logs. Keeps run-output
+                logs on disk until the summary is generated.
+              </span>
+            </div>
+            <div class="setting-control">
+              <label class="toggle-switch" :class="{ 'is-loading': loading }">
+                <input
+                  type="checkbox"
+                  v-model="runSummaryEnabledLocal"
+                  @change="updateRunSummaryEnabled"
+                  :disabled="loading"
+                />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Run Summary Agent Selector -->
+          <div class="setting-item" v-if="runSummaryEnabledLocal">
+            <div class="setting-label">
+              <span class="setting-name">Run Summary Agent</span>
+              <span class="setting-hint">Select the agent that summarises run output</span>
+            </div>
+            <div class="setting-control">
+              <div class="agent-selector" :class="{ 'is-loading': loading || agentsLoading }">
+                <select
+                  v-model="selectedRunSummaryAgent"
+                  @change="updateRunSummaryAgent"
+                  :disabled="loading || agentsLoading || availableAgents.length === 0"
+                  class="agent-select"
+                >
+                  <option value="">-- Use EVAL Agent --</option>
+                  <option
+                    v-for="agent in availableAgents"
+                    :key="agent.id"
+                    :value="agent.id"
+                  >
+                    {{ agent.name }}
+                  </option>
+                </select>
+                <span v-if="agentsLoading" class="mdi mdi-loading mdi-spin"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Run Summary Model Selector -->
+          <div class="setting-item" v-if="runSummaryEnabledLocal && effectiveRunSummaryAgent">
+            <div class="setting-label">
+              <span class="setting-name">Run Summary Model</span>
+              <span class="setting-hint">Select the model to use for summarisation (or let the agent pick)</span>
+            </div>
+            <div class="setting-control">
+              <div class="agent-selector" :class="{ 'is-loading': loading || agentsLoading }">
+                <select
+                  v-model="selectedRunSummaryModel"
+                  @change="updateRunSummaryModel"
+                  :disabled="loading || agentsLoading || runSummaryAgentModels.length === 0"
+                  class="agent-select"
+                >
+                  <option value="">-- Any model --</option>
+                  <option
+                    v-for="model in runSummaryAgentModels"
+                    :key="model.id"
+                    :value="model.id"
+                  >
+                    {{ model.name }}
+                  </option>
+                </select>
+              </div>
+            </div>
+          </div>
+
           <!-- Max Eval Retries Setting -->
           <div class="setting-item">
             <div class="setting-label">
@@ -877,6 +954,9 @@ export default {
     const evalDefaultModel = computed(() => settingsStore.evalDefaultModel);
     const adHocTicketAgent = computed(() => settingsStore.adHocTicketAgent);
     const adHocTicketModel = computed(() => settingsStore.adHocTicketModel);
+    const runSummaryEnabled = computed(() => settingsStore.runSummaryEnabled);
+    const runSummaryAgent = computed(() => settingsStore.runSummaryAgent);
+    const runSummaryModel = computed(() => settingsStore.runSummaryModel);
     const appRefreshInterval = computed(() => settingsStore.appRefreshInterval);
     const enableReviewNotificationSound = computed(() => settingsStore.enableReviewNotificationSound);
     const autoAssignPromotedTickets = computed(() => settingsStore.autoAssignPromotedTickets);
@@ -924,6 +1004,9 @@ export default {
     const selectedEvalModel = ref('');
     const selectedAdHocAgent = ref('');
     const selectedAdHocModel = ref('');
+    const selectedRunSummaryAgent = ref('');
+    const selectedRunSummaryModel = ref('');
+    const runSummaryEnabledLocal = ref(true);
 
     // Local state for refresh interval input
     const refreshIntervalInput = ref(30);
@@ -962,6 +1045,18 @@ export default {
       return agent?.models?.filter(m => m.enabled) || [];
     });
 
+    // Effective run-summary agent (falls back to eval agent)
+    const effectiveRunSummaryAgent = computed(() => {
+      return selectedRunSummaryAgent.value || selectedAgent.value || '';
+    });
+
+    // Models available for the effective run-summary agent
+    const runSummaryAgentModels = computed(() => {
+      if (!effectiveRunSummaryAgent.value) return [];
+      const agent = availableAgents.value.find(a => a.id === effectiveRunSummaryAgent.value);
+      return agent?.models?.filter(m => m.enabled) || [];
+    });
+
     // Sync theme with store value when it loads
     const theme = computed(() => settingsStore.theme);
     watch(theme, (newValue) => {
@@ -997,6 +1092,19 @@ export default {
     // Sync selectedAdHocModel with store value when it loads
     watch(adHocTicketModel, (newValue) => {
       selectedAdHocModel.value = newValue || '';
+    }, { immediate: true });
+
+    // Sync run summary selectors with store values when they load
+    watch(runSummaryEnabled, (newValue) => {
+      runSummaryEnabledLocal.value = newValue !== false;
+    }, { immediate: true });
+
+    watch(runSummaryAgent, (newValue) => {
+      selectedRunSummaryAgent.value = newValue || '';
+    }, { immediate: true });
+
+    watch(runSummaryModel, (newValue) => {
+      selectedRunSummaryModel.value = newValue || '';
     }, { immediate: true });
 
     // Sync refreshIntervalInput with store value when it loads
@@ -1177,6 +1285,48 @@ export default {
     }
 
     // Update Ad Hoc ticket agent setting
+    async function updateRunSummaryEnabled() {
+      try {
+        await settingsStore.setRunSummaryEnabled(runSummaryEnabledLocal.value === true);
+        setTimeout(() => settingsStore.clearSaveStatus(), 3000);
+      } catch (err) {
+        console.error('[SettingsView] Failed to save run summary toggle:', err);
+        runSummaryEnabledLocal.value = runSummaryEnabled.value !== false;
+        setTimeout(() => settingsStore.clearSaveStatus(), 5000);
+      }
+    }
+
+    async function updateRunSummaryAgent() {
+      const newValue = selectedRunSummaryAgent.value || null;
+      if (runSummaryAgent.value === newValue) return;
+
+      try {
+        // Reset model when agent changes — model ids are agent-scoped
+        selectedRunSummaryModel.value = '';
+        await settingsStore.saveSettings({
+          run_summary_agent: newValue,
+          run_summary_model: null
+        });
+        setTimeout(() => settingsStore.clearSaveStatus(), 3000);
+      } catch (err) {
+        console.error('[SettingsView] Failed to save run summary agent setting:', err);
+        setTimeout(() => settingsStore.clearSaveStatus(), 5000);
+      }
+    }
+
+    async function updateRunSummaryModel() {
+      const newValue = selectedRunSummaryModel.value || null;
+      if (runSummaryModel.value === newValue) return;
+
+      try {
+        await settingsStore.setRunSummaryModel(newValue);
+        setTimeout(() => settingsStore.clearSaveStatus(), 3000);
+      } catch (err) {
+        console.error('[SettingsView] Failed to save run summary model setting:', err);
+        setTimeout(() => settingsStore.clearSaveStatus(), 5000);
+      }
+    }
+
     async function updateAdHocAgent() {
       const newValue = selectedAdHocAgent.value || null;
 
@@ -1438,6 +1588,11 @@ export default {
       selectedAdHocModel,
       effectiveAdHocAgent,
       adHocAgentModels,
+      runSummaryEnabledLocal,
+      selectedRunSummaryAgent,
+      selectedRunSummaryModel,
+      effectiveRunSummaryAgent,
+      runSummaryAgentModels,
       refreshIntervalInput,
       reviewSoundEnabled,
       autoAssignEnabled,
@@ -1447,6 +1602,9 @@ export default {
       updateEvalModel,
       updateAdHocAgent,
       updateAdHocModel,
+      updateRunSummaryEnabled,
+      updateRunSummaryAgent,
+      updateRunSummaryModel,
       updateRefreshInterval,
       updateReviewSound,
       updateAutoAssign,

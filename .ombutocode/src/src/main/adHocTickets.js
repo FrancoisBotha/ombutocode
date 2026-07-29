@@ -499,6 +499,7 @@ module.exports = {
   generateNextAdHocId,
   buildTicketFromDraft,
   appendTicketToBacklog,
+  buildDraftArgsFromTemplate,
   runCodexDraftCommand,
   createAdHocTicketCreator
 };

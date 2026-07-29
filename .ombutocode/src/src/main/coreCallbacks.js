@@ -3,6 +3,7 @@
 const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcomeNote, extractTextFromStreamJson, extractImplTestMarkers } = require('./runLifecycle');
 const { squashMergeTicketBranchSync, commitWorktreeChangesSync, branchHasCommitsAheadSync, removeWorktree } = require('./worktreeManager');
 const { agentDisplayName } = require('./codingAgentRuntime');
+const { resolveRunPhase, recordRunLogEntry } = require('./runSummary');
 
 /**
  * Create the agent runtime callbacks (onRunStarted, onRunUpdated, onRunFinished)
@@ -27,6 +28,8 @@ const { agentDisplayName } = require('./codingAgentRuntime');
  * @param {Function} deps.readMaxEvalRetries - () => number
  * @param {string}   deps.projectRoot
  * @param {Function} [deps.onTitleBrandingUpdate] - optional Electron-only callback
+ * @param {Function} [deps.isRunSummaryEnabled] - () => boolean; gates log retention and the manifest
+ * @param {Function} [deps.startRunSummary] - (ticket) => void; fired after a successful squash merge
  * @returns {Object}
  */
 function createRuntimeCallbacks(deps) {
@@ -46,7 +49,9 @@ function createRuntimeCallbacks(deps) {
     summarizeTrialMergeFailure,
     readMaxEvalRetries,
     projectRoot,
-    onTitleBrandingUpdate
+    onTitleBrandingUpdate,
+    isRunSummaryEnabled = () => false,
+    startRunSummary = () => {}
   } = deps;
 
   // Resolved after scheduler is created (circular dependency)
@@ -177,7 +182,12 @@ function createRuntimeCallbacks(deps) {
     }
     const logPaths = runOutputFilesByRunId.get(run.runId);
     writeRunOutputFiles(logPaths, run);
-    let keepRunLogs = run.state !== 'completed';
+    // Successful runs normally have their logs deleted at the end of this
+    // handler. Run summarisation needs every phase's transcript to survive
+    // until the ticket merges, so while the feature is on we retain them and
+    // let the summary job delete the set once it has read them.
+    const retainForRunSummary = isRunSummaryEnabled() === true;
+    let keepRunLogs = retainForRunSummary || run.state !== 'completed';
 
     // Automatic git commit for successful implementation runs
     let implementationCommitted = false;
@@ -256,6 +266,24 @@ function createRuntimeCallbacks(deps) {
           ticket.test_command = markers.testCommand;
           appendTicketNote(ticket, `TEST_COMMAND: ${markers.testCommand}`);
         }
+      }
+
+      // Record this run in the ticket's log manifest. Log files are named
+      // `<ticketId>__<runId>` and carry no phase marker, so this is the only
+      // place the phase is still knowable — see runSummary.js.
+      if (retainForRunSummary && logPaths) {
+        recordRunLogEntry(ticket, {
+          runId: run.runId,
+          phase: resolveRunPhase({
+            isTest: run.isTest,
+            isEval: run.isEval,
+            isMergeResolve: previousStatus === 'merging'
+          }),
+          agentName: run.agentName,
+          finishedAt: run.finishedAt || new Date().toISOString(),
+          stdoutLogFile: logPaths.stdoutRelative,
+          stderrLogFile: logPaths.stderrRelative
+        });
       }
 
       if (previousStatus === 'test') {
@@ -381,6 +409,7 @@ function createRuntimeCallbacks(deps) {
                   error: null
                 };
                 appendTicketNote(ticket, 'Merge resolved. Squash merge completed.');
+                startRunSummary(ticket);
                 logSchedulerEvent('merge_resolve.success', 'info', `Merge resolve succeeded and squash merge completed for ${ticket.id}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
                 scheduler.recordSquashMerge();
                 removeWorktree(ticket.id, { projectRoot }).catch((err) => {
@@ -484,6 +513,7 @@ function createRuntimeCallbacks(deps) {
             title: ticket.title
           });
           appendTicketNote(ticket, 'Eval passed. Squash merge completed.');
+          startRunSummary(ticket);
           logSchedulerEvent('eval.squash_merge', 'info', `Squash merge completed: ${mergeResult.branch} -> ${mergeResult.baseBranch}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
           scheduler.recordSquashMerge();
           removeWorktree(ticket.id, { projectRoot }).catch((err) => {

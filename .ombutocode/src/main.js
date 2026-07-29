@@ -10,6 +10,12 @@ const { createScheduler, buildRetryContext } = require('./src/main/scheduler');
 const { checkGitVersionSupport } = require('./src/main/gitVersionCheck');
 const { cleanupOnDoneTransition } = require('./src/main/statusTransitionCleanup');
 const { cleanupRunOutput } = require('./src/main/runOutputCleanup');
+const {
+  resolveRunPhase,
+  recordRunLogEntry,
+  createRunSummarizer,
+  resetStaleRunSummaries
+} = require('./src/main/runSummary');
 const { migrateToOmbutocodeStructure } = require('./src/main/projectMigration');
 const { ensureOmbutocodeStructure } = require('./src/main/projectInit');
 const { squashMergeTicketBranchSync, commitWorktreeChangesSync, createWorktreeSync, removeWorktree } = require('./src/main/worktreeManager');
@@ -163,6 +169,18 @@ const settingsStore = new Store({
       default: null
     },
     ad_hoc_ticket_model: {
+      type: ['string', 'null'],
+      default: null
+    },
+    run_summary_enabled: {
+      type: 'boolean',
+      default: true
+    },
+    run_summary_agent: {
+      type: ['string', 'null'],
+      default: null
+    },
+    run_summary_model: {
       type: ['string', 'null'],
       default: null
     },
@@ -454,6 +472,53 @@ const createAdHocFromPrompt = createAdHocTicketCreator({
   getArchivedMaxId: () => getMaxTicketNumericId('AD_HOC-')
 });
 
+function readRunSummaryAgentId() {
+  return settingsStore.get('run_summary_agent', null)
+    || settingsStore.get('eval_default_agent', null)
+    || 'codex';
+}
+
+const runSummarizer = createRunSummarizer({
+  projectRoot: PROJECT_ROOT,
+  runOutputDir: RUN_OUTPUT_DIR,
+  resolveTemplateConfig: resolveAgentTemplateConfig,
+  readSummaryAgent: readRunSummaryAgentId,
+  readSummaryModel: () => {
+    const internalId = settingsStore.get('run_summary_model', null);
+    if (!internalId) return null;
+    const config = readAgentsConfig();
+    const tool = (config?.tools || []).find(t => t.id === readRunSummaryAgentId());
+    const model = (tool?.models || []).find(m => m.id === internalId);
+    return model?.model_id || internalId;
+  },
+  getTicketById: (id) => backlogDb.getTicketById(id),
+  updateTicketFields: (id, fields) => {
+    backlogDb.updateTicketFields(id, fields);
+    ombutocodeDb.saveDb();
+  }
+});
+
+/**
+ * Kick off run-output summarisation for a merged ticket.
+ *
+ * Deliberately not awaited: the ticket should reach review immediately. The
+ * `generating` marker is what stops the log-cleanup path from deleting the
+ * transcripts out from under the job.
+ *
+ * @param {Object} ticket - mutated in place so the caller's save persists the marker
+ */
+function startRunSummary(ticket) {
+  if (!ticket || settingsStore.get('run_summary_enabled', true) === false) return;
+  if (!Array.isArray(ticket.run_log_index) || ticket.run_log_index.length === 0) return;
+
+  ticket.run_summary = { status: 'generating', started_at: new Date().toISOString() };
+  setImmediate(() => {
+    runSummarizer.summarizeTicketRuns(ticket.id).catch((error) => {
+      console.error(`[RunSummary] Unexpected failure for ${ticket.id}:`, error?.message);
+    });
+  });
+}
+
 // Initialize @electron/remote
 require('@electron/remote/main').initialize();
 
@@ -622,7 +687,12 @@ agentRuntime = new AgentRuntime({
     }
     const logPaths = runOutputFilesByRunId.get(run.runId);
     writeRunOutputFiles(logPaths, run);
-    let keepRunLogs = run.state !== 'completed';
+    // Successful runs normally have their logs deleted right here. Run
+    // summarisation needs every phase's transcript to still exist when the
+    // ticket merges, so while the feature is on we retain them and let the
+    // summary job delete the whole set once it has read them.
+    const retainForRunSummary = settingsStore.get('run_summary_enabled', true) !== false;
+    let keepRunLogs = retainForRunSummary || run.state !== 'completed';
 
     // Automatic git commit for successful implementation runs (per feature_GIT_WORKTREES.md).
     // Fallback only: most agents now commit during the run, so this is usually a no-op.
@@ -691,6 +761,24 @@ ${run.stderr || ''}`);
         }
       }
 
+      // Record this run in the ticket's log manifest. Log files are named
+      // `<ticketId>__<runId>` and carry no phase marker, so this is the only
+      // place the phase is still knowable — see runSummary.js.
+      if (retainForRunSummary && logPaths) {
+        recordRunLogEntry(ticket, {
+          runId: run.runId,
+          phase: resolveRunPhase({
+            isTest: run.isTest,
+            isEval: run.isEval,
+            isMergeResolve: previousStatus === 'merging'
+          }),
+          agentName: run.agentName,
+          finishedAt: run.finishedAt || new Date().toISOString(),
+          stdoutLogFile: logPaths.stdoutRelative,
+          stderrLogFile: logPaths.stderrRelative
+        });
+      }
+
       // Merging-specific outcome handling — skip normal eval/status flow
       if (previousStatus === 'merging') {
         const existingAgent = ticket.agent && typeof ticket.agent === 'object' ? ticket.agent : {};
@@ -723,6 +811,7 @@ ${run.stderr || ''}`);
                   error: null
                 };
                 appendTicketNote(ticket, 'Merge resolved. Squash merge completed.');
+                startRunSummary(ticket);
                 logSchedulerEvent('merge_resolve.success', 'info', `Merge resolve succeeded and squash merge completed for ${ticket.id}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
                 removeWorktree(ticket.id, { projectRoot: PROJECT_ROOT }).catch((err) => {
                   console.error(`[Scheduler] Failed to remove worktree for ${ticket.id}:`, err.message);
@@ -893,6 +982,7 @@ ${run.stderr || ''}`);
             title: ticket.title
           });
           appendTicketNote(ticket, 'Eval passed. Squash merge completed.');
+          startRunSummary(ticket);
           logSchedulerEvent('eval.squash_merge', 'info', `Squash merge completed: ${mergeResult.branch} -> ${mergeResult.baseBranch}`, { ticketId: ticket.id, runId: run.runId, details: { commitSha: mergeResult.commitSha } });
           // Clean up worktree and branch after successful merge
           removeWorktree(ticket.id, { projectRoot: PROJECT_ROOT }).catch((err) => {
@@ -1556,6 +1646,18 @@ app.whenReady().then(async () => {
   createWindow();
   trimAgentLog();
 
+  // A summary job cannot outlive its process, so anything still marked
+  // `generating` was interrupted by a quit — clear it before the UI shows a
+  // spinner that will never resolve.
+  resetStaleRunSummaries({
+    listTickets: () => backlogDb.readBacklogData()?.tickets || [],
+    updateTicketFields: (id, fields) => {
+      backlogDb.updateTicketFields(id, fields);
+      ombutocodeDb.saveDb();
+    },
+    runOutputDir: RUN_OUTPUT_DIR
+  });
+
   // Clean up old run-output log files (non-blocking, best-effort)
   const activeRunFiles = new Set();
   for (const paths of runOutputFilesByRunId.values()) {
@@ -2130,8 +2232,12 @@ ipcMain.handle('backlog:updateStatus', async (_, { ticketId, newStatus }) => {
     projectRoot: PROJECT_ROOT
   });
 
-  // Clean up run output log files when ticket moves to review or done
-  if (newStatus === 'review' || newStatus === 'done') {
+  // Clean up run output log files when ticket moves to review or done.
+  // A summary job in flight owns those files and deletes them itself when it
+  // finishes; deleting them here would leave it summarising nothing.
+  const summaryInFlight = runSummarizer.isSummarizing(ticketId)
+    || backlogDb.getTicketById(ticketId)?.run_summary?.status === 'generating';
+  if ((newStatus === 'review' || newStatus === 'done') && !summaryInFlight) {
     try {
       const runOutputDir = path.join(PROJECT_ROOT, '.ombutocode', 'run-output');
       if (fs.existsSync(runOutputDir)) {
@@ -3232,6 +3338,9 @@ ipcMain.handle('settings:read', async () => {
       eval_default_model: settingsStore.get('eval_default_model', null),
       ad_hoc_ticket_agent: settingsStore.get('ad_hoc_ticket_agent', null),
       ad_hoc_ticket_model: settingsStore.get('ad_hoc_ticket_model', null),
+      run_summary_enabled: settingsStore.get('run_summary_enabled', true),
+      run_summary_agent: settingsStore.get('run_summary_agent', null),
+      run_summary_model: settingsStore.get('run_summary_model', null),
       app_refresh_interval: settingsStore.get('app_refresh_interval', 30),
       enable_review_notification_sound: settingsStore.get('enable_review_notification_sound', true),
       auto_assign_promoted_tickets: settingsStore.get('auto_assign_promoted_tickets', false),
@@ -3325,6 +3434,40 @@ ipcMain.handle('settings:write', async (_, payload) => {
       }
     }
 
+    // Validate run_summary_enabled
+    if ('run_summary_enabled' in payload) {
+      const value = payload.run_summary_enabled;
+      if (typeof value !== 'boolean') {
+        errors.push('run_summary_enabled must be a boolean');
+      } else {
+        updates.run_summary_enabled = value;
+      }
+    }
+
+    // Validate run_summary_agent
+    if ('run_summary_agent' in payload) {
+      const value = payload.run_summary_agent;
+      if (value !== null && typeof value !== 'string') {
+        errors.push('run_summary_agent must be a string or null');
+      } else if (value !== null && value.trim() === '') {
+        errors.push('run_summary_agent cannot be an empty string');
+      } else {
+        updates.run_summary_agent = value;
+      }
+    }
+
+    // Validate run_summary_model
+    if ('run_summary_model' in payload) {
+      const value = payload.run_summary_model;
+      if (value !== null && typeof value !== 'string') {
+        errors.push('run_summary_model must be a string or null');
+      } else if (value !== null && value.trim() === '') {
+        errors.push('run_summary_model cannot be an empty string');
+      } else {
+        updates.run_summary_model = value;
+      }
+    }
+
     // Validate app_refresh_interval
     if ('app_refresh_interval' in payload) {
       const value = payload.app_refresh_interval;
@@ -3413,6 +3556,9 @@ ipcMain.handle('settings:write', async (_, payload) => {
       eval_default_model: settingsStore.get('eval_default_model'),
       ad_hoc_ticket_agent: settingsStore.get('ad_hoc_ticket_agent'),
       ad_hoc_ticket_model: settingsStore.get('ad_hoc_ticket_model'),
+      run_summary_enabled: settingsStore.get('run_summary_enabled', true),
+      run_summary_agent: settingsStore.get('run_summary_agent'),
+      run_summary_model: settingsStore.get('run_summary_model'),
       app_refresh_interval: settingsStore.get('app_refresh_interval'),
       enable_review_notification_sound: settingsStore.get('enable_review_notification_sound'),
       auto_assign_promoted_tickets: settingsStore.get('auto_assign_promoted_tickets', false),

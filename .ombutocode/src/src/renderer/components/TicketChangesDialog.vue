@@ -97,7 +97,9 @@
               <button class="show-anyway-btn" @click="loadDiff(selectedFile, true)">Show anyway</button>
             </div>
 
-            <div v-show="mergeReady" ref="mergeContainer" class="merge-container"></div>
+            <!-- v-show, not v-if: CodeMirror measures its container on
+                 construction, so the node must already be laid out. -->
+            <div v-show="hasRenderableDiff" ref="mergeContainer" class="merge-container"></div>
           </section>
         </div>
       </div>
@@ -181,9 +183,18 @@ export default {
     const mergeContainer = ref(null);
     let mergeView = null;
 
-    const mergeReady = computed(() => (
-      !!diff.value && !diff.value.binary && !diff.value.tooLarge && !loadingDiff.value && !diffError.value
+    /**
+     * Whether the loaded diff is renderable at all.
+     *
+     * Deliberately independent of loadingDiff: renderMergeView() runs while the
+     * load is still settling, and folding the loading flag in here once made it
+     * bail every time, leaving two empty panes.
+     */
+    const hasRenderableDiff = computed(() => (
+      !!diff.value && !diff.value.binary && !diff.value.tooLarge && !diffError.value
     ));
+
+    const mergeReady = computed(() => hasRenderableDiff.value && !loadingDiff.value);
 
     const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
 
@@ -218,7 +229,7 @@ export default {
 
     function renderMergeView() {
       destroyMergeView();
-      if (!mergeReady.value || !mergeContainer.value) return;
+      if (!hasRenderableDiff.value || !mergeContainer.value) return;
 
       const language = languageExtension(diff.value.path);
       const baseExtensions = [
@@ -286,6 +297,9 @@ export default {
           return;
         }
         diff.value = response.data;
+        // Clear the flag before rendering so the container is laid out rather
+        // than display:none when CodeMirror measures it.
+        loadingDiff.value = false;
         await nextTick();
         renderMergeView();
       } catch (error) {
@@ -316,6 +330,7 @@ export default {
       loadingDiff,
       diffError,
       mergeReady,
+      hasRenderableDiff,
       mergeContainer,
       selectFile,
       loadDiff,
@@ -333,6 +348,7 @@ export default {
   height: 90vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .changes-header {
@@ -340,6 +356,7 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  flex-shrink: 0;
 }
 
 .changes-title-group {
@@ -385,10 +402,13 @@ export default {
 }
 
 .changes-body {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* The two inner columns own their own scrollbars; the body itself must not
+     scroll or the file list would slide out of view with the diff. */
+  overflow: hidden;
 }
 
 .changes-layout {
@@ -482,6 +502,7 @@ export default {
   border-bottom: 1px solid #dbe5f0;
   background-color: #f8fafc;
   font-size: 0.76rem;
+  flex-shrink: 0;
 }
 
 .diff-path { font-weight: 600; word-break: break-all; }
@@ -492,6 +513,7 @@ export default {
   grid-template-columns: 1fr 1fr;
   border-bottom: 1px solid #dbe5f0;
   background-color: #f1f5f9;
+  flex-shrink: 0;
 }
 
 .diff-pane-labels span {

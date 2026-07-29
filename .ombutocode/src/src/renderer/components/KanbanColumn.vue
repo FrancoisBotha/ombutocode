@@ -396,23 +396,6 @@
           </button>
           <div v-if="columnId === 'review'" class="review-actions">
             <button
-              class="changes-btn"
-              @click.stop="openChanges(task)"
-              title="View code changes"
-            >
-              <span class="mdi mdi-source-branch"></span>
-            </button>
-            <button
-              v-if="runSummaryState(task)"
-              class="run-summary-btn"
-              :class="`is-${runSummaryState(task)}`"
-              :disabled="runSummaryState(task) === 'generating'"
-              @click.stop="openRunSummary(task)"
-              :title="runSummaryTitle(task)"
-            >
-              <span class="mdi" :class="runSummaryIcon(task)"></span>
-            </button>
-            <button
               class="approve-btn"
               :disabled="isReviewActionDisabled(task)"
               @click.stop="approveTicket(task.id)"
@@ -429,14 +412,6 @@
               <span class="mdi mdi-close"></span>
             </button>
           </div>
-          <button
-            v-if="columnId === 'done'"
-            class="changes-btn"
-            @click.stop="openChanges(task)"
-            title="View code changes"
-          >
-            <span class="mdi mdi-source-branch"></span>
-          </button>
           <button
             v-if="columnId === 'done'"
             class="archive-btn"
@@ -512,13 +487,35 @@
           <span class="mdi mdi-alert-circle"></span>
           <span class="error-text">{{ startErrorMessage }}</span>
         </div>
-        <button
-          class="info-btn"
-          @click.stop="openTaskDetail(task)"
-          title="View ticket details"
-        >
-          <span class="info-icon">i</span>
-        </button>
+        <!-- Footer actions. Changes and run summary live here rather than in
+             the approve/reject row so that row stays a decision, not a menu. -->
+        <div class="task-footer-actions">
+          <button
+            v-if="columnId === 'review' || columnId === 'done'"
+            class="footer-icon-btn changes-btn"
+            @click.stop="openChanges(task)"
+            title="View code changes"
+          >
+            <span class="mdi mdi-source-branch"></span>
+          </button>
+          <button
+            v-if="(columnId === 'review' || columnId === 'done') && runSummaryState(task)"
+            class="footer-icon-btn run-summary-btn"
+            :class="`is-${runSummaryState(task)}`"
+            :disabled="runSummaryState(task) === 'generating'"
+            @click.stop="openRunSummary(task)"
+            :title="runSummaryTitle(task)"
+          >
+            <span class="mdi" :class="runSummaryIcon(task)"></span>
+          </button>
+          <button
+            class="info-btn"
+            @click.stop="openTaskDetail(task)"
+            title="View ticket details"
+          >
+            <span class="info-icon">i</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -1711,50 +1708,73 @@ export default {
 }
 [data-theme="dark"] .doctor-btn:hover { background-color: rgba(229, 168, 48, 0.32); }
 
-.changes-btn {
+/* The light-theme indigo and slate both go muddy on the dark card background. */
+[data-theme="dark"] .changes-btn { border-color: #818cf8; color: #818cf8; }
+[data-theme="dark"] .changes-btn:hover { background-color: #818cf8; color: #11151a; }
+[data-theme="dark"] .run-summary-btn { border-color: #94a3b8; color: #94a3b8; }
+[data-theme="dark"] .run-summary-btn:hover { background-color: #94a3b8; color: #11151a; }
+[data-theme="dark"] .run-summary-btn:disabled,
+[data-theme="dark"] .run-summary-btn.is-unavailable { border-color: #4b5563; color: #4b5563; }
+[data-theme="dark"] .run-summary-btn:disabled:hover,
+[data-theme="dark"] .run-summary-btn.is-unavailable:hover { background: none; color: #4b5563; }
+[data-theme="dark"] .run-summary-btn.is-failed { border-color: #e5a830; color: #e5a830; }
+[data-theme="dark"] .run-summary-btn.is-failed:hover { background-color: #e5a830; color: #11151a; }
+
+/* Footer row: outlined icons that sit quietly beside the info circle rather
+   than competing with the filled approve/reject buttons above. */
+.task-footer-actions {
+  align-self: flex-end;
+  margin-top: -0.375rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.footer-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border-radius: 50%;
-  background-color: #4338ca;
-  color: white;
+  background: none;
   cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.15s ease;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: all 0.15s ease;
 }
 
-.changes-btn:hover { background-color: #3730a3; }
+.changes-btn {
+  border: 1.5px solid #4338ca;
+  color: #4338ca;
+}
+
+.changes-btn:hover { background-color: #4338ca; color: #fff; }
 
 .run-summary-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 50%;
-  background-color: #5e6c84;
-  color: white;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background-color 0.15s ease;
+  border: 1.5px solid #5e6c84;
+  color: #5e6c84;
 }
 
-.run-summary-btn:hover { background-color: #42526e; }
+.run-summary-btn:hover { background-color: #5e6c84; color: #fff; }
 
-/* Generating and unavailable are both non-actionable — mute them so the eye
-   goes to the approve/reject pair instead. */
+/* Generating and unavailable are both non-actionable. */
 .run-summary-btn:disabled,
 .run-summary-btn.is-unavailable {
-  background-color: #a5adba;
+  border-color: #a5adba;
+  color: #a5adba;
   cursor: not-allowed;
 }
 
-.run-summary-btn.is-failed { background-color: #e0a800; }
-.run-summary-btn.is-failed:hover { background-color: #c69500; }
+.run-summary-btn:disabled:hover,
+.run-summary-btn.is-unavailable:hover {
+  background: none;
+  color: #a5adba;
+}
+
+.run-summary-btn.is-failed { border-color: #e0a800; color: #e0a800; }
+.run-summary-btn.is-failed:hover { background-color: #e0a800; color: #fff; }
 
 .approve-btn {
   display: flex;
@@ -1899,8 +1919,6 @@ export default {
 }
 
 .info-btn {
-  align-self: flex-end;
-  margin-top: -0.375rem;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -180,6 +180,39 @@ Each requirement listed in the epic's §4 / §5 should include its FR/NFR ID for
 4. **For each confirmed epic**:
    - Create the `docs/Epics/epic_NN_<NAME>.md` file using the structure above, with the title `# Epic N: <Name>` (unpadded N inside the file, zero-padded NN in the filename).
    - Append rows to the FR / NFR matrices for any requirements introduced, referencing the full prefixed epic stem.
-5. **Report what was written** — list the new epic files (with their numeric prefixes) and the FR/NFR IDs that were added.
+5. **Commit the new files** — see "Commit what you wrote" below. Agents run in worktrees and cannot see uncommitted epics.
+6. **Report what was written** — list the new epic files (with their numeric prefixes) and the FR/NFR IDs that were added.
 
 Do NOT create the backlog tickets themselves — that is the job of the Ticket Generation skill, run separately once the epic is finalised.
+
+---
+
+## Commit what you wrote — agents cannot see uncommitted files
+
+Implementation, test and eval agents run inside **git worktrees**, which contain
+committed content only. An epic that exists solely in the working tree is
+invisible to them: the eval agent's epic reference check finds nothing and
+silently falls back to the ticket's inline acceptance criteria, so the epic you
+just wrote never actually governs the build.
+
+The same applies to *edits* — a tracked epic with uncommitted modifications is
+read by agents in its last committed state, not the state you see on disk.
+
+So the final step of this skill is always to commit:
+
+```bash
+git add "docs/Epics/epic_NN_<NAME>.md" \
+        "docs/Functional Requirements/FunctionalRequirements.md" \
+        "docs/Non-Functional Requirements/NonFunctionalRequirements.md"
+git commit -m "Add epic NN: <Name>"
+```
+
+Rules:
+
+- Stage **only the files this session wrote or edited**. Never `git add -A` or
+  `git add .` — that sweeps unrelated in-progress work into the commit.
+- Drop the matrix paths from the `git add` if this session did not touch them.
+- Use `Refine epic NN: <Name>` as the message when editing an existing epic.
+- If the commit fails — not a git repo, a hook rejects it, nothing staged —
+  **say so explicitly in your report**. An uncommitted epic looks perfectly fine
+  on disk and only fails much later, silently, inside an agent run.

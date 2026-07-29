@@ -163,6 +163,8 @@ export default {
   max-height: 85vh;
   display: flex;
   flex-direction: column;
+  /* Keep the body's scrollbar inside the rounded corners. */
+  overflow: hidden;
 }
 
 .run-summary-header {
@@ -170,6 +172,8 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  /* The header must not be squeezed when the body is long. */
+  flex-shrink: 0;
 }
 
 .run-summary-title-group {
@@ -220,6 +224,11 @@ export default {
 }
 
 .run-summary-body {
+  /* flex:1 plus min-height:0 is what actually lets this scroll — without the
+     min-height a flex child refuses to shrink below its content and the
+     overflow never engages. */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

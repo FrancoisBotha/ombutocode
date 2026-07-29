@@ -62,7 +62,8 @@ The user has an existing epic set and wants to add one more. Typical reasons:
 5. **Propose a list of targeted edits** (numbered, with section references). Wait for confirmation. Iterate.
 6. **Apply confirmed edits** to the file. Update `Last Updated:` to today's date.
 7. **Touch FR/NFR matrices only for new requirements** you've added — append rows with the next sequential ID. Never remove or renumber existing rows; reword them only with explicit permission.
-8. **Report back** with a concise summary of what changed, organised by section.
+8. **Commit the edited files** — see "Commit what you wrote" below. Agents read the last committed state, not your working tree.
+9. **Report back** with a concise summary of what changed, organised by section.
 
 ---
 
@@ -76,7 +77,8 @@ The user has an existing epic set and wants to add one more. Typical reasons:
 5. **Propose a summary** of the new epic: title, one-line purpose, in/out scope at a glance, likely dependencies, ticket-count estimate. Ask the user to confirm or revise.
 6. **Write the epic file** at `docs/Epics/epic_NN_<NAME>.md` using the 13-section structure from the Epic Generation skill. Start with `Status: NEW`.
 7. **Cross-reference FR/NFR** by appending rows to the matrices for any requirements the new epic introduces. Use the next sequential IDs; do not renumber.
-8. **Report back**: the new filename, its prefix, and the FR/NFR IDs that were added.
+8. **Commit the new files** — see "Commit what you wrote" below. Agents run in worktrees and cannot see uncommitted epics.
+9. **Report back**: the new filename, its prefix, and the FR/NFR IDs that were added.
 
 ---
 
@@ -92,3 +94,35 @@ The user has an existing epic set and wants to add one more. Typical reasons:
 ## Reference
 
 For the exact epic file structure, section list, numbering rules, FR/NFR matrix format, and `Depends On:` semantics, see [`Epic Generation`](./Epic%20Generation.md) — this skill follows the same conventions; the difference is *scope of work per session*, not output format.
+
+---
+
+## Commit what you wrote — agents cannot see uncommitted files
+
+Implementation, test and eval agents run inside **git worktrees**, which contain
+committed content only. An epic that exists solely in the working tree is
+invisible to them: the eval agent's epic reference check finds nothing and
+silently falls back to the ticket's inline acceptance criteria, so the epic you
+just wrote never actually governs the build.
+
+The same applies to *edits* — a tracked epic with uncommitted modifications is
+read by agents in its last committed state, not the state you see on disk.
+
+So the final step of this skill is always to commit:
+
+```bash
+git add "docs/Epics/epic_NN_<NAME>.md" \
+        "docs/Functional Requirements/FunctionalRequirements.md" \
+        "docs/Non-Functional Requirements/NonFunctionalRequirements.md"
+git commit -m "Add epic NN: <Name>"
+```
+
+Rules:
+
+- Stage **only the files this session wrote or edited**. Never `git add -A` or
+  `git add .` — that sweeps unrelated in-progress work into the commit.
+- Drop the matrix paths from the `git add` if this session did not touch them.
+- Use `Refine epic NN: <Name>` as the message when editing an existing epic.
+- If the commit fails — not a git repo, a hook rejects it, nothing staged —
+  **say so explicitly in your report**. An uncommitted epic looks perfectly fine
+  on disk and only fails much later, silently, inside an agent run.

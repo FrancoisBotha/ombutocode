@@ -240,6 +240,14 @@ export default {
   padding: 0.75rem 1rem 1rem;
 }
 
+/* Children must keep their natural height. As shrinkable flex items they were
+   being compressed to fit instead of overflowing, so the body never scrolled —
+   and because .run-summary-section is overflow:hidden, each section quietly
+   clipped its own text rather than showing a scrollbar anywhere. */
+.run-summary-body > * {
+  flex-shrink: 0;
+}
+
 .run-summary-header { padding: 0.85rem 1rem 0.6rem; }
 
 .run-summary-state {

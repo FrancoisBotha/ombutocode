@@ -108,7 +108,7 @@
 </template>
 
 <script>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { MergeView } from '@codemirror/merge';
 import { EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
@@ -282,16 +282,23 @@ export default {
         }
         commit.value = response.data;
         files.value = response.data.files || [];
-        // Open on the first row as displayed, preferring a text file so the
-        // panes show a real diff rather than a "binary file" notice.
-        const ordered = displayedFiles.value;
-        const first = ordered.find(f => !f.binary) || ordered[0];
-        if (first) await selectFile(first);
       } catch (error) {
         loadError.value = error?.message || 'Unable to load changes.';
+        return;
       } finally {
         loadingFiles.value = false;
       }
+
+      // Only now does the layout exist: mergeContainer lives inside the v-else
+      // branch of the loadingFiles chain, so selecting a file any earlier would
+      // have nothing to mount the editor into.
+      await nextTick();
+
+      // Open on the first row as displayed, preferring a text file so the panes
+      // show a real diff rather than a "binary file" notice.
+      const ordered = displayedFiles.value;
+      const first = ordered.find(f => !f.binary) || ordered[0];
+      if (first) await selectFile(first);
     }
 
     async function loadDiff(file, allowLarge = false) {
@@ -312,11 +319,9 @@ export default {
           return;
         }
         diff.value = response.data;
-        // Clear the flag before rendering so the container is laid out rather
-        // than display:none when CodeMirror measures it.
+        // The post-flush watcher below mounts the editor once Vue has shown the
+        // container — no manual nextTick sequencing here.
         loadingDiff.value = false;
-        await nextTick();
-        renderMergeView();
       } catch (error) {
         diffError.value = error?.message || 'Unable to load this file.';
         diff.value = null;
@@ -329,6 +334,27 @@ export default {
       selectedPath.value = file.path;
       await loadDiff(file, false);
     }
+
+    /**
+     * Mount the editor whenever a renderable diff is on screen.
+     *
+     * flush: 'post' runs after Vue has patched the DOM, so the container is
+     * guaranteed to exist and be laid out — CodeMirror measures it on
+     * construction. Doing this by hand with nextTick() twice went wrong twice:
+     * once rendering while the loading flag still hid the container, and once
+     * rendering before the file list had replaced the loading placeholder.
+     */
+    watch(
+      () => (hasRenderableDiff.value ? diff.value : null),
+      (value) => {
+        if (!value) {
+          destroyMergeView();
+          return;
+        }
+        renderMergeView();
+      },
+      { flush: 'post' }
+    );
 
     onMounted(loadFiles);
     onBeforeUnmount(destroyMergeView);

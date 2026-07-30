@@ -210,8 +210,20 @@ export default {
       }
       return [...groups.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([dir, groupFiles]) => ({ dir, files: groupFiles }));
+        .map(([dir, groupFiles]) => ({
+          dir,
+          files: groupFiles.slice().sort((a, b) => a.path.localeCompare(b.path))
+        }));
     });
+
+    /**
+     * Files in the order the user actually sees them.
+     *
+     * The list is grouped and sorted by directory, so files[0] — whatever order
+     * git happened to emit — is usually not the top row. Selecting from this
+     * instead keeps the initial highlight on the first visible file.
+     */
+    const displayedFiles = computed(() => groupedFiles.value.flatMap(group => group.files));
 
     const formatBytes = (bytes) => {
       const value = Number(bytes) || 0;
@@ -270,8 +282,11 @@ export default {
         }
         commit.value = response.data;
         files.value = response.data.files || [];
-        const firstText = files.value.find(f => !f.binary) || files.value[0];
-        if (firstText) await selectFile(firstText);
+        // Open on the first row as displayed, preferring a text file so the
+        // panes show a real diff rather than a "binary file" notice.
+        const ordered = displayedFiles.value;
+        const first = ordered.find(f => !f.binary) || ordered[0];
+        if (first) await selectFile(first);
       } catch (error) {
         loadError.value = error?.message || 'Unable to load changes.';
       } finally {
@@ -326,6 +341,7 @@ export default {
       selectedPath,
       selectedFile,
       groupedFiles,
+      displayedFiles,
       diff,
       loadingDiff,
       diffError,
@@ -531,24 +547,22 @@ export default {
 
 .merge-container {
   flex: 1 1 auto;
-  /* CodeMirror's own .cm-scroller does the scrolling, so this must not add a
-     second scrollbar of its own. The chain below has to give every wrapper a
-     definite height or the editor grows to fit its content and never scrolls. */
   min-height: 0;
   overflow: hidden;
 }
 
-.merge-container :deep(.cm-mergeView),
-.merge-container :deep(.cm-mergeViewEditors),
-.merge-container :deep(.cm-mergeViewEditor),
-.merge-container :deep(.cm-editor) {
+/* .cm-mergeView is the scrolling element — the package ships it with
+   overflow-y:auto and forces the inner .cm-scroller to height:auto /
+   overflow-y:visible so both panes scroll together in lockstep.
+   Only constrain the merge view itself; giving the inner wrappers a height
+   clips the content instead (.cm-mergeViewEditor is overflow:hidden), leaving
+   nothing to overflow and therefore no scrollbar. */
+.merge-container :deep(.cm-mergeView) {
   height: 100%;
-  min-height: 0;
 }
 
 .merge-container :deep(.cm-scroller) {
   font-size: 0.78rem;
-  overflow: auto;
 }
 
 /* The default change highlight is a 2px gradient underline, which is hard to

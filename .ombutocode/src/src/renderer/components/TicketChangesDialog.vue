@@ -357,6 +357,7 @@ export default {
   justify-content: space-between;
   gap: 1rem;
   flex-shrink: 0;
+  padding: 0.85rem 1rem 0.6rem;
 }
 
 .changes-title-group {
@@ -409,6 +410,7 @@ export default {
   /* The two inner columns own their own scrollbars; the body itself must not
      scroll or the file list would slide out of view with the diff. */
   overflow: hidden;
+  padding: 0 1rem 1rem;
 }
 
 .changes-layout {
@@ -528,15 +530,46 @@ export default {
 .diff-pane-labels span + span { border-left: 1px solid #dbe5f0; }
 
 .merge-container {
-  flex: 1;
+  flex: 1 1 auto;
+  /* CodeMirror's own .cm-scroller does the scrolling, so this must not add a
+     second scrollbar of its own. The chain below has to give every wrapper a
+     definite height or the editor grows to fit its content and never scrolls. */
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .merge-container :deep(.cm-mergeView),
-.merge-container :deep(.cm-mergeViewEditors) { height: 100%; }
-.merge-container :deep(.cm-editor) { height: 100%; }
-.merge-container :deep(.cm-scroller) { font-size: 0.78rem; }
+.merge-container :deep(.cm-mergeViewEditors),
+.merge-container :deep(.cm-mergeViewEditor),
+.merge-container :deep(.cm-editor) {
+  height: 100%;
+  min-height: 0;
+}
+
+.merge-container :deep(.cm-scroller) {
+  font-size: 0.78rem;
+  overflow: auto;
+}
+
+/* The default change highlight is a 2px gradient underline, which is hard to
+   read against code. A flat background tint on the changed span reads far
+   better and still distinguishes insertions from deletions. */
+.merge-container :deep(.cm-merge-b .cm-changedText),
+.merge-container :deep(.cm-merge-a .cm-changedText),
+.merge-container :deep(.cm-deletedChunk .cm-deletedText) {
+  background: none;
+}
+
+.merge-container :deep(.cm-merge-b .cm-changedText) {
+  background-color: rgba(34, 187, 34, 0.22);
+  border-radius: 2px;
+}
+
+.merge-container :deep(.cm-merge-a .cm-changedText),
+.merge-container :deep(.cm-deletedChunk .cm-deletedText) {
+  background-color: rgba(238, 68, 51, 0.20);
+  border-radius: 2px;
+}
 
 .changes-state {
   display: flex;
@@ -563,6 +596,16 @@ export default {
 }
 
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+
+/* Slightly stronger tints so they survive the dark editor background. */
+[data-theme="dark"] .merge-container :deep(.cm-merge-b .cm-changedText) {
+  background-color: rgba(136, 255, 136, 0.22);
+}
+
+[data-theme="dark"] .merge-container :deep(.cm-merge-a .cm-changedText),
+[data-theme="dark"] .merge-container :deep(.cm-deletedChunk .cm-deletedText) {
+  background-color: rgba(255, 170, 153, 0.22);
+}
 
 [data-theme="dark"] .changes-icon,
 [data-theme="dark"] .changes-subtitle,

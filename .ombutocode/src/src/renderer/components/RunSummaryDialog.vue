@@ -160,7 +160,10 @@ export default {
 .run-summary-modal {
   max-width: 760px;
   width: 90vw;
-  max-height: 85vh;
+  /* height, not max-height: a percentage max-height on a flex-centred child
+     leaves the body's height indefinite, so overflow-y never engages and no
+     scrollbar appears. A definite height is what makes the chain work. */
+  height: 85vh;
   display: flex;
   flex-direction: column;
   /* Keep the body's scrollbar inside the rounded corners. */
@@ -233,7 +236,11 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  /* The shared modal classes only supply colours here, not spacing. */
+  padding: 0.75rem 1rem 1rem;
 }
+
+.run-summary-header { padding: 0.85rem 1rem 0.6rem; }
 
 .run-summary-state {
   display: flex;

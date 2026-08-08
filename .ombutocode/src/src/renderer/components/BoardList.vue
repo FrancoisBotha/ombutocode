@@ -336,6 +336,7 @@
         >
           <span class="mdi mdi-wrench-outline"></span>
         </div>
+        <!-- Feature Requests hidden for now — the 'requests' view still exists.
         <div
           class="collapsed-board"
           :class="{ 'is-active': activeView === 'requests' }"
@@ -344,6 +345,7 @@
         >
           <span class="mdi mdi-message-text-outline"></span>
         </div>
+        -->
         <div
           class="collapsed-board"
           :class="{ 'is-active': activeView === 'backlog' }"
@@ -386,6 +388,14 @@
           title="Archive"
         >
           <span class="mdi mdi-archive"></span>
+        </div>
+        <div
+          class="collapsed-board"
+          :class="{ 'is-active': activeView === 'review-codemap' }"
+          @click="$emit('change-view', 'review-codemap')"
+          title="Code Map"
+        >
+          <span class="mdi mdi-graph-outline"></span>
         </div>
       </template>
 
@@ -609,7 +619,8 @@ export default {
           { view: 'kanban', label: 'Board' },
           { action: 'minor-fix', label: 'Minor Fix' },
           { view: 'backlog', label: 'Backlog' },
-          { view: 'requests', label: 'Feature Requests' },
+          // Feature Requests hidden for now — the 'requests' view still exists.
+          // { view: 'requests', label: 'Feature Requests' },
         ]
       },
       {
@@ -685,6 +696,7 @@ export default {
       { view: 'epics', label: 'Epics', icon: 'mdi-shape-outline' },
       { view: 'logs', label: 'Logs', icon: 'mdi-text-box-outline' },
       { view: 'archive', label: 'Archive', icon: 'mdi-archive' },
+      { view: 'review-codemap', label: 'Code Map', icon: 'mdi-graph-outline' },
     ];
 
     const reviewNavGroups = [
@@ -694,6 +706,12 @@ export default {
           { view: 'epics', label: 'Epics' },
           { view: 'logs', label: 'Logs' },
           { view: 'archive', label: 'Archive' },
+        ]
+      },
+      {
+        label: 'Insight',
+        items: [
+          { view: 'review-codemap', label: 'Code Map' },
         ]
       },
     ];
@@ -795,6 +813,7 @@ export default {
       'non-functional requirements',
       'use case diagrams',
       'structure',
+      'code map',
       'references',
       'skills',
       'scratchpad',
@@ -892,6 +911,11 @@ export default {
         emit('change-view', 'plan-use-case-editor');
       } else if (node.path.endsWith('.ddl')) {
         emit('change-view', 'plan-er-diagram');
+      } else if (node.path === 'Code Map/codemap.html') {
+        // The Markdown viewer can't render the map — hand it to the Code Map
+        // view, which shows it in an iframe on its Map tab.
+        window.__codeMapOpenTab = 'map';
+        emit('change-view', 'review-codemap');
       } else {
         emit('change-view', 'plan-file-preview');
       }

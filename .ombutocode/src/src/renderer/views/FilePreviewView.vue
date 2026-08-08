@@ -63,7 +63,9 @@
               <span class="mdi mdi-pencil-outline"></span> Refine with AI
             </button>
           </template>
-          <template v-if="!viewingHistorical && !isEditMode">
+          <!-- No Edit for HTML: the split editor previews as Markdown, and
+               these files are generated artefacts, not hand-written docs. -->
+          <template v-if="!viewingHistorical && !isEditMode && !isHtml">
             <button class="edit-btn" type="button" @click="onEdit">Edit</button>
           </template>
           <template v-if="isEditMode">
@@ -102,6 +104,18 @@
       <div v-else-if="isImage" class="image-preview">
         <img v-if="imageDataUrl" :src="imageDataUrl" :alt="fileName" class="image-full" />
         <p v-else class="state-text">Loading image...</p>
+      </div>
+
+      <div v-else-if="isHtml" class="html-doc-preview">
+        <iframe class="html-doc-frame" sandbox="allow-scripts" :srcdoc="htmlSource"></iframe>
+      </div>
+
+      <div v-else-if="jsonPreview" class="json-body">
+        <p v-if="!jsonPreview.valid" class="json-warning">
+          <span class="mdi mdi-alert-outline"></span>
+          This file is not valid JSON &mdash; showing it exactly as stored.
+        </p>
+        <pre><code class="hljs language-json" v-html="jsonPreview.html"></code></pre>
       </div>
 
       <article v-else class="markdown-body" v-html="renderedHtml"></article>
@@ -236,6 +250,11 @@ export default {
     const imageDataUrl = ref('');
 
     const isImage = computed(() => IMAGE_EXTS.test(activePath.value));
+    // Self-contained HTML artefacts (code map, style-guide previews) are shown
+    // as rendered pages, not as their source.
+    const isHtml = computed(() => /\.html?$/i.test(activePath.value));
+    // .lock is included because the code map writes its lock file as JSON.
+    const isJsonLike = computed(() => /\.(json|lock)$/i.test(activePath.value));
     const isPrd = computed(() => activePath.value.startsWith('Product Requirements Document/') && activePath.value.endsWith('.md'));
     const isSkill = computed(() => activePath.value.startsWith('Skills/') && activePath.value.endsWith('.md'));
     const isArchitecture = computed(() => activePath.value.startsWith('Architecture/') && activePath.value.endsWith('.md'));
@@ -653,6 +672,24 @@ Use ONLY the colours, fonts, spacing, and conventions documented in the style gu
       return folders.length ? `docs / ${folders.join(' / ')} /` : 'docs /';
     });
 
+    // Raw file text, handed to the iframe for .html documents.
+    const htmlSource = computed(() => markdown.value || '');
+
+    // JSON documents are re-indented and syntax highlighted. A file that does
+    // not parse is shown verbatim with a warning rather than reformatted — we
+    // must not imply a malformed file is well-formed.
+    const jsonPreview = computed(() => {
+      if (!isJsonLike.value) return null;
+      const raw = markdown.value || '';
+      if (!raw.trim()) return null;
+      try {
+        const formatted = JSON.stringify(JSON.parse(raw), null, 2);
+        return { html: hljs.highlight(formatted, { language: 'json' }).value, valid: true };
+      } catch (_) {
+        return { html: hljs.highlight(raw, { language: 'json' }).value, valid: false };
+      }
+    });
+
     const renderedHtml = computed(() => {
       if (!markdown.value) {
         return '<p class="empty-copy">This file is empty.</p>';
@@ -918,6 +955,9 @@ Use ONLY the colours, fonts, spacing, and conventions documented in the style gu
       imageDataUrl,
       isEditMode,
       isImage,
+      isHtml,
+      htmlSource,
+      jsonPreview,
       isPrd,
       isArchitecture,
       isSkill,
@@ -1420,5 +1460,71 @@ Use ONLY the colours, fonts, spacing, and conventions documented in the style gu
   max-width: 100%;
   max-height: 80vh;
   object-fit: contain;
+}
+
+/* Pretty-printed JSON documents */
+.json-body {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: 1rem 1.25rem;
+  overflow: auto;
+}
+
+.json-body pre {
+  margin: 0;
+}
+
+.json-body code {
+  display: block;
+  background: none;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* The app ships highlight.js's light github theme, whose token colours are
+   near-black on the dark card. Repaint them for dark mode only. */
+[data-theme="dark"] .json-body code,
+[data-theme="dark"] .json-body :deep(.hljs-punctuation) {
+  color: #e6edf3;
+}
+
+[data-theme="dark"] .json-body :deep(.hljs-attr) { color: #7ee787; }
+[data-theme="dark"] .json-body :deep(.hljs-string) { color: #a5d6ff; }
+[data-theme="dark"] .json-body :deep(.hljs-number) { color: #ffa657; }
+[data-theme="dark"] .json-body :deep(.hljs-literal),
+[data-theme="dark"] .json-body :deep(.hljs-keyword) { color: #ff7b72; }
+
+.json-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  color: #b87f0e;
+}
+
+/* Rendered .html documents. The frame owns its own scrolling, so give it a
+   tall fixed viewport rather than letting it collapse to nothing. */
+.html-doc-preview {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+  height: 80vh;
+}
+
+.html-doc-frame {
+  flex: 1;
+  border: none;
+  background: #0A1220;
 }
 </style>

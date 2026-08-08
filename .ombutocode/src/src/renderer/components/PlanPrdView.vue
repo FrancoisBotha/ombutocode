@@ -34,7 +34,7 @@
               v-model="selectedSkillPath"
               @change="loadSelectedSkill"
             >
-              <option value="">-- None --</option>
+              <option v-if="!requireSkill" value="">-- None --</option>
               <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
                 <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
               </optgroup>
@@ -55,14 +55,19 @@
             v-html="renderedSkillHtml"
           ></div>
 
+          <p class="prd-agent-warning" v-if="requireSkill && !selectedSkillContent">
+            <span class="mdi mdi-alert-outline"></span>
+            A skill is required for {{ docShortName }}. Select one above to continue.
+          </p>
+
           <div class="prd-create-actions">
             <button
               class="prd-btn prd-btn-primary"
-              :disabled="!defaultAgent"
+              :disabled="!canRunSession"
               @click="confirmCreate"
             >
               <span class="mdi mdi-robot-outline"></span>
-              Create {{ docShortName }}{{ selectedSkillContent ? ' with selected skill' : '' }}
+              Create {{ docShortName }}{{ !requireSkill && selectedSkillContent ? ' with selected skill' : '' }}
             </button>
           </div>
         </div>
@@ -81,7 +86,7 @@
           <button class="prd-btn prd-btn-secondary" @click="viewExistingDoc">
             <span class="mdi mdi-eye-outline"></span> View
           </button>
-          <button class="prd-btn prd-btn-primary" @click="startSession('refine')">
+          <button class="prd-btn prd-btn-primary" :disabled="!canRunSession" @click="startSession('refine')">
             <span class="mdi mdi-pencil-outline"></span> Refine with AI
           </button>
         </div>
@@ -104,7 +109,7 @@
           <div class="prd-skill-selector">
             <label class="prd-skill-label">Skill / System Prompt</label>
             <select class="prd-skill-select" v-model="selectedSkillPath" @change="loadSelectedSkill">
-              <option value="">-- None --</option>
+              <option v-if="!requireSkill" value="">-- None --</option>
               <optgroup v-for="g in skillGroups" :key="g.category" :label="g.category">
                 <option v-for="s in g.skills" :key="s.path" :value="s.path">{{ s.displayName }}</option>
               </optgroup>
@@ -164,7 +169,7 @@ let sessionCounter = 0;
 
 export default {
   name: 'PlanPrdView',
-  emits: ['change-view'],
+  emits: ['change-view', 'preview-doc'],
   props: {
     docTitle: { type: String, default: 'Product Requirements Document' },
     docSubtitle: { type: String, default: 'Define the vision, goals, and requirements for your product' },
@@ -175,6 +180,18 @@ export default {
     // Restrict the skill picker to one docs/Skills/<category>/ sub-folder
     // (empty = show all categories).
     skillCategory: { type: String, default: '' },
+    // Exact file name that proves the doc exists. Empty = "any .md in the
+    // folder", which is right for Markdown docs but not for generated
+    // artefacts like the code map (codemap.html + .json + .lock).
+    docDetectFile: { type: String, default: '' },
+    // When set, "View" emits 'preview-doc' with the doc path and lets the
+    // parent render it, instead of navigating to the Markdown preview. Used by
+    // artefacts the Markdown viewer can't show (e.g. self-contained HTML).
+    previewViaEmit: { type: Boolean, default: false },
+    // Some docs are only meaningful when generated from their skill (the code
+    // map's three-file contract lives entirely in the skill text). For those,
+    // drop the "-- None --" choice and refuse to launch without one.
+    requireSkill: { type: Boolean, default: false },
     createInstruction: { type: String, default: '' },
     refineInstruction: { type: String, default: '' },
     contextFiles: { type: Array, default: () => [] },
@@ -271,9 +288,11 @@ export default {
         if (tree && tree.children) {
           const folder = tree.children.find(c => c.name === props.docFolder);
           if (folder && folder.children) {
-            const mdFile = folder.children.find(f => f.type === 'file' && f.name.endsWith('.md'));
-            if (mdFile) {
-              existingDoc.value = mdFile.path;
+            const match = props.docDetectFile
+              ? folder.children.find(f => f.type === 'file' && f.name === props.docDetectFile)
+              : folder.children.find(f => f.type === 'file' && f.name.endsWith('.md'));
+            if (match) {
+              existingDoc.value = match.path;
               return;
             }
           }
@@ -302,6 +321,10 @@ export default {
       } catch (_) {}
     }
 
+    const canRunSession = computed(
+      () => !!defaultAgent.value && (!props.requireSkill || !!selectedSkillContent.value)
+    );
+
     const showOverwriteConfirm = ref(false);
 
     function confirmCreate() {
@@ -318,12 +341,16 @@ export default {
     }
 
     function viewExistingDoc() {
+      if (props.previewViaEmit) {
+        emit('preview-doc', existingDoc.value);
+        return;
+      }
       window.__planFilePreviewPath = existingDoc.value;
       emit('change-view', 'plan-file-preview');
     }
 
     async function startSession(mode = 'create') {
-      if (!defaultAgent.value) return;
+      if (!canRunSession.value) return;
       sessionActive.value = true;
       sessionMode.value = mode;
       const isRefine = mode === 'refine';
@@ -459,8 +486,16 @@ export default {
 
     // Refit xterm when this view re-appears (xterm can't measure while display:none).
     watch(() => props.visible, (isVisible) => {
-      if (isVisible && fitAddon) {
+      if (!isVisible) return;
+      if (fitAddon) {
         requestAnimationFrame(() => { try { fitAddon.fit(); } catch (_) {} });
+      }
+      // These views are mounted with v-show, so onMounted fires at app boot —
+      // before the agent startup checks have reported and before the agent has
+      // written any docs. Re-read on every entry so the buttons reflect reality.
+      if (!sessionActive.value) {
+        loadDefaultAgent();
+        checkExistingDoc();
       }
     });
 
@@ -476,7 +511,7 @@ export default {
       sessionPrompt, promptCollapsed, sessionMode,
       availableSkills, skillGroups, selectedSkillPath, selectedSkillContent, showSkillPreview, renderedSkillHtml,
       skillPanelWidth, loadSelectedSkill, startResize,
-      confirmCreate, showOverwriteConfirm, onConfirmOverwrite,
+      canRunSession, confirmCreate, showOverwriteConfirm, onConfirmOverwrite,
       viewExistingDoc, startSession, stopSession
     };
   }

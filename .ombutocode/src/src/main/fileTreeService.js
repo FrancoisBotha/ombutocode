@@ -16,8 +16,8 @@ function init(projectRoot) {
  */
 
 /**
- * Recursively scan a directory and return a tree of folders and .md files.
- * Excludes the .archive/ directory and non-.md files.
+ * Recursively scan a directory and return a tree of document files.
+ * Excludes the .archive/ directory, dotfiles, and unsupported extensions.
  */
 function scanDir(dirPath, relativeTo) {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -37,7 +37,13 @@ function scanDir(dirPath, relativeTo) {
         type: 'folder',
         children,
       });
-    } else if (entry.isFile() && /\.(md|mmd|ddl|txt|png|jpg|jpeg|gif|bmp|webp|svg)$/i.test(entry.name)) {
+    } else if (
+      entry.isFile() &&
+      // Dotfiles are internal bookkeeping (e.g. Mockups/.mockup-links.json),
+      // never user-facing documents.
+      !entry.name.startsWith('.') &&
+      /\.(md|mmd|ddl|txt|html|json|lock|png|jpg|jpeg|gif|bmp|webp|svg)$/i.test(entry.name)
+    ) {
       files.push({
         name: entry.name,
         path: relPath,

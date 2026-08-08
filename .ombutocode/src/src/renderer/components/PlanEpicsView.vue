@@ -28,13 +28,6 @@
               </select>
             </div>
             <div class="epics-context-field">
-              <label class="epics-context-label">Data Model</label>
-              <select class="epics-context-select" v-model="selectedDataModel">
-                <option value="">-- None --</option>
-                <option v-for="f in dataModelFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
-              </select>
-            </div>
-            <div class="epics-context-field">
               <label class="epics-context-label">Architecture Document</label>
               <select class="epics-context-select" v-model="selectedArch">
                 <option value="">-- None --</option>
@@ -46,6 +39,13 @@
               <select class="epics-context-select" v-model="selectedStyleGuide">
                 <option value="">-- None --</option>
                 <option v-for="f in styleGuideFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
+              </select>
+            </div>
+            <div class="epics-context-field">
+              <label class="epics-context-label">Code Map</label>
+              <select class="epics-context-select" v-model="selectedCodeMap">
+                <option value="">-- None --</option>
+                <option v-for="f in codeMapFiles" :key="f.path" :value="f.path">{{ f.name }}</option>
               </select>
             </div>
           </div>
@@ -232,13 +232,13 @@
               <span class="mdi mdi-layers-outline epics-ctx-icon"></span>
               <span>{{ selectedArch }}</span>
             </div>
-            <div class="epics-ctx-item" v-if="selectedDataModel">
-              <span class="mdi mdi-database-outline epics-ctx-icon"></span>
-              <span>{{ selectedDataModel }}</span>
-            </div>
             <div class="epics-ctx-item" v-if="selectedStyleGuide">
               <span class="mdi mdi-palette-outline epics-ctx-icon"></span>
               <span>{{ selectedStyleGuide }}</span>
+            </div>
+            <div class="epics-ctx-item" v-if="selectedCodeMap">
+              <span class="mdi mdi-graph-outline epics-ctx-icon"></span>
+              <span>{{ selectedCodeMap }}</span>
             </div>
             <div class="epics-field-group" style="margin-top: 0.75rem;">
               <label class="epics-panel-label">Skill</label>
@@ -395,12 +395,12 @@ export default {
     const epics = ref([]);
     const prdFiles = ref([]);
     const archFiles = ref([]);
-    const dataModelFiles = ref([]);
     const selectedPrd = ref('');
     const selectedArch = ref('');
-    const selectedDataModel = ref('');
     const styleGuideFiles = ref([]);
     const selectedStyleGuide = ref('');
+    const codeMapFiles = ref([]);
+    const selectedCodeMap = ref('');
 
     // Skill selection (Epic Generation skill from docs/Skills/)
     const skillFiles = ref([]);
@@ -508,16 +508,18 @@ export default {
             if (archFiles.value.length === 1) selectedArch.value = archFiles.value[0].path;
           }
 
-          const dmFolder = tree.children.find(c => c.name === 'Data Model');
-          if (dmFolder && dmFolder.children) {
-            dataModelFiles.value = dmFolder.children.filter(f => f.type === 'file');
-            if (dataModelFiles.value.length === 1) selectedDataModel.value = dataModelFiles.value[0].path;
-          }
-
           const sgFolder = tree.children.find(c => c.name === 'Style Guide');
           if (sgFolder && sgFolder.children) {
             styleGuideFiles.value = sgFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.md'));
             if (styleGuideFiles.value.length === 1) selectedStyleGuide.value = styleGuideFiles.value[0].path;
+          }
+
+          // Only the JSON map is offered — codemap.html is a rendered view and
+          // codemap.lock only records fingerprints, so neither is useful context.
+          const cmFolder = tree.children.find(c => c.name === 'Code Map');
+          if (cmFolder && cmFolder.children) {
+            codeMapFiles.value = cmFolder.children.filter(f => f.type === 'file' && f.name.endsWith('.json'));
+            if (codeMapFiles.value.length === 1) selectedCodeMap.value = codeMapFiles.value[0].path;
           }
         }
       } catch (_) {}
@@ -631,8 +633,8 @@ export default {
 
       const contextParts = [`Read the PRD at "docs/${selectedPrd.value}"`];
       if (selectedArch.value) contextParts.push(`the Architecture document at "docs/${selectedArch.value}"`);
-      if (selectedDataModel.value) contextParts.push(`the Data Model at "docs/${selectedDataModel.value}"`);
       if (selectedStyleGuide.value) contextParts.push(`the Style Guide at "docs/${selectedStyleGuide.value}"`);
+      if (selectedCodeMap.value) contextParts.push(`the Code Map at "docs/${selectedCodeMap.value}"`);
 
       const skillPrefix = selectedSkillContent.value ? selectedSkillContent.value + '\n\n---\n\n' : '';
       const baseContext = `${contextParts.join(', and ')}. Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the project conventions and ticket workflow.`;
@@ -803,7 +805,8 @@ ${instruction}`;
 
     return {
       sessionActive, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
-      epics, prdFiles, archFiles, dataModelFiles, styleGuideFiles, selectedPrd, selectedArch, selectedDataModel, selectedStyleGuide,
+      epics, prdFiles, archFiles, styleGuideFiles, codeMapFiles,
+      selectedPrd, selectedArch, selectedStyleGuide, selectedCodeMap,
       skillFiles, skillGroups, selectedSkill, loadSelectedSkillContent,
       epicStrategy, setEpicStrategy,
       selectedSkillContent, showSkillPreview, skillManuallyChosen, onSkillPicked,

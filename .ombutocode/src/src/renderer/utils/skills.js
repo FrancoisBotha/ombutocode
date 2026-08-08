@@ -17,6 +17,7 @@ export const SKILL_CATEGORIES = [
   'Ticket Generation',
   'Diagnostics',
   'Bootstrapping',
+  'Insight',
   'Other',
 ];
 

@@ -162,6 +162,13 @@
               <p>Review completed tickets that have been archived off the board.</p>
             </div>
           </div>
+          <div class="help-feature">
+            <span class="mdi mdi-graph-outline"></span>
+            <div>
+              <strong>Code Map</strong>
+              <p>Generate an interactive map of the repository's modules, dependencies, and end-to-end flows into docs/codemap/.</p>
+            </div>
+          </div>
         </div>
       </section>
 

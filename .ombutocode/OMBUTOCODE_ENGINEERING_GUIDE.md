@@ -18,6 +18,9 @@ Priority order:
 2. docs/Epics/  ← Epic specifications (one file per epic)
 3. docs/architecture/architecture.md
 4. .ombutocode/src/
+5. docs/Code Map/  ← Generated map of modules, dependencies, and flows. Derived
+   from the code, so it never overrides the code — but it is the fastest way to
+   find callers, blast radius, and covering tests. See "Code Map" in §2.
 
 ### Repository Structure
 
@@ -159,11 +162,15 @@ If the status is not `todo`, STOP and select a different eligible ticket.
 - move the ticket to `in_progress`, and
 - execute the ticket implementation work in the same turn (not status-only).
 
-3. Produce a short implementation plan.
+3. Read the code map to orient — see "Code Map" below. Reading is required for
+   any ticket that changes code; regenerating it is NOT (that is the epic's
+   final closeout ticket).
 
-4. Implement ONLY what is required for that ticket.
+4. Produce a short implementation plan.
 
-5. Update the backlog ticket:
+5. Implement ONLY what is required for that ticket.
+
+6. Update the backlog ticket:
    - status → eval
    - files_touched
    - notes
@@ -196,9 +203,48 @@ Evaluation outcomes:
 - Pass: move `eval` → `review` and add notes summarizing evidence
 - Fail: append clear failure reason(s) to notes and move `eval` → `todo`
 
-6. STOP after completing the ticket.
+7. STOP after completing the ticket.
 
 Agents MUST NOT automatically begin another ticket.
+
+### Code Map (orient before you change code)
+
+The code map lives in `docs/Code Map/` — `codemap.json` (nodes, edges, flows),
+`codemap.html` (interactive view), `codemap.lock` (per-module fingerprints). It
+is generated and refreshed by the Code Map skill at
+`docs/Skills/Insight/Code Map.md`.
+
+**The code map is an epic-level artifact, not a per-ticket one.** Reading it is
+cheap and mandatory; regenerating it is expensive and happens exactly once per
+epic, in the epic's final closeout ticket.
+
+Before modifying a module, use `docs/Code Map/codemap.json` to answer three
+questions:
+
+1. What calls it?
+2. What does it affect?
+3. Which tests cover it?
+
+This is what stops a ticket from editing a module without knowing its callers,
+its blast radius, or the tests that guard it. Answer 3 in particular tells you
+which tests MUST still pass before the ticket can move to `eval`.
+
+**Do NOT regenerate the map inside a feature ticket.** Mid-epic the map is
+expected to be behind the code — earlier tickets in the same epic have already
+changed it. That drift is normal and is not a defect to fix.
+
+If the map is missing, stale, or cannot answer the three questions:
+
+- Read the affected code directly to answer them. The code is always the
+  authority; the map is a shortcut, not a gate.
+- Record in the ticket notes which questions the map could not answer, so the
+  closeout regeneration has a record of where it was thin.
+- Do not invent map contents, and do not open a ticket to fix the map — the
+  closeout ticket already covers it.
+
+The only place the map is regenerated is the epic's final closeout ticket,
+which runs the Code Map skill and writes `codemap.html`, `codemap.json`, and
+`codemap.lock` together. Never regenerate one of the three alone.
 
 ---
 

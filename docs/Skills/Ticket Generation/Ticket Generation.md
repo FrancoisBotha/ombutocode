@@ -50,7 +50,7 @@ Emit `DONE - TICKETS WRITTEN` only after the verification step has confirmed the
 - **Order matters** — infrastructure and setup tickets come before feature tickets
 - **Do not create per-criterion unit-test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket. (The mandatory closeout regression-test ticket described below is a separate, project-level concern — that one IS required.)
 - **Size tickets appropriately** — aim for 3-8 tickets per epic, each completable in one agent session
-- **Always append the three mandatory closeout tickets** described in the section below — every epic ends with epic-eval, regression-tests, and help-docs. Non-negotiable.
+- **Always append the four mandatory closeout tickets** described in the section below — every epic ends with epic-eval, regression-tests, help-docs, and code-map-refresh. Non-negotiable.
 - **Never ask for permission — write the tickets.** See "Run to completion without prompting" below.
 
 ## Ticket Structure
@@ -125,9 +125,9 @@ This ensures the agent implements the UI to match the approved mockup designs.
 - User-facing help content
 - Architecture decision records
 
-## Mandatory Closeout Tickets (always end every epic with these three)
+## Mandatory Closeout Tickets (always end every epic with these four)
 
-Every epic breakdown MUST end with three additional tickets, in this exact order, **after** all feature/setup/UI tickets you have proposed. They are the safety net that turns "feature code shipped" into "feature genuinely complete and discoverable". Skip them and the breakdown is rejected.
+Every epic breakdown MUST end with four additional tickets, in this exact order, **after** all feature/setup/UI tickets you have proposed. They are the safety net that turns "feature code shipped" into "feature genuinely complete and discoverable". Skip them and the breakdown is rejected.
 
 Give each closeout ticket the same `<EPIC_PREFIX>-NNN` numbering as the rest of the epic (i.e. continue the sequence — don't use a separate suffix). Each one's `dependencies` MUST include every preceding feature ticket in the epic, plus the previous closeout ticket where applicable. They run last because they verify, lock in, and document the work the earlier tickets did.
 
@@ -172,11 +172,27 @@ acceptance_criteria:
 notes: "Users discover features through help docs. An epic that doesn't update them is half-shipped. Keep entries scoped to user-visible behaviour — internal architecture changes do not belong here."
 ```
 
-### Why these three (in this order)
+### Closeout #4 — Code map refresh (`<PREFIX>-NN`)
+
+```
+title: "Regenerate the code map for the changes delivered by this epic"
+dependencies: [the help-docs ticket above]
+acceptance_criteria:
+  - [ ] Run the Code Map skill (docs/Skills/Insight/Code Map.md) against the current repository
+  - [ ] Regenerate docs/Code Map/codemap.html, codemap.json, and codemap.lock TOGETHER — never one without the others
+  - [ ] Compare against the previous codemap.lock and report which modules changed during this epic
+  - [ ] Run the skill's verification checks (codemap.json parses, every node path exists, every edge and flow step resolves, lock matches the current commit and working tree)
+  - [ ] Report any relationship left marked unknown, so the next epic knows where the map is thin
+  - [ ] Change no product code in this ticket — it writes only under docs/Code Map/
+notes: "This is the LAST ticket in the epic. The map is an epic-level artifact: feature tickets READ it to find callers, blast radius, and covering tests, but never regenerate it — that would cost more than it saves, once per ticket. Running it here, after eval, regression tests, and docs, means it maps the epic's finished state rather than a moving target. If earlier tickets recorded questions the map could not answer, check those areas are covered now."
+```
+
+### Why these four (in this order)
 
 - **Eval first** so the breakdown gets a final correctness check before tests lock current behaviour in. If eval finds a gap, the regression tests should cover the *fixed* behaviour, not the broken one.
 - **Regression tests second** so the documented behaviour is the verified behaviour. Writing docs against tested code prevents "the docs say X but the code does Y" drift on day one.
-- **Help docs last** because at this point the feature is correct (eval passed) and locked in (tests passed) — only then is it safe to tell users about it.
+- **Help docs third** because at this point the feature is correct (eval passed) and locked in (tests passed) — only then is it safe to tell users about it.
+- **Code map last** because it must describe the epic's finished state. Regenerating it any earlier maps a moving target, and regenerating it per-ticket costs far more than it saves — feature tickets read the map, they never rebuild it.
 
 ## Acceptance Criteria Guidelines
 
@@ -244,9 +260,9 @@ Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticke
 2. **Check existing tickets** — run `node .ombutocode/tools/db-query.cjs tickets` to see current backlog and avoid ID collisions
 3. **Identify** the logical work units
 4. **Order** them by dependency (setup → core → integration → UI)
-5. **Append** the three mandatory closeout tickets (epic-eval → regression-tests → help-docs) at the END of the list, after all feature work. See the "Mandatory Closeout Tickets" section above. Skipping them is a workflow error.
+5. **Append** the four mandatory closeout tickets (epic-eval → regression-tests → help-docs → code-map-refresh) at the END of the list, after all feature work. See the "Mandatory Closeout Tickets" section above. Skipping them is a workflow error.
 6. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
-7. **Print** a summary table with: ID, Title, Type, Dependencies — stating the epic-derived prefix you chose. The closeout tickets MUST appear in this table as the last three rows. This is a record of what you are about to write; do NOT pause for approval.
+7. **Print** a summary table with: ID, Title, Type, Dependencies — stating the epic-derived prefix you chose. The closeout tickets MUST appear in this table as the last four rows. This is a record of what you are about to write; do NOT pause for approval.
 8. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.cjs` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
 9. **Verify** — run `node .ombutocode/tools/db-query.cjs tickets --status backlog` to confirm the tickets were inserted correctly
 10. **Update** the epic status from `NEW` to `TICKETS`
@@ -328,8 +344,9 @@ Confirm the schema round-trips through `backlogDb.deserializeTicket` (in `.ombut
 | 6 | AUTH-006 | Evaluate epic and address unmet acceptance criteria | Closeout — Eval | AUTH-001, AUTH-002, AUTH-003, AUTH-004, AUTH-005 |
 | 7 | AUTH-007 | Add regression tests covering this epic's behaviour to the project test suite | Closeout — Regression | AUTH-006 |
 | 8 | AUTH-008 | Update help.html with the features delivered by this epic | Closeout — Docs | AUTH-007 |
+| 9 | AUTH-009 | Regenerate the code map for the changes delivered by this epic | Closeout — Code Map | AUTH-008 |
 
-Note: the final three rows are the **mandatory closeout tickets** — they appear at the end of every epic breakdown, regardless of the epic's subject. See the "Mandatory Closeout Tickets" section for full acceptance criteria.
+Note: the final four rows are the **mandatory closeout tickets** — they appear at the end of every epic breakdown, regardless of the epic's subject. See the "Mandatory Closeout Tickets" section for full acceptance criteria.
 
 ### Example Ticket Object
 

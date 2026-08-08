@@ -66,6 +66,7 @@
       <PlanInitiateStackView v-show="activeView === 'plan-initiate-stack'" :visible="activeView === 'plan-initiate-stack'" @change-view="handleChangeView" />
       <PlanBootstrapPrototypeView v-show="activeView === 'plan-bootstrap-prototype'" :visible="activeView === 'plan-bootstrap-prototype'" @change-view="handleChangeView" />
       <PlanBddUseCasesView v-show="activeView === 'plan-bdd-use-cases'" :visible="activeView === 'plan-bdd-use-cases'" @change-view="handleChangeView" />
+      <ReviewCodeMapView v-show="activeView === 'review-codemap'" :visible="activeView === 'review-codemap'" @change-view="handleChangeView" />
 
     </div>
 
@@ -166,6 +167,7 @@ import HelpView from '@/components/HelpView.vue';
 import PlanDashboardView from '@/views/DashboardView.vue';
 import PlanPrdView from '@/components/PlanPrdView.vue';
 import PlanArchitectureView from '@/components/PlanArchitectureView.vue';
+import ReviewCodeMapView from '@/components/ReviewCodeMapView.vue';
 import PlanStyleGuideView from '@/components/PlanStyleGuideView.vue';
 import PlanDataModelView from '@/components/PlanDataModelView.vue';
 import PlanEpicsView from '@/components/PlanEpicsView.vue';
@@ -214,6 +216,7 @@ export default {
     PlanDashboardView,
     PlanPrdView,
     PlanArchitectureView,
+    ReviewCodeMapView,
     PlanStyleGuideView,
     PlanDataModelView,
     PlanEpicsView,

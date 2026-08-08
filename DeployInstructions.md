@@ -129,10 +129,10 @@ gh release view v0.2.0
 >
 > ```js
 > // create-ombutocode/bin/create-ombutocode.js
-> const CLONE_REF = 'v0.1.1';
+> const CLONE_REF = 'v0.2.4';
 > ```
 >
-> **Installer version = workbench version (lockstep).** The installer package on npm uses the **same version number** as the workbench it scaffolds. When the workbench is `0.1.1`, the installer on npm is also `0.1.1`. This means users can read a single number in the About dialog, on GitHub releases, and on the npm page without mental translation. Do **not** drift the installer version from the workbench version.
+> **Installer version = workbench version (lockstep).** The installer package on npm uses the **same version number** as the workbench it scaffolds. When the workbench is `0.2.4`, the installer on npm is also `0.2.4`. This means users can read a single number in the About dialog, on GitHub releases, and on the npm page without mental translation. Do **not** drift the installer version from the workbench version.
 >
 > **When cutting a new workbench release, the order of operations is:**
 >
@@ -153,9 +153,9 @@ gh release view v0.2.0
 > - `create-ombutocode@1.0.0` — initial installer publish, pointed at an older workbench pre-release.
 > - `create-ombutocode@1.1.1` — interim publish after the scaffold-strip + template changes, before the lockstep decision. Functionally pointed at workbench `v0.1.1` but with a mismatched version number.
 >
-> These versions still exist on the npm registry (or may have been unpublished) and are installable via `npx create-ombutocode@1.0.0` / `@1.1.1` for archival reasons. **Never republish under either number**, and never use a new `1.x.y` version — all future releases stay on the `0.x.y` / eventual `1.x.y`-once-we-leave-beta line that matches the workbench. npm also refuses to republish an unpublished version for policy reasons, so attempting to use these numbers will fail anyway.
+> Both have been unpublished. `npm view create-ombutocode versions` now returns only the lockstep `0.x.y` line, so `npx create-ombutocode@1.0.0` fails rather than installing anything. **Never republish under either number** — npm refuses to reuse an unpublished version, so the attempt would fail regardless.
 >
-> The `latest` dist-tag has been manually moved to the lockstep `0.x.y` line (see §3.5); from here on it auto-advances normally as long as each release bumps the version forward.
+> Because the 1.x versions are gone, the `latest` dist-tag now auto-advances normally on every publish (see §3.5). The retirement still constrains the eventual move off the beta line: the first stable release cannot be `1.0.0` or `1.1.1`.
 
 ### 3.1 Prerequisites (one-time)
 
@@ -208,21 +208,21 @@ Replace `123456` with the current code from your authenticator app. If you prefe
 
 ### 3.5 Check and move the `latest` dist-tag if necessary
 
-npm auto-assigns the `latest` dist-tag to the **highest** version by semver comparison at publish time. Because we're on the `0.x.y` line but `create-ombutocode@1.0.0` still exists on the registry from a legacy pre-lockstep publish, a fresh `0.x.y` publish will **not** auto-advance `latest` — it stays pointed at `1.0.0`.
+npm auto-assigns the `latest` dist-tag to the **highest** version by semver comparison at publish time.
 
-Check the current dist-tags:
+This used to need a manual fix-up: the legacy `create-ombutocode@1.0.0` outranked every `0.x.y` publish and kept `latest` pinned to itself. Those 1.x versions have since been unpublished, so the registry now holds only the `0.x.y` line and `latest` advances on its own. **This step is now a verification, not an action:**
 
 ```bash
 npm view create-ombutocode dist-tags
 ```
 
-If `latest` is not the version you just published, move it:
+Expect `latest` to be the version you just published. If it is not — the only realistic cause being a 1.x version reappearing on the registry — move it by hand:
 
 ```bash
 npm dist-tag add create-ombutocode@<new-version> latest
 ```
 
-From the **next** release onwards this step is not needed, because `0.1.2 > 0.1.1 > ...` auto-advances `latest` normally as long as the version line stays monotonically increasing within `0.x.y`.
+This stays true as long as the version line increases monotonically within `0.x.y`. It will need revisiting on the eventual move to `1.x`, since the retired `1.0.0` / `1.1.1` numbers can never be reused (see below).
 
 ### 3.6 Verify end-to-end
 

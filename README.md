@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.2.4-blue" alt="Version 0.2.4" />
+  <img src="https://img.shields.io/badge/version-0.2.5-blue" alt="Version 0.2.5" />
   <img src="https://img.shields.io/badge/status-beta-orange" alt="Beta" />
   <img src="https://img.shields.io/badge/Electron-25-47848F?logo=electron&logoColor=white" alt="Electron" />
   <img src="https://img.shields.io/badge/Vue.js-3-4FC08D?logo=vuedotjs&logoColor=white" alt="Vue 3" />
@@ -32,7 +32,7 @@
 
 > ## ⚠️ Beta — Not Released
 >
-> **Ombuto Code is currently in beta (v0.2.4) and has not been officially released.**
+> **Ombuto Code is currently in beta (v0.2.5) and has not been officially released.**
 > APIs, data formats, and features may change without notice. Use at your own risk and
 > expect breaking changes between versions until the 1.0.0 release. Feedback and bug
 > reports are very welcome while we stabilise the product.
@@ -56,7 +56,7 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 - **Architecture authoring** with full and lightweight (Architecture-BASIC) skill variants
 - **Initiate Stack** — bootstrap the source tree, install deps, write `.gitignore`, and author `docs/Test Strategy/test-strategy.md` from the PRD + Architecture in a single AI session. Safely re-runnable in refresh mode as the architecture evolves
 - **Epic Creation** — bulk PRD-to-epic breakdown, single-epic add, and per-epic refine-with-AI; epics support epic-to-epic dependencies (`Depends On:` line) that the scheduler enforces
-- **Ticket Generation** with mandatory closeout tickets (epic-level eval, regression tests, help docs update) appended automatically
+- **Ticket Generation** with mandatory closeout tickets (epic-level eval, regression tests, help docs update, code map refresh) appended automatically
 - **Project Structure** editor for systems, subsystems, and components, with auto-save and Markdown-rendered descriptions
 - **Use Case** document editor with Markdown preview and version history
 - **Use Case Diagram** visual editor (actors, use cases, associations, extends, includes)
@@ -64,12 +64,13 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 - **ER Diagram** viewer from PostgreSQL DDL schemas
 - **Functional & Non-Functional Requirements** matrix with Excel export/import
 - **BDD User Stories** &mdash; lightweight As-A / I-Want / So-That stories with Given-When-Then scenarios; each story generates 1-3 implementation tickets
-- **Skill categories** &mdash; skills live in sub-folders under `docs/Skills/` (PRD, Architecture, Styling, Epics, BDD, Ticket Generation, Diagnostics, Bootstrapping, Other); each Plan page offers only its own category, with grouped dropdowns
+- **Skill categories** &mdash; skills live in sub-folders under `docs/Skills/` (PRD, Architecture, Styling, Epics, BDD, Ticket Generation, Diagnostics, Bootstrapping, Insight, Other); each page offers only its own category, with grouped dropdowns
 - **Design menu group** &mdash; Mockups, Style Guide, and Data Model in one place
 - **Mockup gallery** with lightbox viewing
 - **Scratch Pad** for quick notes
 - **File tree sidebar** with drag-and-drop, folder management, and hierarchical sorting
 - **Version history** for all documents via Git integration
+- **Rich document preview** &mdash; Markdown, images, rendered HTML pages, and pretty-printed syntax-highlighted JSON, all readable in both themes
 
 ### Build Mode
 - **Workspace** with Git status, commit graph, and integrated terminal (right-click in terminal to paste)
@@ -78,14 +79,17 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 - **Test-Driven Development workflow** baked into agent prompts &mdash; impl phase writes failing tests first, then implementation; test phase reads `docs/Test Strategy/test-strategy.md` for the project's exact test commands (stack-agnostic)
 - **Epic-level dependencies** &mdash; epics can declare `Depends On: epic_NN_...` and the scheduler holds downstream tickets until prerequisite epics reach `DONE`
 - **Backlog** management with ticket creation, dependency tracking, single or bulk promotion (Promote All), and optional auto-assignment of the default agent on promote
-- **Feature Requests** &mdash; lightweight intake that can be promoted into tickets
 - **Coding Agents** &mdash; configure Claude (Opus 4.7, Sonnet 4.6, Haiku 4.5), Codex, and Kimi with per-agent model selection
 - **Automated Scheduler** &mdash; assigns agents to todo tickets, manages concurrency, rate limits, and provider-pause detection
 - **Automation** dashboard with active runs and evaluation queue
 - **Agent terminals** support clipboard paste everywhere (Ctrl+V or right-click, bracketed-paste safe)
 
 ### Review Mode
-- **Epics** browser with inline status dropdown (NEW → TICKETS → BUILDING → DONE), start/evaluate actions, and dependency blockers
+- **Epics** browser with a status dialog (NEW → TICKETS → BUILDING → DONE), start/evaluate actions, and dependency blockers
+- **Epic tickets listing** with per-row actions for ticket details, run summary, and code changes
+- **Run summaries** &mdash; after a ticket merges, an agent summarises its run output; open it from the review column or the epic tickets listing
+- **Code changes** &mdash; side-by-side diff viewer for merged tickets, with syntax highlighting for C++, C#, Python, Rust, Ruby and the web stack
+- **Code Map** (Insight) &mdash; generate an interactive map of the repository's modules, dependencies, and end-to-end flows into `docs/Code Map/`, and browse it on a Map tab without leaving the app. Feature tickets read the map to find a module's callers, blast radius, and covering tests; it is regenerated once per epic by a closeout ticket
 - **Logs** viewer with filtering by severity, event type, and ticket ID
 - **Archive** for completed tickets
 
@@ -246,6 +250,7 @@ ombutocode/
     Mockups/
     Skills/                    # Per-skill markdown that the Plan views auto-load
     Test Strategy/             # test-strategy.md written by the Initiate Stack flow
+    Code Map/                  # codemap.html / .json / .lock written by the Code Map skill
     ScratchPad/
   create-ombutocode/           # npx installer package
   migration-tool/              # Win32 C++ migrator that updates an existing

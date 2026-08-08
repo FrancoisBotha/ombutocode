@@ -1,0 +1,681 @@
+{
+  "generated_at": "2026-08-08T01:02:57.805Z",
+  "generated_from_commit": "210892f293c445b492dee96e348f4c381c806e11",
+  "scope": [
+    ".ombutocode/src/main.js",
+    ".ombutocode/src/preload.js",
+    ".ombutocode/src/headless.js",
+    ".ombutocode/src/src/main/",
+    ".ombutocode/src/src/renderer/",
+    ".ombutocode/src/test/",
+    ".ombutocode/codingagents/",
+    "src/",
+    "scripts/dev.js"
+  ],
+  "nodes": [
+    {
+      "id": "electron-main",
+      "path": ".ombutocode/src/main.js",
+      "role": "Electron main process and IPC host. Boots the BrowserWindow, wires every subsystem together and registers ~115 ipcMain handlers that the renderer calls through the preload bridge.",
+      "type": "process",
+      "entrypoints": [
+        "main.js:1275 createScheduler({...})",
+        "ipcMain.handle('scheduler:start')",
+        "ipcMain.handle('backlog:read')",
+        "ipcMain.handle('agents:state')"
+      ],
+      "tests": [],
+      "constraints": [
+        "4400 lines — the single largest file in the repo and the de-facto composition root.",
+        "Carries an inline duplicate of the runtime-callback logic that also lives in coreCallbacks.js; the code itself flags the duplication at main.js:747 and main.js:1031.",
+        "Not covered directly by any test file; behaviour is tested through the extracted src/main/* modules."
+      ],
+      "evidence": [
+        ".ombutocode/src/main.js:7-59 require('./src/main/...') block",
+        ".ombutocode/src/main.js:1274-1323 createSchedulerLogger / createScheduler wiring",
+        ".ombutocode/src/main.js:747 comment 'coreCallbacks.js for the sibling copy of this block'"
+      ]
+    },
+    {
+      "id": "preload-bridge",
+      "path": ".ombutocode/src/preload.js",
+      "role": "contextBridge sandbox boundary. Exposes a channel-filtered window.electron.ipcRenderer (send / on / invoke) to the renderer; the only path from UI code into the main process.",
+      "type": "bridge",
+      "entrypoints": [
+        "preload.js:141 contextBridge.exposeInMainWorld('electron', ...)",
+        "preload.js:215 ipcRenderer.invoke(channel, ...args)"
+      ],
+      "tests": [],
+      "constraints": [
+        "All renderer-to-main traffic must pass through the allowed-channel lists declared in this file; a new IPC channel is inert until it is listed here."
+      ],
+      "evidence": [
+        ".ombutocode/src/preload.js:1 require('electron') contextBridge, ipcRenderer",
+        ".ombutocode/src/preload.js:141 exposeInMainWorld",
+        ".ombutocode/src/preload.js:194-215 on / removeListener / invoke"
+      ]
+    },
+    {
+      "id": "renderer-shell",
+      "path": ".ombutocode/src/src/renderer/",
+      "role": "Vue 3 application shell: bootstrap (main.js), the App.vue tab/board host, the hash-history router, the logger plugin and shared renderer utilities (dropbox, notification sound, skills, requirements matrix, terminal paste).",
+      "type": "ui",
+      "entrypoints": [
+        "src/renderer/main.js:1 createApp(App)",
+        "src/renderer/App.vue",
+        "src/renderer/router/index.js"
+      ],
+      "tests": [],
+      "constraints": [
+        "Router is hash-history with only 3 routes; the primary navigation model is in-App.vue tab switching rather than routing.",
+        "Grouped files: router/index.js, plugins/logger.js, utils/{dropbox,dropbox.new,logger,notificationSound,requirementsMatrix,skills,terminalPaste}.js"
+      ],
+      "evidence": [
+        ".ombutocode/src/src/renderer/main.js:1-6 createApp / createPinia / router / loggerPlugin imports",
+        ".ombutocode/src/src/renderer/App.vue:149-171 store and component imports",
+        ".ombutocode/src/src/renderer/router/index.js"
+      ]
+    },
+    {
+      "id": "renderer-stores",
+      "path": ".ombutocode/src/src/renderer/stores/",
+      "role": "Pinia state layer (12 stores). Each store owns one IPC-backed domain — backlog, archive, epics, agents, agent tools, logs, requests, artifacts, tree, settings, boards, UI — and is the only place the UI issues invoke() calls.",
+      "type": "ui",
+      "entrypoints": [
+        "backlogStore.js:86 invoke('backlog:read')",
+        "agentStore.js:73 invoke('scheduler:start')",
+        "epicStore.js:88 invoke('epics:start')",
+        "artifactStore.js:32 invoke('artifact:list')"
+      ],
+      "tests": [],
+      "constraints": [
+        "Grouped files: agentStore, agentToolsStore, archiveStore, artifactStore, backlogStore, boardStore, epicStore, logsStore, requestsStore, settingsStore, treeStore, uiStore.",
+        "boardStore and uiStore hold local-only state and issue no IPC calls."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/renderer/stores/backlogStore.js:86 invoke('backlog:read')",
+        ".ombutocode/src/src/renderer/stores/agentStore.js:58-125 invoke('scheduler:status'|'scheduler:start'|'scheduler:stop'|'agents:state')",
+        ".ombutocode/src/src/renderer/stores/requestsStore.js:20-126 invoke('requests:read'|'requests:create'|'requests:update'|'requests:delete'|'requests:search')",
+        ".ombutocode/src/src/renderer/stores/treeStore.js:46-86 invoke('tree:build'|'tree:coverage'|'tree:breadcrumb')"
+      ]
+    },
+    {
+      "id": "renderer-views",
+      "path": ".ombutocode/src/src/renderer/views/",
+      "role": "Screen and widget layer (55 files): 21 views (dashboard, diagrams, requirements, git, settings, skills, tree, validate) plus 34 components (kanban board, backlog/archive/epics tables, the Plan* wizard screens, run summary and diff dialogs, workspace and automation panels).",
+      "type": "ui",
+      "entrypoints": [
+        "components/BacklogTable.vue",
+        "components/KanbanColumn.vue",
+        "components/WorkspaceView.vue",
+        "views/DashboardView.vue"
+      ],
+      "tests": [
+        ".ombutocode/src/test/automation-view-wiring.test.js",
+        ".ombutocode/src/test/kanban-eval-summary-ui.test.js",
+        ".ombutocode/src/test/backlog-archive-eval-summary-ui.test.js",
+        ".ombutocode/src/test/settings-models-tab.test.js",
+        ".ombutocode/src/test/test-summary-ui.test.js",
+        ".ombutocode/src/test/agents-screen-scheduler-ui.test.js",
+        ".ombutocode/src/test/backlog-table-refresh.test.js",
+        ".ombutocode/src/test/bootstrap-prototype-wiring.test.js"
+      ],
+      "constraints": [
+        "UI tests assert against the .vue source text rather than a mounted component; they are wiring checks, not render tests.",
+        "components/ReviewCodeMapView.vue is untracked in git at this commit and is therefore excluded from the module fingerprint."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/renderer/App.vue:153-171 component imports",
+        ".ombutocode/src/src/renderer/components/BacklogTable.vue:158 import { useBacklogStore }",
+        ".ombutocode/src/test/automation-view-wiring.test.js"
+      ]
+    },
+    {
+      "id": "scheduler",
+      "path": ".ombutocode/src/src/main/scheduler.js",
+      "role": "The orchestration core. A dependency-injected factory (createScheduler) that ticks a queue: gates tickets on dependencies and epic readiness, prepares worktrees or eval trial merges, dispatches runs to the agent runtime under concurrency/cooldown/budget limits, and parses provider rate-limit pauses out of run output.",
+      "type": "service",
+      "entrypoints": [
+        "scheduler.js:467 createScheduler(deps)",
+        "scheduler.js:974 dispatch(event)",
+        "scheduler.js:1089 processQueue()",
+        "scheduler.js:422 parseProviderPauseFromRun(run, agentConfig)",
+        "scheduler.js:23 buildRetryContext(ticket)"
+      ],
+      "tests": [
+        ".ombutocode/src/test/scheduler-assignment.test.js",
+        ".ombutocode/src/test/scheduler-auto-building.test.js",
+        ".ombutocode/src/test/scheduler-file-conflict.test.js",
+        ".ombutocode/src/test/scheduler-retry-context.test.js",
+        ".ombutocode/src/test/scheduler-delete-queue-ticket.test.js",
+        ".ombutocode/src/test/agent-start-dependency-blocking.test.js",
+        ".ombutocode/src/test/agent-coordination-lock.test.js",
+        ".ombutocode/src/test/retry-context-token.test.js",
+        ".ombutocode/src/test/build-phase-gates.test.js",
+        ".ombutocode/src/test/epic-strategy-variants.test.js"
+      ],
+      "constraints": [
+        "Takes all collaborators via the deps object (readBacklogData, agentRuntime, createTicketWorktree, ...), so tests substitute fakes without touching git or child processes.",
+        "Reentrancy-guarded: dispatching / dispatchQueued flags make a nested dispatch() re-run processQueue in the same do-while loop instead of recursing.",
+        "Only picks up tickets with status todo and an explicit agent assignee; epic gating reads docs/Epics from disk on every tick."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/scheduler.js:467-487 createScheduler dependency destructuring",
+        ".ombutocode/src/src/main/scheduler.js:1333 createTicketWorktree(ticket.id, { projectRoot })",
+        ".ombutocode/src/src/main/scheduler.js:1402 agentRuntime.startAgent(tool.id, enrichedPayload, ...)",
+        ".ombutocode/src/src/main/scheduler.js:1930-1932 module.exports"
+      ]
+    },
+    {
+      "id": "scheduler-support",
+      "path": ".ombutocode/src/src/main/windowTracker.js",
+      "role": "Scheduler helpers: rolling usage-window and auto-pause state persistence (windowTracker), scheduler event logging into the logs database (schedulerLogger + schedulerLogEvents), and epic markdown parsing that builds the epic readiness gate (epicReader).",
+      "type": "service",
+      "entrypoints": [
+        "windowTracker.js:256 createWindowTracker({ projectRoot })",
+        "schedulerLogger.js:43 createSchedulerLogger()",
+        "epicReader.js:139 readEpics / parseDependsList / createEpicReadinessGate"
+      ],
+      "tests": [
+        ".ombutocode/src/test/epic-strategy-variants.test.js",
+        ".ombutocode/src/test/logs-db.test.js"
+      ],
+      "constraints": [
+        "Grouped files: windowTracker.js, schedulerLogger.js, schedulerLogEvents.js, epicReader.js.",
+        "windowTracker state is a JSON file on disk, not a database row — it survives restarts and carries scheduler_running."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/scheduler.js:5 require('./windowTracker')",
+        ".ombutocode/src/src/main/scheduler.js:13 require('./epicReader')",
+        ".ombutocode/src/src/main/schedulerLogger.js:3 require('./logsDb')",
+        ".ombutocode/src/main.js:1325 scheduler.windowTracker.loadState()"
+      ]
+    },
+    {
+      "id": "agent-runtime",
+      "path": ".ombutocode/src/src/main/codingAgentRuntime.js",
+      "role": "Spawns and supervises external coding-agent CLI processes. Renders per-tool command templates from codingagents.yml, launches them via child_process, tracks live runs by ticket and run id, and streams output back through the runtime callbacks.",
+      "type": "service",
+      "entrypoints": [
+        "codingAgentRuntime.js:489 AgentRuntime",
+        "codingAgentRuntime.js:489 normalizeStartPayload",
+        "codingAgentRuntime.js:489 resolveAgentTemplateConfig",
+        "codingAgentRuntime.js:489 renderCommand",
+        "codingAgentRuntime.js:489 AgentInvocationError"
+      ],
+      "tests": [
+        ".ombutocode/src/test/kimi-agent-runtime.test.js",
+        ".ombutocode/src/test/codex-prompt-template.test.js",
+        ".ombutocode/src/test/eval-agent-prompt-template.test.js",
+        ".ombutocode/src/test/test-agent-prompt-template.test.js",
+        ".ombutocode/src/test/agent-tools-cjs.test.js",
+        ".ombutocode/src/test/ad-hoc-ticket-runtime.test.js"
+      ],
+      "constraints": [
+        "Tool roster, concurrency caps, cooldowns, budgets and model ids are data in .ombutocode/codingagents/codingagents.yml — adding an agent is a config change, not a code change.",
+        "resolveKimiTemplateConfig is a per-provider special case alongside the generic resolveAgentTemplateConfig.",
+        "Grouped file: .ombutocode/codingagents/codingagents.yml"
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/codingAgentRuntime.js:1-4 require('fs'|'path'|'child_process'|'crypto')",
+        ".ombutocode/src/src/main/codingAgentRuntime.js:489-499 module.exports",
+        ".ombutocode/codingagents/codingagents.yml:2 tools: (claude, codex, ...)"
+      ]
+    },
+    {
+      "id": "runtime-callbacks",
+      "path": ".ombutocode/src/src/main/coreCallbacks.js",
+      "role": "The onRunStarted / onRunUpdated / onRunFinished handler set. Turns a finished agent run into ticket state: resolves the next status, commits the worktree, squash-merges the ticket branch, records the merge commit, kicks off run summarisation and tears the worktree down.",
+      "type": "service",
+      "entrypoints": [
+        "coreCallbacks.js:36 createRuntimeCallbacks(deps)",
+        "coreCallbacks.js:66 onRunStarted(run)",
+        "coreCallbacks.js:139 onRunUpdated(run)"
+      ],
+      "tests": [
+        ".ombutocode/src/test/run-lifecycle.test.js",
+        ".ombutocode/src/test/status-transition-cleanup.test.js",
+        ".ombutocode/src/test/archive-merge-fields.test.js"
+      ],
+      "constraints": [
+        "Consumed only by headless-cli at this commit; the Electron main process runs its own inline copy of the same logic (see main.js:747, main.js:1031). The two must be kept in step by hand."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/coreCallbacks.js:3-7 require('./runLifecycle'|'./worktreeManager'|'./codingAgentRuntime'|'./runSummary'|'./gitDiffService')",
+        ".ombutocode/src/src/main/coreCallbacks.js:36 function createRuntimeCallbacks(deps)",
+        ".ombutocode/src/headless.js:163 require('./src/main/coreCallbacks')"
+      ]
+    },
+    {
+      "id": "run-analysis",
+      "path": ".ombutocode/src/src/main/runLifecycle.js",
+      "role": "Post-run interpretation and housekeeping. Decides the ticket status, eval outcome and test outcome implied by a finished run, extracts text and impl/test markers from stream-json output, groups run logs into phases and drives the LLM run-summary prompt; also purges stale run output and cleans up status transitions.",
+      "type": "service",
+      "entrypoints": [
+        "runLifecycle.js:770 resolveTicketStatusAfterRun",
+        "runLifecycle.js:770 resolveEvalOutcomeAfterRun / resolveTestOutcomeAfterRun",
+        "runLifecycle.js:770 extractTextFromStreamJson / extractImplTestMarkers",
+        "runSummary.js:491 createRunSummarizer / buildRunSummaryPrompt / parseRunSummaryOutput",
+        "runOutputCleanup.js cleanupRunOutput",
+        "statusTransitionCleanup.js"
+      ],
+      "tests": [
+        ".ombutocode/src/test/run-lifecycle.test.js",
+        ".ombutocode/src/test/run-summary.test.js",
+        ".ombutocode/src/test/run-output-cleanup.test.js",
+        ".ombutocode/src/test/status-transition-cleanup.test.js",
+        ".ombutocode/src/test/docs-only-ticket-test-phase.test.js",
+        ".ombutocode/src/test/ticket-notes-slim.test.js"
+      ],
+      "constraints": [
+        "Grouped files: runLifecycle.js, runSummary.js, runOutputCleanup.js, statusTransitionCleanup.js.",
+        "runSummary applies HEAD_BUDGET_CHARS / TAIL_BUDGET_CHARS truncation before prompting, so very long transcripts are summarised from the ends only.",
+        "statusTransitionCleanup reaches into worktreeManager to remove worktrees left behind by a status change."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/runLifecycle.js:770-778 module.exports",
+        ".ombutocode/src/src/main/runSummary.js:22 require('./runLifecycle')",
+        ".ombutocode/src/src/main/runSummary.js:27 require('./adHocTickets')",
+        ".ombutocode/src/src/main/statusTransitionCleanup.js:3 require('./worktreeManager')"
+      ]
+    },
+    {
+      "id": "worktree-manager",
+      "path": ".ombutocode/src/src/main/worktreeManager.js",
+      "role": "Owns every git worktree operation for ticket isolation: create/remove a per-ticket worktree and branch, prepare and clean up eval trial merges, rebase on conflict, commit worktree changes and squash-merge the ticket branch back to main. Also verifies the installed git supports what it needs.",
+      "type": "service",
+      "entrypoints": [
+        "worktreeManager.js:1320 createWorktree / createWorktreeSync / removeWorktree",
+        "worktreeManager.js:1320 prepareEvalTrialMergeSync / cleanupEvalTrialMergeSync",
+        "worktreeManager.js:1320 squashMergeTicketBranchSync / commitWorktreeChangesSync",
+        "worktreeManager.js:1320 rebaseTicketBranchSync / updateTicketBranchSync",
+        "gitVersionCheck.js checkGitVersionSupport"
+      ],
+      "tests": [
+        ".ombutocode/src/test/worktree-manager.test.js",
+        ".ombutocode/src/test/worktree-rebase.test.js",
+        ".ombutocode/src/test/worktree-node-modules-junctions.test.js",
+        ".ombutocode/src/test/git-version-check.test.js",
+        ".ombutocode/src/test/scheduler-file-conflict.test.js"
+      ],
+      "constraints": [
+        "unlinkNodeModulesLinks is exported purely so tests can pin the junction guard — without it a worktree teardown can wipe node_modules in the main repo (comment at worktreeManager.js:1332).",
+        "Grouped file: gitVersionCheck.js.",
+        "Copies .ombutocode/data/ombutocode.db into the worktree so agents see the backlog (worktreeManager.js:994)."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/worktreeManager.js:3-6 require('fs/promises'|'fs'|'path'|'child_process')",
+        ".ombutocode/src/src/main/worktreeManager.js:1320-1336 module.exports",
+        ".ombutocode/src/src/main/worktreeManager.js:994 ombutocode.db"
+      ]
+    },
+    {
+      "id": "git-diff-service",
+      "path": ".ombutocode/src/src/main/gitDiffService.js",
+      "role": "Read-only git inspection for the UI: resolves a ticket's merge commit, lists changed files from name-status/numstat, returns per-file diffs with a binary and size guard, and records the merge commit on the ticket. versionService adds per-file history and blob-at-commit lookups via simple-git.",
+      "type": "service",
+      "entrypoints": [
+        "gitDiffService.js:380 getChangedFiles / getFileDiff",
+        "gitDiffService.js:380 findMergeCommitSha / resolveTicketCommit / recordMergeCommitOnTicket",
+        "gitDiffService.js:380 assertSafeRepoPath / parseNameStatus / parseNumstat",
+        "versionService.js:79 getFileLog / getFileAtCommit"
+      ],
+      "tests": [
+        ".ombutocode/src/test/git-diff-service.test.js",
+        ".ombutocode/src/test/diff-language-packs.test.js"
+      ],
+      "constraints": [
+        "assertSafeRepoPath is a path-traversal guard on every repo-relative argument; MAX_INLINE_FILE_BYTES caps what is streamed to the renderer.",
+        "Grouped file: versionService.js (uses simple-git, unlike gitDiffService which shells out directly)."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/gitDiffService.js:16 require('child_process')",
+        ".ombutocode/src/src/main/gitDiffService.js:380 module.exports",
+        ".ombutocode/src/src/main/versionService.js:4-5 require('simple-git'), require('./planCoreUtilities')",
+        ".ombutocode/src/main.js:4216-4220 versionService.getFileLog / getFileAtCommit"
+      ]
+    },
+    {
+      "id": "backlog-operations",
+      "path": ".ombutocode/src/src/main/backlogOperations.js",
+      "role": "Ticket-level business rules above the raw database: read the backlog, change ticket status, delete, move to archive, and resolve dependency satisfaction. Also drafts ad-hoc tickets by prompting a coding agent, and writes ticket markdown files to disk.",
+      "type": "service",
+      "entrypoints": [
+        "backlogOperations.js:270-281 readBacklog / updateBacklogTicketStatus / deleteBacklogTicket",
+        "backlogOperations.js:270-281 moveBacklogTicketToArchive / hasResolvedDependencies",
+        "backlogOperations.js:270-281 setArchiveDb / setBacklogDb",
+        "adHocTickets.js:490 createAdHocTicketCreator / buildCodexDraftPrompt / parseCodexDraftOutput",
+        "ticketFileManager.js"
+      ],
+      "tests": [
+        ".ombutocode/src/test/backlog-operations.test.js",
+        ".ombutocode/src/test/backlog-promote-assignee.test.js",
+        ".ombutocode/src/test/ad-hoc-ticket-runtime.test.js",
+        ".ombutocode/src/test/ticket-file-manager.test.js",
+        ".ombutocode/src/test/ticket-file-path-payload.test.js",
+        ".ombutocode/src/test/ticket-generation-no-prompt.test.js"
+      ],
+      "constraints": [
+        "Database handles are injected at boot via setArchiveDb / setBacklogDb rather than imported, so this module has no static dependency on persistence-db.",
+        "Grouped files: adHocTickets.js, ticketFileManager.js.",
+        "adHocTickets shells out to a coding-agent CLI with a hard DEFAULT_COMMAND_TIMEOUT_MS and clamps prompts to MAX_PROMPT_CHARS."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/backlogOperations.js:270-281 module.exports (setArchiveDb, setBacklogDb, ...)",
+        ".ombutocode/src/src/main/adHocTickets.js:1 require('child_process')",
+        ".ombutocode/src/src/main/adHocTickets.js:261 runCodexDraftCommand",
+        ".ombutocode/src/main.js:59 require('./src/main/backlogOperations')"
+      ]
+    },
+    {
+      "id": "persistence-db",
+      "path": ".ombutocode/src/src/main/ombutocodeDb.js",
+      "role": "The sql.js persistence layer. ombutocodeDb is the facade over four physical SQLite files — backlog_tickets (ombutocode.db), archived tickets (archive.db), scheduler_logs (logs.db) and requests (requests.db) — plus jobManager's backup_job / backup_run / exclusion_rule tables.",
+      "type": "data",
+      "entrypoints": [
+        "ombutocodeDb.js:226 module.exports (facade)",
+        "backlogDb.js:692 backlog_tickets CRUD",
+        "archiveDb.js:739 archived tickets + migrateFromYaml",
+        "logsDb.js:413 scheduler_logs",
+        "requestsDb.js:531 requests",
+        "jobManager.js:527 listJobs / createJob / updateJob / deleteJob"
+      ],
+      "tests": [
+        ".ombutocode/src/test/backlog-db.test.js",
+        ".ombutocode/src/test/archive-db.test.js",
+        ".ombutocode/src/test/archiveDb.test.js",
+        ".ombutocode/src/test/logs-db.test.js",
+        ".ombutocode/src/test/requests-db.test.js",
+        ".ombutocode/src/test/jobManager.test.js",
+        ".ombutocode/src/test/archive-merge-fields.test.js"
+      ],
+      "constraints": [
+        "sql.js keeps the whole database in memory and must be explicitly written back to the .db file — there is no incremental on-disk write.",
+        "backlog_tickets in .ombutocode/data/ombutocode.db is the canonical task list per CLAUDE.md; docs/Epics markdown is secondary.",
+        "archiveDb.js:618 and backlogDb.js:646 lazily require js-yaml for the legacy YAML migration path.",
+        "Grouped files: ombutocodeDb.js, backlogDb.js, archiveDb.js, logsDb.js, requestsDb.js, jobManager.js. Data files: .ombutocode/data/{ombutocode,archive,logs,requests}.db"
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/ombutocodeDb.js:3-7 require('sql.js'), require('./archiveDb'|'./requestsDb'|'./logsDb'|'./backlogDb')",
+        ".ombutocode/src/src/main/ombutocodeDb.js:17 ombutocode.db",
+        ".ombutocode/src/src/main/backlogDb.js:102 CREATE TABLE IF NOT EXISTS backlog_tickets",
+        ".ombutocode/src/src/main/logsDb.js:82 CREATE TABLE IF NOT EXISTS scheduler_logs",
+        ".ombutocode/src/src/main/jobManager.js:42-84 CREATE TABLE backup_job / exclusion_rule / backup_run"
+      ]
+    },
+    {
+      "id": "artifact-subsystem",
+      "path": ".ombutocode/src/src/main/artifactService.js",
+      "role": "Requirements-as-artifacts store. artifactDb holds artifacts and id counters, artifactService adds gray-matter frontmatter parsing, hierarchy validation and index rebuilds, and treeService derives the requirement tree, ancestors/descendants, breadcrumbs and coverage reports.",
+      "type": "data",
+      "entrypoints": [
+        "artifactService.js:471 list / get / create / update / archive / nextId / rebuildIndex / validateHierarchyRules",
+        "treeService.js:209 buildTree / ancestors / descendants / children / breadcrumb / coverageReport / componentSummary",
+        "artifactDb.js:294 open / insertArtifact / updateArtifact / listArtifacts / getNextId / rebuildCounters"
+      ],
+      "tests": [],
+      "constraints": [
+        "Grouped files: artifactDb.js, artifactService.js, treeService.js, planCoreUtilities.js.",
+        "No dedicated test file in .ombutocode/src/test at this commit — the artifact and tree services are untested."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/artifactService.js:5 require('gray-matter')",
+        ".ombutocode/src/src/main/artifactService.js:7-9 require('./artifactDb'|'./ombutocodeDb'|'./planCoreUtilities')",
+        ".ombutocode/src/src/main/treeService.js:3 require('./artifactDb')",
+        ".ombutocode/src/main.js:4077-4079 require artifactService / treeService / versionService"
+      ]
+    },
+    {
+      "id": "file-services",
+      "path": ".ombutocode/src/src/main/fileTreeService.js",
+      "role": "Everything that touches the docs/ workspace on disk: scanning and CRUD over documents, mockups, use cases and class diagrams (fileTreeService); chokidar watching that re-indexes artifacts on change (fileWatcher); .ombutocode structure scaffolding (projectInit) and legacy layout migration (projectMigration); shared YAML/config helpers (coreUtilities).",
+      "type": "service",
+      "entrypoints": [
+        "fileTreeService.js:297 init / scan / readFile / writeFile / scanMockups / scanUseCases / scanClassDiagrams",
+        "projectInit.js:119 ensureOmbutocodeStructure / copyMissingFiles",
+        "fileWatcher.js:150 start / stop",
+        "projectMigration.js"
+      ],
+      "tests": [
+        ".ombutocode/src/test/project-init-skill-seeding.test.js"
+      ],
+      "constraints": [
+        "fileWatcher.js is not required by main.js, headless.js or any other module at this commit — it is currently dead code (see the unknown edge to electron-main).",
+        "Grouped files: fileTreeService.js, fileWatcher.js, projectInit.js, projectMigration.js, coreUtilities.js."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/fileTreeService.js:297 module.exports",
+        ".ombutocode/src/src/main/fileWatcher.js:4-10 require('chokidar'), require('./artifactDb'|'./ombutocodeDb'|'./planCoreUtilities')",
+        ".ombutocode/src/main.js:50 require('./src/main/fileTreeService')",
+        ".ombutocode/src/main.js:21-22 require('./src/main/projectMigration'|'./src/main/projectInit')"
+      ]
+    },
+    {
+      "id": "headless-cli",
+      "path": ".ombutocode/src/headless.js",
+      "role": "Electron-free entrypoint that runs the same scheduler loop from a terminal or CI. Substitutes a file-backed settings store for electron-store and composes the scheduler, agent runtime and runtime callbacks directly.",
+      "type": "process",
+      "entrypoints": [
+        "headless.js (npm run headless)",
+        "headless.js:50 createHeadlessSettings()",
+        "headless.js:229 createScheduler({...})"
+      ],
+      "tests": [],
+      "constraints": [
+        "Requires modules lazily inside the boot function so a partially initialised project fails with a clear message rather than at import time.",
+        "This is the only consumer of coreCallbacks.js — the Electron path duplicates that logic inline.",
+        "Grouped file: headlessSettings.js."
+      ],
+      "evidence": [
+        ".ombutocode/src/headless.js:50 require('./src/main/headlessSettings')",
+        ".ombutocode/src/headless.js:163 require('./src/main/coreCallbacks')",
+        ".ombutocode/src/headless.js:218 require('./src/main/codingAgentRuntime')",
+        ".ombutocode/src/headless.js:229 require('./src/main/scheduler')"
+      ]
+    },
+    {
+      "id": "dropsync-app",
+      "path": "src/",
+      "role": "DropSync — the product application being built in this repo. A separate small Electron/Vue app (backup jobs, job config, backup logs) with its own main process, preload bridge and 4-route router.",
+      "type": "ui",
+      "entrypoints": [
+        "src/main/index.js (package.json main)",
+        "src/preload/index.js:5 exposeInMainWorld('dropsync')",
+        "src/renderer/main.js",
+        "scripts/dev.js (npm run dev)"
+      ],
+      "tests": [],
+      "constraints": [
+        "Reaches across the workbench boundary: src/main/index.js:3 requires .ombutocode/src/src/main/jobManager, so the product app's job storage is the workbench's module.",
+        "No tests at this commit.",
+        "Grouped files: src/main/{index,logsManager}.js, src/preload/index.js, src/renderer/**, scripts/dev.js."
+      ],
+      "evidence": [
+        "src/main/index.js:3 require('../../.ombutocode/src/src/main/jobManager')",
+        "src/main/index.js:42-66 ipcMain.handle('jobs.list'|'jobs.get'|'jobs.create'|...)",
+        "src/preload/index.js:5-32 contextBridge.exposeInMainWorld('dropsync'|'api')",
+        "src/renderer/router/index.js:7-11 routes"
+      ]
+    },
+    {
+      "id": "external-agent-cli",
+      "path": ".ombutocode/codingagents/codingagents.yml",
+      "role": "External dependency: the coding-agent command-line tools (claude, codex, and the other configured providers) spawned as child processes to actually perform ticket work inside a worktree.",
+      "type": "external",
+      "entrypoints": [
+        "codingagents.yml:4 command: claude",
+        "codingagents.yml:31 command: codex"
+      ],
+      "tests": [
+        ".ombutocode/src/test/codex-prompt-template.test.js",
+        ".ombutocode/src/test/kimi-agent-runtime.test.js"
+      ],
+      "constraints": [
+        "Each tool declares rolling_window_hours, max_concurrent, cooldown_minutes and budget_limit; the scheduler enforces those, the CLI does not.",
+        "Availability is environmental — the binary must be on PATH; the repo only holds the invocation template."
+      ],
+      "evidence": [
+        ".ombutocode/codingagents/codingagents.yml:2-31 tools: id/command entries",
+        ".ombutocode/src/src/main/codingAgentRuntime.js:3 require('child_process')"
+      ]
+    },
+    {
+      "id": "git-repo",
+      "path": ".git/",
+      "role": "External dependency: the git repository itself. Backs ticket isolation (worktrees and per-ticket branches), the merge-back path, and every diff and file-history view in the UI.",
+      "type": "external",
+      "entrypoints": [
+        "git worktree add / remove",
+        "git merge --squash",
+        "git diff --name-status / --numstat",
+        "git rebase"
+      ],
+      "tests": [
+        ".ombutocode/src/test/worktree-manager.test.js",
+        ".ombutocode/src/test/git-diff-service.test.js",
+        ".ombutocode/src/test/git-version-check.test.js"
+      ],
+      "constraints": [
+        "A minimum git version is required for the worktree flags used; gitVersionCheck.checkGitVersionSupport gates startup on it.",
+        "On Windows, worktrees use directory junctions for node_modules — worktreeManager guards teardown so the main repo's node_modules is not removed."
+      ],
+      "evidence": [
+        ".ombutocode/src/src/main/worktreeManager.js:6 require('child_process')",
+        ".ombutocode/src/src/main/gitDiffService.js:16 require('child_process')",
+        ".ombutocode/src/src/main/gitVersionCheck.js:3 require('child_process')"
+      ]
+    }
+  ],
+  "edges": [
+    { "from": "renderer-shell", "to": "renderer-views", "type": "imports", "evidence": ".ombutocode/src/src/renderer/App.vue:153-171 import BoardList/KanbanColumn/BacklogTable/... from '@/components/*'" },
+    { "from": "renderer-shell", "to": "renderer-stores", "type": "imports", "evidence": ".ombutocode/src/src/renderer/App.vue:149-151 import { useBoardStore }, { useBacklogStore }, { useSettingsStore }" },
+    { "from": "renderer-views", "to": "renderer-stores", "type": "imports", "evidence": ".ombutocode/src/src/renderer/components/BacklogTable.vue:158 import { useBacklogStore } from '@/stores/backlogStore'" },
+    { "from": "renderer-stores", "to": "preload-bridge", "type": "calls", "evidence": ".ombutocode/src/src/renderer/stores/backlogStore.js:86 invoke('backlog:read'); agentStore.js:73 invoke('scheduler:start'); artifactStore.js:32 invoke('artifact:list')" },
+    { "from": "preload-bridge", "to": "electron-main", "type": "calls", "evidence": ".ombutocode/src/preload.js:215 ipcRenderer.invoke(channel, ...args) resolved by the 115 ipcMain.handle registrations in .ombutocode/src/main.js" },
+    { "from": "electron-main", "to": "scheduler", "type": "imports", "evidence": ".ombutocode/src/main.js:9 require('./src/main/scheduler'); main.js:1275 createScheduler({...})" },
+    { "from": "electron-main", "to": "agent-runtime", "type": "imports", "evidence": ".ombutocode/src/main.js:7 require('./src/main/codingAgentRuntime')" },
+    { "from": "electron-main", "to": "run-analysis", "type": "imports", "evidence": ".ombutocode/src/main.js:8 require('./src/main/runLifecycle'); main.js:18 require('./src/main/runSummary'); main.js:11-12 statusTransitionCleanup / runOutputCleanup" },
+    { "from": "electron-main", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/main.js:23 require('./src/main/worktreeManager'); main.js:10 require('./src/main/gitVersionCheck')" },
+    { "from": "electron-main", "to": "git-diff-service", "type": "imports", "evidence": ".ombutocode/src/main.js:19 require('./src/main/gitDiffService'); main.js:4079 require('./src/main/versionService')" },
+    { "from": "electron-main", "to": "persistence-db", "type": "imports", "evidence": ".ombutocode/src/main.js:43-48 require('./src/main/archiveDb'|'./src/main/requestsDb'|'./src/main/ombutocodeDb'|'./src/main/logsDb'|'./src/main/backlogDb'|'./src/main/jobManager')" },
+    { "from": "electron-main", "to": "backlog-operations", "type": "imports", "evidence": ".ombutocode/src/main.js:59 require('./src/main/backlogOperations'); main.js:33 require('./src/main/adHocTickets'); main.js:1776 require('./src/main/ticketFileManager')" },
+    { "from": "electron-main", "to": "artifact-subsystem", "type": "imports", "evidence": ".ombutocode/src/main.js:4077-4078 require('./src/main/artifactService'), require('./src/main/treeService'); main.js:1737 require('./src/main/artifactDb'); main.js:1754 require('./src/main/planCoreUtilities')" },
+    { "from": "electron-main", "to": "file-services", "type": "imports", "evidence": ".ombutocode/src/main.js:50 require('./src/main/fileTreeService'); main.js:21-22 require('./src/main/projectMigration'), require('./src/main/projectInit')" },
+    { "from": "electron-main", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/main.js:49 require('./src/main/schedulerLogger'); main.js:1274 createSchedulerLogger()" },
+    { "from": "scheduler", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:12 require('./worktreeManager'); scheduler.js:1333 createTicketWorktree(ticket.id, { projectRoot }); scheduler.js:1276 createEvalTrialMerge(ticket.id, ...)" },
+    { "from": "scheduler", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:5 require('./windowTracker'); scheduler.js:13 require('./epicReader')" },
+    { "from": "scheduler", "to": "agent-runtime", "type": "calls", "evidence": ".ombutocode/src/src/main/scheduler.js:1402 agentRuntime.startAgent(tool.id, enrichedPayload, ...); scheduler.js:737 agentRuntime.getRunStatus({ ticketId })" },
+    { "from": "scheduler", "to": "backlog-operations", "type": "calls", "evidence": ".ombutocode/src/src/main/scheduler.js:468-470 injected readBacklogData / writeBacklogData, supplied from .ombutocode/src/main.js:1276-1277" },
+    { "from": "scheduler-support", "to": "persistence-db", "type": "writes", "evidence": ".ombutocode/src/src/main/schedulerLogger.js:3 require('./logsDb') — scheduler events are appended to the scheduler_logs table (logsDb.js:82)" },
+    { "from": "agent-runtime", "to": "external-agent-cli", "type": "calls", "evidence": ".ombutocode/src/src/main/codingAgentRuntime.js:3 require('child_process'); renderCommand builds the argv from the tool template in .ombutocode/codingagents/codingagents.yml:4" },
+    { "from": "runtime-callbacks", "to": "agent-runtime", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:5 require('./codingAgentRuntime')" },
+    { "from": "runtime-callbacks", "to": "run-analysis", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:3 require('./runLifecycle'); coreCallbacks.js:6 require('./runSummary')" },
+    { "from": "runtime-callbacks", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:4 require('./worktreeManager') — squashMergeTicketBranchSync, commitWorktreeChangesSync, branchHasCommitsAheadSync, removeWorktree" },
+    { "from": "runtime-callbacks", "to": "git-diff-service", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:7 require('./gitDiffService') — recordMergeCommitOnTicket" },
+    { "from": "run-analysis", "to": "backlog-operations", "type": "imports", "evidence": ".ombutocode/src/src/main/runSummary.js:27 require('./adHocTickets')" },
+    { "from": "run-analysis", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/statusTransitionCleanup.js:3 require('./worktreeManager')" },
+    { "from": "backlog-operations", "to": "persistence-db", "type": "writes", "evidence": ".ombutocode/src/src/main/backlogOperations.js:270-281 setArchiveDb / setBacklogDb / getArchiveDb / getBacklogDb — handles injected at boot from .ombutocode/src/headless.js:95 and .ombutocode/src/main.js:59" },
+    { "from": "backlog-operations", "to": "external-agent-cli", "type": "calls", "evidence": ".ombutocode/src/src/main/adHocTickets.js:1 require('child_process'); adHocTickets.js:261 runCodexDraftCommand({ command, args, cwd, ... })" },
+    { "from": "artifact-subsystem", "to": "persistence-db", "type": "reads", "evidence": ".ombutocode/src/src/main/artifactService.js:8 require('./ombutocodeDb')" },
+    { "from": "worktree-manager", "to": "git-repo", "type": "calls", "evidence": ".ombutocode/src/src/main/worktreeManager.js:6 require('child_process') — createWorktreeSync / squashMergeTicketBranchSync / rebaseTicketBranchSync (worktreeManager.js:1320-1336)" },
+    { "from": "worktree-manager", "to": "persistence-db", "type": "reads", "evidence": ".ombutocode/src/src/main/worktreeManager.js:994 ombutocode.db is copied into the ticket worktree" },
+    { "from": "git-diff-service", "to": "git-repo", "type": "reads", "evidence": ".ombutocode/src/src/main/gitDiffService.js:16 require('child_process'); versionService.js:4 require('simple-git')" },
+    { "from": "file-services", "to": "artifact-subsystem", "type": "imports", "evidence": ".ombutocode/src/src/main/fileWatcher.js:8 require('./artifactDb'); fileWatcher.js:10 require('./planCoreUtilities')" },
+    { "from": "file-services", "to": "electron-main", "type": "publishes", "evidence": "unknown — .ombutocode/src/src/main/fileWatcher.js:7 require('electron') emits change events, but no module requires fileWatcher at this commit, so the subscriber is unresolved" },
+    { "from": "headless-cli", "to": "scheduler", "type": "imports", "evidence": ".ombutocode/src/headless.js:229 require('./src/main/scheduler')" },
+    { "from": "headless-cli", "to": "runtime-callbacks", "type": "imports", "evidence": ".ombutocode/src/headless.js:163 require('./src/main/coreCallbacks')" },
+    { "from": "headless-cli", "to": "agent-runtime", "type": "imports", "evidence": ".ombutocode/src/headless.js:218 require('./src/main/codingAgentRuntime')" },
+    { "from": "headless-cli", "to": "persistence-db", "type": "imports", "evidence": ".ombutocode/src/headless.js:94 require('./src/main/ombutocodeDb'); headless.js:99 require('./src/main/archiveDb'); headless.js:127 require('./src/main/backlogDb')" },
+    { "from": "headless-cli", "to": "backlog-operations", "type": "imports", "evidence": ".ombutocode/src/headless.js:95 require('./src/main/backlogOperations'); headless.js:143 require('./src/main/ticketFileManager')" },
+    { "from": "headless-cli", "to": "run-analysis", "type": "imports", "evidence": ".ombutocode/src/headless.js:166 require('./src/main/runSummary'); headless.js:254 require('./src/main/runOutputCleanup')" },
+    { "from": "headless-cli", "to": "file-services", "type": "imports", "evidence": ".ombutocode/src/headless.js:67 require('./src/main/coreUtilities'); headless.js:81 require('./src/main/projectInit')" },
+    { "from": "headless-cli", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/headless.js:159 require('./src/main/schedulerLogger')" },
+    { "from": "headless-cli", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/headless.js:263 require('./src/main/gitVersionCheck')" },
+    { "from": "dropsync-app", "to": "persistence-db", "type": "imports", "evidence": "src/main/index.js:3 require('../../.ombutocode/src/src/main/jobManager'); src/main/index.js:42 ipcMain.handle('jobs.list', ... jobManager.listJobs())" }
+  ],
+  "flows": [
+    {
+      "id": "ticket-execution",
+      "trigger": "A ticket reaches status todo with an assigned agent and the scheduler ticks (scheduler.js:974 dispatch → scheduler.js:1089 processQueue).",
+      "steps": [
+        "scheduler",
+        "scheduler-support",
+        "backlog-operations",
+        "worktree-manager",
+        "git-repo",
+        "agent-runtime",
+        "external-agent-cli",
+        "runtime-callbacks",
+        "run-analysis",
+        "persistence-db"
+      ],
+      "outcome": "The agent runs inside an isolated git worktree; on completion the run is classified, the ticket branch is committed and squash-merged, the worktree is torn down and the ticket's new status is persisted to backlog_tickets."
+    },
+    {
+      "id": "ui-request",
+      "trigger": "The user acts in the Vue UI — opening the backlog, starting the scheduler, editing settings.",
+      "steps": [
+        "renderer-views",
+        "renderer-stores",
+        "preload-bridge",
+        "electron-main",
+        "persistence-db",
+        "renderer-shell"
+      ],
+      "outcome": "A Pinia store issues a channel-filtered invoke(), the main process handler reads or writes SQLite, and the resolved value flows back into store state that re-renders the shell."
+    },
+    {
+      "id": "eval-trial-merge",
+      "trigger": "A ticket in review is selected for evaluation, so the scheduler must prove the branch merges before spending an agent run (scheduler.js:1276).",
+      "steps": [
+        "scheduler",
+        "worktree-manager",
+        "git-repo",
+        "agent-runtime",
+        "runtime-callbacks",
+        "backlog-operations"
+      ],
+      "outcome": "On a clean trial merge the eval agent runs against the merged tree; on conflict the scheduler retries once after a rebase, then resets the ticket to todo with state merge_failed and an explanatory note (main.js:1289-1317)."
+    },
+    {
+      "id": "run-summary",
+      "trigger": "A ticket's branch is squash-merged successfully and run summarisation is enabled (coreCallbacks deps.startRunSummary).",
+      "steps": [
+        "runtime-callbacks",
+        "run-analysis",
+        "agent-runtime",
+        "external-agent-cli",
+        "persistence-db",
+        "renderer-views"
+      ],
+      "outcome": "Phase transcripts are grouped and head/tail-truncated into a summary prompt, an agent CLI produces the summary, the parsed result is stored and the run summary dialog renders it."
+    },
+    {
+      "id": "diff-review",
+      "trigger": "The user opens the changes or merge view for a completed ticket.",
+      "steps": [
+        "renderer-views",
+        "renderer-stores",
+        "preload-bridge",
+        "electron-main",
+        "git-diff-service",
+        "git-repo"
+      ],
+      "outcome": "The ticket's merge commit is resolved, changed files come back from name-status/numstat and each file diff is streamed to the CodeMirror merge view under the binary and size guards."
+    },
+    {
+      "id": "headless-run",
+      "trigger": "npm run headless is invoked outside Electron (terminal or CI).",
+      "steps": [
+        "headless-cli",
+        "file-services",
+        "persistence-db",
+        "backlog-operations",
+        "scheduler",
+        "agent-runtime",
+        "runtime-callbacks"
+      ],
+      "outcome": "A file-backed settings store replaces electron-store and the identical scheduler loop drives tickets to completion with no window and no renderer."
+    }
+  ]
+}

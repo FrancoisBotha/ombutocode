@@ -1,0 +1,689 @@
+<title>ombutocode — Code Map</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-panel: #131a23;
+    --bg-elev: #1b2430;
+    --line: #263241;
+    --line-soft: #1d2734;
+    --fg: #e6edf3;
+    --fg-dim: #8b98a8;
+    --fg-faint: #5a6675;
+    --accent: #58a6ff;
+    --edge: #3a4757;
+    --edge-hi: #58a6ff;
+    --t-ui: #7ee0c0;
+    --t-bridge: #d9a441;
+    --t-process: #a78bfa;
+    --t-service: #58a6ff;
+    --t-data: #f0836a;
+    --t-external: #9aa7b6;
+    --warn: #f0b849;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--line);
+    background: var(--bg-panel);
+  }
+  header h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
+  header h1 span { color: var(--fg-dim); font-weight: 400; }
+  .meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--fg-dim); }
+  .meta b { color: var(--fg); font-weight: 500; font-family: var(--mono); }
+  .dirty { color: var(--warn); }
+
+  /* ---------- layout ---------- */
+  main { flex: 1 1 auto; display: flex; min-height: 0; }
+  #stage { flex: 1 1 auto; position: relative; min-width: 0; background:
+      radial-gradient(circle at 30% 20%, #131c27 0%, var(--bg) 62%); }
+  svg { width: 100%; height: 100%; display: block; cursor: grab; }
+  svg.panning { cursor: grabbing; }
+
+  aside {
+    flex: 0 0 336px;
+    border-left: 1px solid var(--line);
+    background: var(--bg-panel);
+    overflow-y: auto;
+    padding: 14px 16px 40px;
+  }
+  aside h2 {
+    margin: 0 0 8px; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.09em; color: var(--fg-faint); font-weight: 600;
+  }
+  aside section { margin-bottom: 22px; }
+
+  /* ---------- controls ---------- */
+  .controls {
+    position: absolute; top: 12px; left: 12px; z-index: 5;
+    display: flex; flex-direction: column; gap: 8px; width: 252px;
+  }
+  input[type=search] {
+    width: 100%; padding: 7px 10px; border-radius: 7px;
+    border: 1px solid var(--line); background: var(--bg-elev);
+    color: var(--fg); font-size: 13px; font-family: inherit;
+  }
+  input[type=search]:focus { outline: none; border-color: var(--accent); }
+  .legend {
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
+    border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px;
+    backdrop-filter: blur(6px);
+  }
+  .legend h2 { margin-bottom: 6px; }
+  .lg-item {
+    display: flex; align-items: center; gap: 7px; font-size: 12px;
+    padding: 2px 0; cursor: pointer; user-select: none; color: var(--fg-dim);
+  }
+  .lg-item.on { color: var(--fg); }
+  .lg-item.off .sw { opacity: 0.22; }
+  .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .zoombar { display: flex; gap: 6px; }
+  .zoombar button, .reset {
+    flex: 1; padding: 5px 8px; font-size: 12px; font-family: inherit;
+    background: var(--bg-elev); color: var(--fg-dim);
+    border: 1px solid var(--line); border-radius: 6px; cursor: pointer;
+  }
+  .zoombar button:hover, .reset:hover { color: var(--fg); border-color: var(--fg-faint); }
+
+  /* ---------- graph ---------- */
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.3; opacity: 0.5; }
+  .edge.unknown { stroke-dasharray: 4 3; stroke: var(--warn); opacity: 0.55; }
+  .edge.hi { stroke: var(--edge-hi); stroke-width: 2.2; opacity: 1; }
+  .edge.hi-in { stroke: var(--t-ui); stroke-width: 2.2; opacity: 1; }
+  .edge.flow { stroke: var(--t-bridge); stroke-width: 2.6; opacity: 1; }
+  .edge.dim { opacity: 0.07; }
+
+  .node { cursor: pointer; }
+  .node rect {
+    stroke-width: 1.4; rx: 8;
+    fill: var(--bg-elev);
+  }
+  .node .accentbar { stroke: none; rx: 2; }
+  .node text.title { font-size: 12.5px; font-weight: 600; fill: var(--fg); pointer-events: none; }
+  .node text.sub { font-size: 10.5px; fill: var(--fg-faint); font-family: var(--mono); pointer-events: none; }
+  .node.dim { opacity: 0.16; }
+  .node.sel rect { stroke-width: 2.4; }
+  .node.sel text.title { fill: #fff; }
+  .node.match rect { stroke: var(--warn); stroke-width: 2.2; }
+  .node.hidden { display: none; }
+
+  /* ---------- side panel ---------- */
+  .flow-item, .rel {
+    border: 1px solid var(--line-soft); border-radius: 7px;
+    padding: 8px 10px; margin-bottom: 6px; cursor: pointer; background: var(--bg-elev);
+  }
+  .flow-item:hover, .rel:hover { border-color: var(--fg-faint); }
+  .flow-item.on { border-color: var(--t-bridge); background: #241f14; }
+  .flow-item .ft { font-weight: 600; font-size: 12.5px; }
+  .flow-item .fd { font-size: 11.5px; color: var(--fg-dim); margin-top: 3px; }
+  .rel { display: flex; align-items: baseline; gap: 8px; }
+  .rel .rn { font-weight: 600; font-size: 12.5px; }
+  .rel .rt {
+    font-family: var(--mono); font-size: 10px; color: var(--fg-faint);
+    border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; margin-left: auto; flex: none;
+  }
+  .pill {
+    display: inline-block; font-size: 10px; font-family: var(--mono);
+    padding: 1px 7px; border-radius: 20px; border: 1px solid currentColor;
+  }
+  .path { font-family: var(--mono); font-size: 11.5px; color: var(--fg-dim); word-break: break-all; }
+  .role { font-size: 12.5px; color: var(--fg-dim); margin: 8px 0 0; }
+  ul.tight { margin: 4px 0 0; padding-left: 16px; }
+  ul.tight li { font-size: 11.5px; color: var(--fg-dim); margin-bottom: 3px; font-family: var(--mono); word-break: break-word; }
+  ul.tight.prose li { font-family: inherit; font-size: 12px; }
+  .empty { font-size: 12px; color: var(--fg-faint); font-style: italic; }
+  .hint { font-size: 12px; color: var(--fg-faint); }
+</style>
+
+<header>
+  <h1>ombutocode <span>— code map</span></h1>
+  <div class="meta">
+    <div>commit <b id="m-commit"></b></div>
+    <div>generated <b id="m-gen"></b></div>
+    <div id="m-dirty" class="dirty"></div>
+    <div><b id="m-counts"></b></div>
+  </div>
+</header>
+
+<main>
+  <div id="stage">
+    <div class="controls">
+      <input type="search" id="search" placeholder="Search modules, paths, symbols…" autocomplete="off">
+      <div class="legend">
+        <h2>Module types</h2>
+        <div id="legend"></div>
+      </div>
+      <div class="zoombar">
+        <button id="zin">Zoom +</button>
+        <button id="zout">Zoom −</button>
+        <button id="zfit">Fit</button>
+      </div>
+      <button class="reset" id="clearsel">Clear selection</button>
+    </div>
+    <svg id="svg"></svg>
+  </div>
+
+  <aside>
+    <section>
+      <h2>End-to-end flows</h2>
+      <div id="flows"></div>
+    </section>
+    <section id="detail"></section>
+  </aside>
+</main>
+
+<script id="codemap-data" type="application/json">
+{
+  "generated_at": "2026-08-08T01:02:57.805Z",
+  "generated_from_commit": "210892f293c445b492dee96e348f4c381c806e11",
+  "working_tree_dirty": true,
+  "repo": "ombutocode",
+  "nodes": [
+    { "id": "electron-main", "path": ".ombutocode/src/main.js", "type": "process", "label": "Electron Main", "role": "Electron main process and IPC host. Boots the BrowserWindow, wires every subsystem together and registers ~115 ipcMain handlers that the renderer calls through the preload bridge.", "entrypoints": ["main.js:1275 createScheduler({...})", "ipcMain.handle('scheduler:start')", "ipcMain.handle('backlog:read')", "ipcMain.handle('agents:state')"], "tests": [], "constraints": ["4400 lines — the single largest file in the repo and the de-facto composition root.", "Carries an inline duplicate of the runtime-callback logic that also lives in coreCallbacks.js; the code itself flags the duplication at main.js:747 and main.js:1031.", "Not covered directly by any test file; behaviour is tested through the extracted src/main/* modules."], "evidence": [".ombutocode/src/main.js:7-59 require('./src/main/...') block", ".ombutocode/src/main.js:1274-1323 createSchedulerLogger / createScheduler wiring", ".ombutocode/src/main.js:747 comment 'coreCallbacks.js for the sibling copy of this block'"] },
+    { "id": "preload-bridge", "path": ".ombutocode/src/preload.js", "type": "bridge", "label": "Preload Bridge", "role": "contextBridge sandbox boundary. Exposes a channel-filtered window.electron.ipcRenderer (send / on / invoke) to the renderer; the only path from UI code into the main process.", "entrypoints": ["preload.js:141 contextBridge.exposeInMainWorld('electron', ...)", "preload.js:215 ipcRenderer.invoke(channel, ...args)"], "tests": [], "constraints": ["All renderer-to-main traffic must pass through the allowed-channel lists declared in this file; a new IPC channel is inert until it is listed here."], "evidence": [".ombutocode/src/preload.js:1 require('electron') contextBridge, ipcRenderer", ".ombutocode/src/preload.js:141 exposeInMainWorld", ".ombutocode/src/preload.js:194-215 on / removeListener / invoke"] },
+    { "id": "renderer-shell", "path": ".ombutocode/src/src/renderer/", "type": "ui", "label": "Renderer Shell", "role": "Vue 3 application shell: bootstrap (main.js), the App.vue tab/board host, the hash-history router, the logger plugin and shared renderer utilities (dropbox, notification sound, skills, requirements matrix, terminal paste).", "entrypoints": ["src/renderer/main.js:1 createApp(App)", "src/renderer/App.vue", "src/renderer/router/index.js"], "tests": [], "constraints": ["Router is hash-history with only 3 routes; the primary navigation model is in-App.vue tab switching rather than routing.", "Grouped files: router/index.js, plugins/logger.js, utils/{dropbox,dropbox.new,logger,notificationSound,requirementsMatrix,skills,terminalPaste}.js"], "evidence": [".ombutocode/src/src/renderer/main.js:1-6 createApp / createPinia / router / loggerPlugin imports", ".ombutocode/src/src/renderer/App.vue:149-171 store and component imports", ".ombutocode/src/src/renderer/router/index.js"] },
+    { "id": "renderer-stores", "path": ".ombutocode/src/src/renderer/stores/", "type": "ui", "label": "Pinia Stores", "role": "Pinia state layer (12 stores). Each store owns one IPC-backed domain — backlog, archive, epics, agents, agent tools, logs, requests, artifacts, tree, settings, boards, UI — and is the only place the UI issues invoke() calls.", "entrypoints": ["backlogStore.js:86 invoke('backlog:read')", "agentStore.js:73 invoke('scheduler:start')", "epicStore.js:88 invoke('epics:start')", "artifactStore.js:32 invoke('artifact:list')"], "tests": [], "constraints": ["Grouped files: agentStore, agentToolsStore, archiveStore, artifactStore, backlogStore, boardStore, epicStore, logsStore, requestsStore, settingsStore, treeStore, uiStore.", "boardStore and uiStore hold local-only state and issue no IPC calls."], "evidence": [".ombutocode/src/src/renderer/stores/backlogStore.js:86 invoke('backlog:read')", ".ombutocode/src/src/renderer/stores/agentStore.js:58-125 invoke('scheduler:status'|'scheduler:start'|'scheduler:stop'|'agents:state')", ".ombutocode/src/src/renderer/stores/requestsStore.js:20-126 invoke('requests:read'|'requests:create'|'requests:update'|'requests:delete'|'requests:search')", ".ombutocode/src/src/renderer/stores/treeStore.js:46-86 invoke('tree:build'|'tree:coverage'|'tree:breadcrumb')"] },
+    { "id": "renderer-views", "path": ".ombutocode/src/src/renderer/views/", "type": "ui", "label": "Views & Components", "role": "Screen and widget layer (55 files): 21 views (dashboard, diagrams, requirements, git, settings, skills, tree, validate) plus 34 components (kanban board, backlog/archive/epics tables, the Plan* wizard screens, run summary and diff dialogs, workspace and automation panels).", "entrypoints": ["components/BacklogTable.vue", "components/KanbanColumn.vue", "components/WorkspaceView.vue", "views/DashboardView.vue"], "tests": [".ombutocode/src/test/automation-view-wiring.test.js", ".ombutocode/src/test/kanban-eval-summary-ui.test.js", ".ombutocode/src/test/backlog-archive-eval-summary-ui.test.js", ".ombutocode/src/test/settings-models-tab.test.js", ".ombutocode/src/test/test-summary-ui.test.js", ".ombutocode/src/test/agents-screen-scheduler-ui.test.js", ".ombutocode/src/test/backlog-table-refresh.test.js", ".ombutocode/src/test/bootstrap-prototype-wiring.test.js"], "constraints": ["UI tests assert against the .vue source text rather than a mounted component; they are wiring checks, not render tests.", "components/ReviewCodeMapView.vue is untracked in git at this commit and is therefore excluded from the module fingerprint."], "evidence": [".ombutocode/src/src/renderer/App.vue:153-171 component imports", ".ombutocode/src/src/renderer/components/BacklogTable.vue:158 import { useBacklogStore }", ".ombutocode/src/test/automation-view-wiring.test.js"] },
+    { "id": "scheduler", "path": ".ombutocode/src/src/main/scheduler.js", "type": "service", "label": "Scheduler", "role": "The orchestration core. A dependency-injected factory (createScheduler) that ticks a queue: gates tickets on dependencies and epic readiness, prepares worktrees or eval trial merges, dispatches runs to the agent runtime under concurrency/cooldown/budget limits, and parses provider rate-limit pauses out of run output.", "entrypoints": ["scheduler.js:467 createScheduler(deps)", "scheduler.js:974 dispatch(event)", "scheduler.js:1089 processQueue()", "scheduler.js:422 parseProviderPauseFromRun(run, agentConfig)", "scheduler.js:23 buildRetryContext(ticket)"], "tests": [".ombutocode/src/test/scheduler-assignment.test.js", ".ombutocode/src/test/scheduler-auto-building.test.js", ".ombutocode/src/test/scheduler-file-conflict.test.js", ".ombutocode/src/test/scheduler-retry-context.test.js", ".ombutocode/src/test/scheduler-delete-queue-ticket.test.js", ".ombutocode/src/test/agent-start-dependency-blocking.test.js", ".ombutocode/src/test/agent-coordination-lock.test.js", ".ombutocode/src/test/retry-context-token.test.js", ".ombutocode/src/test/build-phase-gates.test.js", ".ombutocode/src/test/epic-strategy-variants.test.js"], "constraints": ["Takes all collaborators via the deps object (readBacklogData, agentRuntime, createTicketWorktree, ...), so tests substitute fakes without touching git or child processes.", "Reentrancy-guarded: dispatching / dispatchQueued flags make a nested dispatch() re-run processQueue in the same do-while loop instead of recursing.", "Only picks up tickets with status todo and an explicit agent assignee; epic gating reads docs/Epics from disk on every tick."], "evidence": [".ombutocode/src/src/main/scheduler.js:467-487 createScheduler dependency destructuring", ".ombutocode/src/src/main/scheduler.js:1333 createTicketWorktree(ticket.id, { projectRoot })", ".ombutocode/src/src/main/scheduler.js:1402 agentRuntime.startAgent(tool.id, enrichedPayload, ...)", ".ombutocode/src/src/main/scheduler.js:1930-1932 module.exports"] },
+    { "id": "scheduler-support", "path": ".ombutocode/src/src/main/windowTracker.js", "type": "service", "label": "Scheduler Support", "role": "Scheduler helpers: rolling usage-window and auto-pause state persistence (windowTracker), scheduler event logging into the logs database (schedulerLogger + schedulerLogEvents), and epic markdown parsing that builds the epic readiness gate (epicReader).", "entrypoints": ["windowTracker.js:256 createWindowTracker({ projectRoot })", "schedulerLogger.js:43 createSchedulerLogger()", "epicReader.js:139 readEpics / parseDependsList / createEpicReadinessGate"], "tests": [".ombutocode/src/test/epic-strategy-variants.test.js", ".ombutocode/src/test/logs-db.test.js"], "constraints": ["Grouped files: windowTracker.js, schedulerLogger.js, schedulerLogEvents.js, epicReader.js.", "windowTracker state is a JSON file on disk, not a database row — it survives restarts and carries scheduler_running."], "evidence": [".ombutocode/src/src/main/scheduler.js:5 require('./windowTracker')", ".ombutocode/src/src/main/scheduler.js:13 require('./epicReader')", ".ombutocode/src/src/main/schedulerLogger.js:3 require('./logsDb')", ".ombutocode/src/main.js:1325 scheduler.windowTracker.loadState()"] },
+    { "id": "agent-runtime", "path": ".ombutocode/src/src/main/codingAgentRuntime.js", "type": "service", "label": "Agent Runtime", "role": "Spawns and supervises external coding-agent CLI processes. Renders per-tool command templates from codingagents.yml, launches them via child_process, tracks live runs by ticket and run id, and streams output back through the runtime callbacks.", "entrypoints": ["codingAgentRuntime.js:489 AgentRuntime", "codingAgentRuntime.js:489 normalizeStartPayload", "codingAgentRuntime.js:489 resolveAgentTemplateConfig", "codingAgentRuntime.js:489 renderCommand", "codingAgentRuntime.js:489 AgentInvocationError"], "tests": [".ombutocode/src/test/kimi-agent-runtime.test.js", ".ombutocode/src/test/codex-prompt-template.test.js", ".ombutocode/src/test/eval-agent-prompt-template.test.js", ".ombutocode/src/test/test-agent-prompt-template.test.js", ".ombutocode/src/test/agent-tools-cjs.test.js", ".ombutocode/src/test/ad-hoc-ticket-runtime.test.js"], "constraints": ["Tool roster, concurrency caps, cooldowns, budgets and model ids are data in .ombutocode/codingagents/codingagents.yml — adding an agent is a config change, not a code change.", "resolveKimiTemplateConfig is a per-provider special case alongside the generic resolveAgentTemplateConfig.", "Grouped file: .ombutocode/codingagents/codingagents.yml"], "evidence": [".ombutocode/src/src/main/codingAgentRuntime.js:1-4 require('fs'|'path'|'child_process'|'crypto')", ".ombutocode/src/src/main/codingAgentRuntime.js:489-499 module.exports", ".ombutocode/codingagents/codingagents.yml:2 tools: (claude, codex, ...)"] },
+    { "id": "runtime-callbacks", "path": ".ombutocode/src/src/main/coreCallbacks.js", "type": "service", "label": "Runtime Callbacks", "role": "The onRunStarted / onRunUpdated / onRunFinished handler set. Turns a finished agent run into ticket state: resolves the next status, commits the worktree, squash-merges the ticket branch, records the merge commit, kicks off run summarisation and tears the worktree down.", "entrypoints": ["coreCallbacks.js:36 createRuntimeCallbacks(deps)", "coreCallbacks.js:66 onRunStarted(run)", "coreCallbacks.js:139 onRunUpdated(run)"], "tests": [".ombutocode/src/test/run-lifecycle.test.js", ".ombutocode/src/test/status-transition-cleanup.test.js", ".ombutocode/src/test/archive-merge-fields.test.js"], "constraints": ["Consumed only by headless-cli at this commit; the Electron main process runs its own inline copy of the same logic (see main.js:747, main.js:1031). The two must be kept in step by hand."], "evidence": [".ombutocode/src/src/main/coreCallbacks.js:3-7 require('./runLifecycle'|'./worktreeManager'|'./codingAgentRuntime'|'./runSummary'|'./gitDiffService')", ".ombutocode/src/src/main/coreCallbacks.js:36 function createRuntimeCallbacks(deps)", ".ombutocode/src/headless.js:163 require('./src/main/coreCallbacks')"] },
+    { "id": "run-analysis", "path": ".ombutocode/src/src/main/runLifecycle.js", "type": "service", "label": "Run Analysis", "role": "Post-run interpretation and housekeeping. Decides the ticket status, eval outcome and test outcome implied by a finished run, extracts text and impl/test markers from stream-json output, groups run logs into phases and drives the LLM run-summary prompt; also purges stale run output and cleans up status transitions.", "entrypoints": ["runLifecycle.js:770 resolveTicketStatusAfterRun", "runLifecycle.js:770 resolveEvalOutcomeAfterRun / resolveTestOutcomeAfterRun", "runLifecycle.js:770 extractTextFromStreamJson / extractImplTestMarkers", "runSummary.js:491 createRunSummarizer / buildRunSummaryPrompt / parseRunSummaryOutput", "runOutputCleanup.js cleanupRunOutput", "statusTransitionCleanup.js"], "tests": [".ombutocode/src/test/run-lifecycle.test.js", ".ombutocode/src/test/run-summary.test.js", ".ombutocode/src/test/run-output-cleanup.test.js", ".ombutocode/src/test/status-transition-cleanup.test.js", ".ombutocode/src/test/docs-only-ticket-test-phase.test.js", ".ombutocode/src/test/ticket-notes-slim.test.js"], "constraints": ["Grouped files: runLifecycle.js, runSummary.js, runOutputCleanup.js, statusTransitionCleanup.js.", "runSummary applies HEAD_BUDGET_CHARS / TAIL_BUDGET_CHARS truncation before prompting, so very long transcripts are summarised from the ends only.", "statusTransitionCleanup reaches into worktreeManager to remove worktrees left behind by a status change."], "evidence": [".ombutocode/src/src/main/runLifecycle.js:770-778 module.exports", ".ombutocode/src/src/main/runSummary.js:22 require('./runLifecycle')", ".ombutocode/src/src/main/runSummary.js:27 require('./adHocTickets')", ".ombutocode/src/src/main/statusTransitionCleanup.js:3 require('./worktreeManager')"] },
+    { "id": "worktree-manager", "path": ".ombutocode/src/src/main/worktreeManager.js", "type": "service", "label": "Worktree Manager", "role": "Owns every git worktree operation for ticket isolation: create/remove a per-ticket worktree and branch, prepare and clean up eval trial merges, rebase on conflict, commit worktree changes and squash-merge the ticket branch back to main. Also verifies the installed git supports what it needs.", "entrypoints": ["worktreeManager.js:1320 createWorktree / createWorktreeSync / removeWorktree", "worktreeManager.js:1320 prepareEvalTrialMergeSync / cleanupEvalTrialMergeSync", "worktreeManager.js:1320 squashMergeTicketBranchSync / commitWorktreeChangesSync", "worktreeManager.js:1320 rebaseTicketBranchSync / updateTicketBranchSync", "gitVersionCheck.js checkGitVersionSupport"], "tests": [".ombutocode/src/test/worktree-manager.test.js", ".ombutocode/src/test/worktree-rebase.test.js", ".ombutocode/src/test/worktree-node-modules-junctions.test.js", ".ombutocode/src/test/git-version-check.test.js", ".ombutocode/src/test/scheduler-file-conflict.test.js"], "constraints": ["unlinkNodeModulesLinks is exported purely so tests can pin the junction guard — without it a worktree teardown can wipe node_modules in the main repo (comment at worktreeManager.js:1332).", "Grouped file: gitVersionCheck.js.", "Copies .ombutocode/data/ombutocode.db into the worktree so agents see the backlog (worktreeManager.js:994)."], "evidence": [".ombutocode/src/src/main/worktreeManager.js:3-6 require('fs/promises'|'fs'|'path'|'child_process')", ".ombutocode/src/src/main/worktreeManager.js:1320-1336 module.exports", ".ombutocode/src/src/main/worktreeManager.js:994 ombutocode.db"] },
+    { "id": "git-diff-service", "path": ".ombutocode/src/src/main/gitDiffService.js", "type": "service", "label": "Git Diff Service", "role": "Read-only git inspection for the UI: resolves a ticket's merge commit, lists changed files from name-status/numstat, returns per-file diffs with a binary and size guard, and records the merge commit on the ticket. versionService adds per-file history and blob-at-commit lookups via simple-git.", "entrypoints": ["gitDiffService.js:380 getChangedFiles / getFileDiff", "gitDiffService.js:380 findMergeCommitSha / resolveTicketCommit / recordMergeCommitOnTicket", "gitDiffService.js:380 assertSafeRepoPath / parseNameStatus / parseNumstat", "versionService.js:79 getFileLog / getFileAtCommit"], "tests": [".ombutocode/src/test/git-diff-service.test.js", ".ombutocode/src/test/diff-language-packs.test.js"], "constraints": ["assertSafeRepoPath is a path-traversal guard on every repo-relative argument; MAX_INLINE_FILE_BYTES caps what is streamed to the renderer.", "Grouped file: versionService.js (uses simple-git, unlike gitDiffService which shells out directly)."], "evidence": [".ombutocode/src/src/main/gitDiffService.js:16 require('child_process')", ".ombutocode/src/src/main/gitDiffService.js:380 module.exports", ".ombutocode/src/src/main/versionService.js:4-5 require('simple-git'), require('./planCoreUtilities')", ".ombutocode/src/main.js:4216-4220 versionService.getFileLog / getFileAtCommit"] },
+    { "id": "backlog-operations", "path": ".ombutocode/src/src/main/backlogOperations.js", "type": "service", "label": "Backlog Operations", "role": "Ticket-level business rules above the raw database: read the backlog, change ticket status, delete, move to archive, and resolve dependency satisfaction. Also drafts ad-hoc tickets by prompting a coding agent, and writes ticket markdown files to disk.", "entrypoints": ["backlogOperations.js:270-281 readBacklog / updateBacklogTicketStatus / deleteBacklogTicket", "backlogOperations.js:270-281 moveBacklogTicketToArchive / hasResolvedDependencies", "backlogOperations.js:270-281 setArchiveDb / setBacklogDb", "adHocTickets.js:490 createAdHocTicketCreator / buildCodexDraftPrompt / parseCodexDraftOutput", "ticketFileManager.js"], "tests": [".ombutocode/src/test/backlog-operations.test.js", ".ombutocode/src/test/backlog-promote-assignee.test.js", ".ombutocode/src/test/ad-hoc-ticket-runtime.test.js", ".ombutocode/src/test/ticket-file-manager.test.js", ".ombutocode/src/test/ticket-file-path-payload.test.js", ".ombutocode/src/test/ticket-generation-no-prompt.test.js"], "constraints": ["Database handles are injected at boot via setArchiveDb / setBacklogDb rather than imported, so this module has no static dependency on persistence-db.", "Grouped files: adHocTickets.js, ticketFileManager.js.", "adHocTickets shells out to a coding-agent CLI with a hard DEFAULT_COMMAND_TIMEOUT_MS and clamps prompts to MAX_PROMPT_CHARS."], "evidence": [".ombutocode/src/src/main/backlogOperations.js:270-281 module.exports (setArchiveDb, setBacklogDb, ...)", ".ombutocode/src/src/main/adHocTickets.js:1 require('child_process')", ".ombutocode/src/src/main/adHocTickets.js:261 runCodexDraftCommand", ".ombutocode/src/main.js:59 require('./src/main/backlogOperations')"] },
+    { "id": "persistence-db", "path": ".ombutocode/src/src/main/ombutocodeDb.js", "type": "data", "label": "SQLite Persistence", "role": "The sql.js persistence layer. ombutocodeDb is the facade over four physical SQLite files — backlog_tickets (ombutocode.db), archived tickets (archive.db), scheduler_logs (logs.db) and requests (requests.db) — plus jobManager's backup_job / backup_run / exclusion_rule tables.", "entrypoints": ["ombutocodeDb.js:226 module.exports (facade)", "backlogDb.js:692 backlog_tickets CRUD", "archiveDb.js:739 archived tickets + migrateFromYaml", "logsDb.js:413 scheduler_logs", "requestsDb.js:531 requests", "jobManager.js:527 listJobs / createJob / updateJob / deleteJob"], "tests": [".ombutocode/src/test/backlog-db.test.js", ".ombutocode/src/test/archive-db.test.js", ".ombutocode/src/test/archiveDb.test.js", ".ombutocode/src/test/logs-db.test.js", ".ombutocode/src/test/requests-db.test.js", ".ombutocode/src/test/jobManager.test.js", ".ombutocode/src/test/archive-merge-fields.test.js"], "constraints": ["sql.js keeps the whole database in memory and must be explicitly written back to the .db file — there is no incremental on-disk write.", "backlog_tickets in .ombutocode/data/ombutocode.db is the canonical task list per CLAUDE.md; docs/Epics markdown is secondary.", "archiveDb.js:618 and backlogDb.js:646 lazily require js-yaml for the legacy YAML migration path.", "Grouped files: ombutocodeDb.js, backlogDb.js, archiveDb.js, logsDb.js, requestsDb.js, jobManager.js. Data files: .ombutocode/data/{ombutocode,archive,logs,requests}.db"], "evidence": [".ombutocode/src/src/main/ombutocodeDb.js:3-7 require('sql.js'), require('./archiveDb'|'./requestsDb'|'./logsDb'|'./backlogDb')", ".ombutocode/src/src/main/ombutocodeDb.js:17 ombutocode.db", ".ombutocode/src/src/main/backlogDb.js:102 CREATE TABLE IF NOT EXISTS backlog_tickets", ".ombutocode/src/src/main/logsDb.js:82 CREATE TABLE IF NOT EXISTS scheduler_logs", ".ombutocode/src/src/main/jobManager.js:42-84 CREATE TABLE backup_job / exclusion_rule / backup_run"] },
+    { "id": "artifact-subsystem", "path": ".ombutocode/src/src/main/artifactService.js", "type": "data", "label": "Artifact Subsystem", "role": "Requirements-as-artifacts store. artifactDb holds artifacts and id counters, artifactService adds gray-matter frontmatter parsing, hierarchy validation and index rebuilds, and treeService derives the requirement tree, ancestors/descendants, breadcrumbs and coverage reports.", "entrypoints": ["artifactService.js:471 list / get / create / update / archive / nextId / rebuildIndex / validateHierarchyRules", "treeService.js:209 buildTree / ancestors / descendants / children / breadcrumb / coverageReport / componentSummary", "artifactDb.js:294 open / insertArtifact / updateArtifact / listArtifacts / getNextId / rebuildCounters"], "tests": [], "constraints": ["Grouped files: artifactDb.js, artifactService.js, treeService.js, planCoreUtilities.js.", "No dedicated test file in .ombutocode/src/test at this commit — the artifact and tree services are untested."], "evidence": [".ombutocode/src/src/main/artifactService.js:5 require('gray-matter')", ".ombutocode/src/src/main/artifactService.js:7-9 require('./artifactDb'|'./ombutocodeDb'|'./planCoreUtilities')", ".ombutocode/src/src/main/treeService.js:3 require('./artifactDb')", ".ombutocode/src/main.js:4077-4079 require artifactService / treeService / versionService"] },
+    { "id": "file-services", "path": ".ombutocode/src/src/main/fileTreeService.js", "type": "service", "label": "File & Docs Services", "role": "Everything that touches the docs/ workspace on disk: scanning and CRUD over documents, mockups, use cases and class diagrams (fileTreeService); chokidar watching that re-indexes artifacts on change (fileWatcher); .ombutocode structure scaffolding (projectInit) and legacy layout migration (projectMigration); shared YAML/config helpers (coreUtilities).", "entrypoints": ["fileTreeService.js:297 init / scan / readFile / writeFile / scanMockups / scanUseCases / scanClassDiagrams", "projectInit.js:119 ensureOmbutocodeStructure / copyMissingFiles", "fileWatcher.js:150 start / stop", "projectMigration.js"], "tests": [".ombutocode/src/test/project-init-skill-seeding.test.js"], "constraints": ["fileWatcher.js is not required by main.js, headless.js or any other module at this commit — it is currently dead code (see the unknown edge to electron-main).", "Grouped files: fileTreeService.js, fileWatcher.js, projectInit.js, projectMigration.js, coreUtilities.js."], "evidence": [".ombutocode/src/src/main/fileTreeService.js:297 module.exports", ".ombutocode/src/src/main/fileWatcher.js:4-10 require('chokidar'), require('./artifactDb'|'./ombutocodeDb'|'./planCoreUtilities')", ".ombutocode/src/main.js:50 require('./src/main/fileTreeService')", ".ombutocode/src/main.js:21-22 require('./src/main/projectMigration'|'./src/main/projectInit')"] },
+    { "id": "headless-cli", "path": ".ombutocode/src/headless.js", "type": "process", "label": "Headless CLI", "role": "Electron-free entrypoint that runs the same scheduler loop from a terminal or CI. Substitutes a file-backed settings store for electron-store and composes the scheduler, agent runtime and runtime callbacks directly.", "entrypoints": ["headless.js (npm run headless)", "headless.js:50 createHeadlessSettings()", "headless.js:229 createScheduler({...})"], "tests": [], "constraints": ["Requires modules lazily inside the boot function so a partially initialised project fails with a clear message rather than at import time.", "This is the only consumer of coreCallbacks.js — the Electron path duplicates that logic inline.", "Grouped file: headlessSettings.js."], "evidence": [".ombutocode/src/headless.js:50 require('./src/main/headlessSettings')", ".ombutocode/src/headless.js:163 require('./src/main/coreCallbacks')", ".ombutocode/src/headless.js:218 require('./src/main/codingAgentRuntime')", ".ombutocode/src/headless.js:229 require('./src/main/scheduler')"] },
+    { "id": "dropsync-app", "path": "src/", "type": "ui", "label": "DropSync App", "role": "DropSync — the product application being built in this repo. A separate small Electron/Vue app (backup jobs, job config, backup logs) with its own main process, preload bridge and 4-route router.", "entrypoints": ["src/main/index.js (package.json main)", "src/preload/index.js:5 exposeInMainWorld('dropsync')", "src/renderer/main.js", "scripts/dev.js (npm run dev)"], "tests": [], "constraints": ["Reaches across the workbench boundary: src/main/index.js:3 requires .ombutocode/src/src/main/jobManager, so the product app's job storage is the workbench's module.", "No tests at this commit.", "Grouped files: src/main/{index,logsManager}.js, src/preload/index.js, src/renderer/**, scripts/dev.js."], "evidence": ["src/main/index.js:3 require('../../.ombutocode/src/src/main/jobManager')", "src/main/index.js:42-66 ipcMain.handle('jobs.list'|'jobs.get'|'jobs.create'|...)", "src/preload/index.js:5-32 contextBridge.exposeInMainWorld('dropsync'|'api')", "src/renderer/router/index.js:7-11 routes"] },
+    { "id": "external-agent-cli", "path": ".ombutocode/codingagents/codingagents.yml", "type": "external", "label": "Coding Agent CLIs", "role": "External dependency: the coding-agent command-line tools (claude, codex, and the other configured providers) spawned as child processes to actually perform ticket work inside a worktree.", "entrypoints": ["codingagents.yml:4 command: claude", "codingagents.yml:31 command: codex"], "tests": [".ombutocode/src/test/codex-prompt-template.test.js", ".ombutocode/src/test/kimi-agent-runtime.test.js"], "constraints": ["Each tool declares rolling_window_hours, max_concurrent, cooldown_minutes and budget_limit; the scheduler enforces those, the CLI does not.", "Availability is environmental — the binary must be on PATH; the repo only holds the invocation template."], "evidence": [".ombutocode/codingagents/codingagents.yml:2-31 tools: id/command entries", ".ombutocode/src/src/main/codingAgentRuntime.js:3 require('child_process')"] },
+    { "id": "git-repo", "path": ".git/", "type": "external", "label": "Git Repository", "role": "External dependency: the git repository itself. Backs ticket isolation (worktrees and per-ticket branches), the merge-back path, and every diff and file-history view in the UI.", "entrypoints": ["git worktree add / remove", "git merge --squash", "git diff --name-status / --numstat", "git rebase"], "tests": [".ombutocode/src/test/worktree-manager.test.js", ".ombutocode/src/test/git-diff-service.test.js", ".ombutocode/src/test/git-version-check.test.js"], "constraints": ["A minimum git version is required for the worktree flags used; gitVersionCheck.checkGitVersionSupport gates startup on it.", "On Windows, worktrees use directory junctions for node_modules — worktreeManager guards teardown so the main repo's node_modules is not removed."], "evidence": [".ombutocode/src/src/main/worktreeManager.js:6 require('child_process')", ".ombutocode/src/src/main/gitDiffService.js:16 require('child_process')", ".ombutocode/src/src/main/gitVersionCheck.js:3 require('child_process')"] }
+  ],
+  "edges": [
+    { "from": "renderer-shell", "to": "renderer-views", "type": "imports", "evidence": ".ombutocode/src/src/renderer/App.vue:153-171 import BoardList/KanbanColumn/BacklogTable/... from '@/components/*'" },
+    { "from": "renderer-shell", "to": "renderer-stores", "type": "imports", "evidence": ".ombutocode/src/src/renderer/App.vue:149-151 import { useBoardStore }, { useBacklogStore }, { useSettingsStore }" },
+    { "from": "renderer-views", "to": "renderer-stores", "type": "imports", "evidence": ".ombutocode/src/src/renderer/components/BacklogTable.vue:158 import { useBacklogStore } from '@/stores/backlogStore'" },
+    { "from": "renderer-stores", "to": "preload-bridge", "type": "calls", "evidence": ".ombutocode/src/src/renderer/stores/backlogStore.js:86 invoke('backlog:read'); agentStore.js:73 invoke('scheduler:start'); artifactStore.js:32 invoke('artifact:list')" },
+    { "from": "preload-bridge", "to": "electron-main", "type": "calls", "evidence": ".ombutocode/src/preload.js:215 ipcRenderer.invoke(channel, ...args) resolved by the 115 ipcMain.handle registrations in .ombutocode/src/main.js" },
+    { "from": "electron-main", "to": "scheduler", "type": "imports", "evidence": ".ombutocode/src/main.js:9 require('./src/main/scheduler'); main.js:1275 createScheduler({...})" },
+    { "from": "electron-main", "to": "agent-runtime", "type": "imports", "evidence": ".ombutocode/src/main.js:7 require('./src/main/codingAgentRuntime')" },
+    { "from": "electron-main", "to": "run-analysis", "type": "imports", "evidence": ".ombutocode/src/main.js:8 require('./src/main/runLifecycle'); main.js:18 require('./src/main/runSummary'); main.js:11-12 statusTransitionCleanup / runOutputCleanup" },
+    { "from": "electron-main", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/main.js:23 require('./src/main/worktreeManager'); main.js:10 require('./src/main/gitVersionCheck')" },
+    { "from": "electron-main", "to": "git-diff-service", "type": "imports", "evidence": ".ombutocode/src/main.js:19 require('./src/main/gitDiffService'); main.js:4079 require('./src/main/versionService')" },
+    { "from": "electron-main", "to": "persistence-db", "type": "imports", "evidence": ".ombutocode/src/main.js:43-48 require('./src/main/archiveDb'|'./src/main/requestsDb'|'./src/main/ombutocodeDb'|'./src/main/logsDb'|'./src/main/backlogDb'|'./src/main/jobManager')" },
+    { "from": "electron-main", "to": "backlog-operations", "type": "imports", "evidence": ".ombutocode/src/main.js:59 require('./src/main/backlogOperations'); main.js:33 require('./src/main/adHocTickets'); main.js:1776 require('./src/main/ticketFileManager')" },
+    { "from": "electron-main", "to": "artifact-subsystem", "type": "imports", "evidence": ".ombutocode/src/main.js:4077-4078 require('./src/main/artifactService'), require('./src/main/treeService'); main.js:1737 require('./src/main/artifactDb'); main.js:1754 require('./src/main/planCoreUtilities')" },
+    { "from": "electron-main", "to": "file-services", "type": "imports", "evidence": ".ombutocode/src/main.js:50 require('./src/main/fileTreeService'); main.js:21-22 require('./src/main/projectMigration'), require('./src/main/projectInit')" },
+    { "from": "electron-main", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/main.js:49 require('./src/main/schedulerLogger'); main.js:1274 createSchedulerLogger()" },
+    { "from": "scheduler", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:12 require('./worktreeManager'); scheduler.js:1333 createTicketWorktree(ticket.id, { projectRoot }); scheduler.js:1276 createEvalTrialMerge(ticket.id, ...)" },
+    { "from": "scheduler", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:5 require('./windowTracker'); scheduler.js:13 require('./epicReader')" },
+    { "from": "scheduler", "to": "agent-runtime", "type": "calls", "evidence": ".ombutocode/src/src/main/scheduler.js:1402 agentRuntime.startAgent(tool.id, enrichedPayload, ...); scheduler.js:737 agentRuntime.getRunStatus({ ticketId })" },
+    { "from": "scheduler", "to": "backlog-operations", "type": "calls", "evidence": ".ombutocode/src/src/main/scheduler.js:468-470 injected readBacklogData / writeBacklogData, supplied from .ombutocode/src/main.js:1276-1277" },
+    { "from": "scheduler-support", "to": "persistence-db", "type": "writes", "evidence": ".ombutocode/src/src/main/schedulerLogger.js:3 require('./logsDb') — scheduler events are appended to the scheduler_logs table (logsDb.js:82)" },
+    { "from": "agent-runtime", "to": "external-agent-cli", "type": "calls", "evidence": ".ombutocode/src/src/main/codingAgentRuntime.js:3 require('child_process'); renderCommand builds the argv from the tool template in .ombutocode/codingagents/codingagents.yml:4" },
+    { "from": "runtime-callbacks", "to": "agent-runtime", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:5 require('./codingAgentRuntime')" },
+    { "from": "runtime-callbacks", "to": "run-analysis", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:3 require('./runLifecycle'); coreCallbacks.js:6 require('./runSummary')" },
+    { "from": "runtime-callbacks", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:4 require('./worktreeManager') — squashMergeTicketBranchSync, commitWorktreeChangesSync, branchHasCommitsAheadSync, removeWorktree" },
+    { "from": "runtime-callbacks", "to": "git-diff-service", "type": "imports", "evidence": ".ombutocode/src/src/main/coreCallbacks.js:7 require('./gitDiffService') — recordMergeCommitOnTicket" },
+    { "from": "run-analysis", "to": "backlog-operations", "type": "imports", "evidence": ".ombutocode/src/src/main/runSummary.js:27 require('./adHocTickets')" },
+    { "from": "run-analysis", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/statusTransitionCleanup.js:3 require('./worktreeManager')" },
+    { "from": "backlog-operations", "to": "persistence-db", "type": "writes", "evidence": ".ombutocode/src/src/main/backlogOperations.js:270-281 setArchiveDb / setBacklogDb / getArchiveDb / getBacklogDb — handles injected at boot from .ombutocode/src/headless.js:95 and .ombutocode/src/main.js:59" },
+    { "from": "backlog-operations", "to": "external-agent-cli", "type": "calls", "evidence": ".ombutocode/src/src/main/adHocTickets.js:1 require('child_process'); adHocTickets.js:261 runCodexDraftCommand({ command, args, cwd, ... })" },
+    { "from": "artifact-subsystem", "to": "persistence-db", "type": "reads", "evidence": ".ombutocode/src/src/main/artifactService.js:8 require('./ombutocodeDb')" },
+    { "from": "worktree-manager", "to": "git-repo", "type": "calls", "evidence": ".ombutocode/src/src/main/worktreeManager.js:6 require('child_process') — createWorktreeSync / squashMergeTicketBranchSync / rebaseTicketBranchSync (worktreeManager.js:1320-1336)" },
+    { "from": "worktree-manager", "to": "persistence-db", "type": "reads", "evidence": ".ombutocode/src/src/main/worktreeManager.js:994 ombutocode.db is copied into the ticket worktree" },
+    { "from": "git-diff-service", "to": "git-repo", "type": "reads", "evidence": ".ombutocode/src/src/main/gitDiffService.js:16 require('child_process'); versionService.js:4 require('simple-git')" },
+    { "from": "file-services", "to": "artifact-subsystem", "type": "imports", "evidence": ".ombutocode/src/src/main/fileWatcher.js:8 require('./artifactDb'); fileWatcher.js:10 require('./planCoreUtilities')" },
+    { "from": "file-services", "to": "electron-main", "type": "publishes", "evidence": "unknown — .ombutocode/src/src/main/fileWatcher.js:7 require('electron') emits change events, but no module requires fileWatcher at this commit, so the subscriber is unresolved" },
+    { "from": "headless-cli", "to": "scheduler", "type": "imports", "evidence": ".ombutocode/src/headless.js:229 require('./src/main/scheduler')" },
+    { "from": "headless-cli", "to": "runtime-callbacks", "type": "imports", "evidence": ".ombutocode/src/headless.js:163 require('./src/main/coreCallbacks')" },
+    { "from": "headless-cli", "to": "agent-runtime", "type": "imports", "evidence": ".ombutocode/src/headless.js:218 require('./src/main/codingAgentRuntime')" },
+    { "from": "headless-cli", "to": "persistence-db", "type": "imports", "evidence": ".ombutocode/src/headless.js:94 require('./src/main/ombutocodeDb'); headless.js:99 require('./src/main/archiveDb'); headless.js:127 require('./src/main/backlogDb')" },
+    { "from": "headless-cli", "to": "backlog-operations", "type": "imports", "evidence": ".ombutocode/src/headless.js:95 require('./src/main/backlogOperations'); headless.js:143 require('./src/main/ticketFileManager')" },
+    { "from": "headless-cli", "to": "run-analysis", "type": "imports", "evidence": ".ombutocode/src/headless.js:166 require('./src/main/runSummary'); headless.js:254 require('./src/main/runOutputCleanup')" },
+    { "from": "headless-cli", "to": "file-services", "type": "imports", "evidence": ".ombutocode/src/headless.js:67 require('./src/main/coreUtilities'); headless.js:81 require('./src/main/projectInit')" },
+    { "from": "headless-cli", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/headless.js:159 require('./src/main/schedulerLogger')" },
+    { "from": "headless-cli", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/headless.js:263 require('./src/main/gitVersionCheck')" },
+    { "from": "dropsync-app", "to": "persistence-db", "type": "imports", "evidence": "src/main/index.js:3 require('../../.ombutocode/src/src/main/jobManager'); src/main/index.js:42 ipcMain.handle('jobs.list', ... jobManager.listJobs())" }
+  ],
+  "flows": [
+    { "id": "ticket-execution", "trigger": "A ticket reaches status todo with an assigned agent and the scheduler ticks (scheduler.js:974 dispatch → scheduler.js:1089 processQueue).", "steps": ["scheduler", "scheduler-support", "backlog-operations", "worktree-manager", "git-repo", "agent-runtime", "external-agent-cli", "runtime-callbacks", "run-analysis", "persistence-db"], "outcome": "The agent runs inside an isolated git worktree; on completion the run is classified, the ticket branch is committed and squash-merged, the worktree is torn down and the ticket's new status is persisted to backlog_tickets." },
+    { "id": "ui-request", "trigger": "The user acts in the Vue UI — opening the backlog, starting the scheduler, editing settings.", "steps": ["renderer-views", "renderer-stores", "preload-bridge", "electron-main", "persistence-db", "renderer-shell"], "outcome": "A Pinia store issues a channel-filtered invoke(), the main process handler reads or writes SQLite, and the resolved value flows back into store state that re-renders the shell." },
+    { "id": "eval-trial-merge", "trigger": "A ticket in review is selected for evaluation, so the scheduler must prove the branch merges before spending an agent run (scheduler.js:1276).", "steps": ["scheduler", "worktree-manager", "git-repo", "agent-runtime", "runtime-callbacks", "backlog-operations"], "outcome": "On a clean trial merge the eval agent runs against the merged tree; on conflict the scheduler retries once after a rebase, then resets the ticket to todo with state merge_failed and an explanatory note (main.js:1289-1317)." },
+    { "id": "run-summary", "trigger": "A ticket's branch is squash-merged successfully and run summarisation is enabled (coreCallbacks deps.startRunSummary).", "steps": ["runtime-callbacks", "run-analysis", "agent-runtime", "external-agent-cli", "persistence-db", "renderer-views"], "outcome": "Phase transcripts are grouped and head/tail-truncated into a summary prompt, an agent CLI produces the summary, the parsed result is stored and the run summary dialog renders it." },
+    { "id": "diff-review", "trigger": "The user opens the changes or merge view for a completed ticket.", "steps": ["renderer-views", "renderer-stores", "preload-bridge", "electron-main", "git-diff-service", "git-repo"], "outcome": "The ticket's merge commit is resolved, changed files come back from name-status/numstat and each file diff is streamed to the CodeMirror merge view under the binary and size guards." },
+    { "id": "headless-run", "trigger": "npm run headless is invoked outside Electron (terminal or CI).", "steps": ["headless-cli", "file-services", "persistence-db", "backlog-operations", "scheduler", "agent-runtime", "runtime-callbacks"], "outcome": "A file-backed settings store replaces electron-store and the identical scheduler loop drives tickets to completion with no window and no renderer." }
+  ]
+}
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  const DATA = JSON.parse(document.getElementById('codemap-data').textContent);
+  const byId = new Map(DATA.nodes.map(n => [n.id, n]));
+
+  const TYPES = {
+    ui:       { label: 'UI / renderer',   color: getComputedStyle(document.documentElement).getPropertyValue('--t-ui').trim() },
+    bridge:   { label: 'IPC bridge',      color: getComputedStyle(document.documentElement).getPropertyValue('--t-bridge').trim() },
+    process:  { label: 'Process / entry', color: getComputedStyle(document.documentElement).getPropertyValue('--t-process').trim() },
+    service:  { label: 'Service',         color: getComputedStyle(document.documentElement).getPropertyValue('--t-service').trim() },
+    data:     { label: 'Data store',      color: getComputedStyle(document.documentElement).getPropertyValue('--t-data').trim() },
+    external: { label: 'External',        color: getComputedStyle(document.documentElement).getPropertyValue('--t-external').trim() }
+  };
+
+  // ---------- header ----------
+  document.getElementById('m-commit').textContent = DATA.generated_from_commit.slice(0, 10);
+  document.getElementById('m-gen').textContent = DATA.generated_at.replace('T', ' ').replace(/\..*/, ' UTC');
+  document.getElementById('m-dirty').textContent = DATA.working_tree_dirty ? '⚠ working tree dirty at generation' : '';
+  document.getElementById('m-counts').textContent =
+    DATA.nodes.length + ' modules · ' + DATA.edges.length + ' relationships · ' + DATA.flows.length + ' flows';
+
+  // ---------- layered layout (longest-path layering + barycentre crossing reduction) ----------
+  const NW = 168, NH = 46, HGAP = 30, VGAP = 96;
+
+  const out = new Map(), inc = new Map();
+  DATA.nodes.forEach(n => { out.set(n.id, []); inc.set(n.id, []); });
+  DATA.edges.forEach(e => { out.get(e.from).push(e.to); inc.get(e.to).push(e.from); });
+
+  // Longest-path layering, ignoring back-edges of cycles.
+  const layer = new Map();
+  DATA.nodes.forEach(n => layer.set(n.id, 0));
+  for (let pass = 0; pass < DATA.nodes.length; pass++) {
+    let moved = false;
+    DATA.edges.forEach(e => {
+      if (e.from === e.to) return;
+      if (layer.get(e.to) < layer.get(e.from) + 1) {
+        // cycle guard: don't push a node that already sits above its own ancestor chain
+        if (layer.get(e.from) < DATA.nodes.length) {
+          layer.set(e.to, layer.get(e.from) + 1);
+          moved = true;
+        }
+      }
+    });
+    if (!moved) break;
+  }
+
+  const layers = [];
+  DATA.nodes.forEach(n => {
+    const L = layer.get(n.id);
+    (layers[L] = layers[L] || []).push(n.id);
+  });
+  for (let i = 0; i < layers.length; i++) layers[i] = layers[i] || [];
+
+  const order = new Map();
+  layers.forEach(row => row.forEach((id, i) => order.set(id, i)));
+
+  function bary(id, dir) {
+    const nb = dir === 'up' ? inc.get(id) : out.get(id);
+    const vals = nb.map(x => order.get(x)).filter(v => v !== undefined);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : order.get(id);
+  }
+  for (let sweep = 0; sweep < 12; sweep++) {
+    const dir = sweep % 2 === 0 ? 'up' : 'down';
+    const seq = dir === 'up' ? layers.map((_, i) => i) : layers.map((_, i) => layers.length - 1 - i);
+    seq.forEach(li => {
+      const row = layers[li];
+      row.sort((a, b) => bary(a, dir) - bary(b, dir));
+      row.forEach((id, i) => order.set(id, i));
+    });
+  }
+
+  const widest = Math.max(...layers.map(r => r.length));
+  const canvasW = widest * (NW + HGAP);
+  const pos = new Map();
+  layers.forEach((row, li) => {
+    const rowW = row.length * (NW + HGAP);
+    const x0 = (canvasW - rowW) / 2;
+    row.forEach((id, i) => {
+      pos.set(id, { x: x0 + i * (NW + HGAP) + HGAP / 2, y: li * (NH + VGAP) + 40 });
+    });
+  });
+
+  // ---------- svg ----------
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.getElementById('svg');
+  const root = document.createElementNS(NS, 'g');
+  const gEdges = document.createElementNS(NS, 'g');
+  const gNodes = document.createElementNS(NS, 'g');
+  const defs = document.createElementNS(NS, 'defs');
+  root.append(gEdges, gNodes);
+  svg.append(defs, root);
+
+  ['edge', 'edge-hi', 'edge-in', 'edge-flow', 'edge-unknown'].forEach((key, i) => {
+    const colors = ['#3a4757', '#58a6ff', '#7ee0c0', '#d9a441', '#f0b849'];
+    const m = document.createElementNS(NS, 'marker');
+    m.setAttribute('id', 'arrow-' + key);
+    m.setAttribute('viewBox', '0 0 10 10');
+    m.setAttribute('refX', '9'); m.setAttribute('refY', '5');
+    m.setAttribute('markerWidth', '6'); m.setAttribute('markerHeight', '6');
+    m.setAttribute('orient', 'auto-start-reverse');
+    const p = document.createElementNS(NS, 'path');
+    p.setAttribute('d', 'M0,0 L10,5 L0,10 z');
+    p.setAttribute('fill', colors[i]);
+    m.append(p); defs.append(m);
+  });
+
+  const edgeEls = DATA.edges.map(e => {
+    const p = document.createElementNS(NS, 'path');
+    const unknown = /^unknown\b/.test(e.evidence);
+    p.setAttribute('class', 'edge' + (unknown ? ' unknown' : ''));
+    p.setAttribute('marker-end', 'url(#arrow-' + (unknown ? 'edge-unknown' : 'edge') + ')');
+    gEdges.append(p);
+    return { e, el: p, unknown };
+  });
+
+  const nodeEls = DATA.nodes.map(n => {
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'node');
+    const color = TYPES[n.type].color;
+
+    const rect = document.createElementNS(NS, 'rect');
+    rect.setAttribute('width', NW); rect.setAttribute('height', NH);
+    rect.setAttribute('stroke', color);
+    g.append(rect);
+
+    const bar = document.createElementNS(NS, 'rect');
+    bar.setAttribute('class', 'accentbar');
+    bar.setAttribute('x', 0); bar.setAttribute('y', 8);
+    bar.setAttribute('width', 3.5); bar.setAttribute('height', NH - 16);
+    bar.setAttribute('fill', color);
+    g.append(bar);
+
+    const t1 = document.createElementNS(NS, 'text');
+    t1.setAttribute('class', 'title'); t1.setAttribute('x', 13); t1.setAttribute('y', 20);
+    t1.textContent = n.label;
+    g.append(t1);
+
+    const t2 = document.createElementNS(NS, 'text');
+    t2.setAttribute('class', 'sub'); t2.setAttribute('x', 13); t2.setAttribute('y', 35);
+    const short = n.path.replace('.ombutocode/src/src/', '…/').replace('.ombutocode/src/', '…/').replace('.ombutocode/', '…/');
+    t2.textContent = short.length > 26 ? short.slice(0, 25) + '…' : short;
+    g.append(t2);
+
+    const tip = document.createElementNS(NS, 'title');
+    tip.textContent = n.label + '\n' + n.path + '\n\n' + n.role;
+    g.append(tip);
+
+    gNodes.append(g);
+    return { n, g, rect };
+  });
+
+  function place() {
+    nodeEls.forEach(({ n, g }) => {
+      const p = pos.get(n.id);
+      g.setAttribute('transform', 'translate(' + p.x + ',' + p.y + ')');
+    });
+    edgeEls.forEach(({ e, el }) => {
+      const a = pos.get(e.from), b = pos.get(e.to);
+      const ax = a.x + NW / 2, bx = b.x + NW / 2;
+      let ay, by;
+      if (b.y >= a.y + NH) { ay = a.y + NH; by = b.y; }
+      else if (a.y >= b.y + NH) { ay = a.y; by = b.y + NH; }
+      else { ay = a.y + NH / 2; by = b.y + NH / 2; }
+      const mid = (ay + by) / 2;
+      el.setAttribute('d', 'M' + ax + ',' + ay + ' C' + ax + ',' + mid + ' ' + bx + ',' + mid + ' ' + bx + ',' + by);
+    });
+  }
+  place();
+
+  // ---------- pan / zoom ----------
+  const view = { x: 0, y: 0, k: 1 };
+  function applyView() {
+    root.setAttribute('transform', 'translate(' + view.x + ',' + view.y + ') scale(' + view.k + ')');
+  }
+  function fit() {
+    const bb = root.getBBox();
+    const r = svg.getBoundingClientRect();
+    const pad = 48;
+    const k = Math.min((r.width - pad * 2) / bb.width, (r.height - pad * 2) / bb.height, 1.35);
+    view.k = k;
+    view.x = (r.width - bb.width * k) / 2 - bb.x * k;
+    view.y = (r.height - bb.height * k) / 2 - bb.y * k;
+    applyView();
+  }
+  function zoomBy(f) {
+    const r = svg.getBoundingClientRect();
+    const cx = r.width / 2, cy = r.height / 2;
+    view.x = cx - (cx - view.x) * f;
+    view.y = cy - (cy - view.y) * f;
+    view.k *= f;
+    applyView();
+  }
+  document.getElementById('zin').onclick = () => zoomBy(1.25);
+  document.getElementById('zout').onclick = () => zoomBy(0.8);
+  document.getElementById('zfit').onclick = fit;
+
+  svg.addEventListener('wheel', ev => {
+    ev.preventDefault();
+    const r = svg.getBoundingClientRect();
+    const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    const f = ev.deltaY < 0 ? 1.12 : 1 / 1.12;
+    view.x = mx - (mx - view.x) * f;
+    view.y = my - (my - view.y) * f;
+    view.k *= f;
+    applyView();
+  }, { passive: false });
+
+  let panning = null, dragging = null;
+  svg.addEventListener('pointerdown', ev => {
+    const g = ev.target.closest('.node');
+    if (g) {
+      const rec = nodeEls.find(x => x.g === g);
+      dragging = { id: rec.n.id, sx: ev.clientX, sy: ev.clientY, ox: pos.get(rec.n.id).x, oy: pos.get(rec.n.id).y, moved: false };
+    } else {
+      panning = { sx: ev.clientX, sy: ev.clientY, ox: view.x, oy: view.y };
+      svg.classList.add('panning');
+    }
+    svg.setPointerCapture(ev.pointerId);
+  });
+  svg.addEventListener('pointermove', ev => {
+    if (dragging) {
+      const dx = (ev.clientX - dragging.sx) / view.k, dy = (ev.clientY - dragging.sy) / view.k;
+      if (Math.abs(dx) + Math.abs(dy) > 2) dragging.moved = true;
+      const p = pos.get(dragging.id);
+      p.x = dragging.ox + dx; p.y = dragging.oy + dy;
+      place();
+    } else if (panning) {
+      view.x = panning.ox + (ev.clientX - panning.sx);
+      view.y = panning.oy + (ev.clientY - panning.sy);
+      applyView();
+    }
+  });
+  svg.addEventListener('pointerup', ev => {
+    if (dragging && !dragging.moved) select(dragging.id);
+    else if (panning && ev.target === svg) select(null);
+    dragging = null; panning = null;
+    svg.classList.remove('panning');
+  });
+
+  // ---------- state ----------
+  let selected = null;
+  let activeFlow = null;
+  let query = '';
+  const hiddenTypes = new Set();
+
+  function render() {
+    const flow = activeFlow ? DATA.flows.find(f => f.id === activeFlow) : null;
+    const flowSet = flow ? new Set(flow.steps) : null;
+    const flowPairs = new Set();
+    if (flow) for (let i = 0; i < flow.steps.length - 1; i++) flowPairs.add(flow.steps[i] + '>' + flow.steps[i + 1]);
+
+    const ups = selected ? new Set(inc.get(selected)) : new Set();
+    const downs = selected ? new Set(out.get(selected)) : new Set();
+    const focus = selected ? new Set([selected, ...ups, ...downs]) : null;
+
+    nodeEls.forEach(({ n, g }) => {
+      const hiddenByType = hiddenTypes.has(n.type);
+      g.classList.toggle('hidden', hiddenByType);
+      const matches = query && (
+        n.id.includes(query) || n.label.toLowerCase().includes(query) ||
+        n.path.toLowerCase().includes(query) || n.role.toLowerCase().includes(query) ||
+        n.entrypoints.join(' ').toLowerCase().includes(query) ||
+        n.evidence.join(' ').toLowerCase().includes(query) ||
+        n.tests.join(' ').toLowerCase().includes(query)
+      );
+      g.classList.toggle('match', !!matches);
+      let dim = false;
+      if (focus && !focus.has(n.id)) dim = true;
+      if (flowSet && !flowSet.has(n.id)) dim = true;
+      if (query && !matches) dim = true;
+      g.classList.toggle('dim', dim);
+      g.classList.toggle('sel', n.id === selected);
+    });
+
+    edgeEls.forEach(({ e, el, unknown }) => {
+      el.classList.remove('hi', 'hi-in', 'flow', 'dim');
+      let marker = unknown ? 'edge-unknown' : 'edge';
+      const inFlow = flowPairs.has(e.from + '>' + e.to);
+      const touchesSel = selected && (e.from === selected || e.to === selected);
+      if (inFlow) { el.classList.add('flow'); marker = 'edge-flow'; }
+      else if (touchesSel && e.to === selected) { el.classList.add('hi-in'); marker = 'edge-in'; }
+      else if (touchesSel) { el.classList.add('hi'); marker = 'edge-hi'; }
+      else if (flowSet || focus || query) { el.classList.add('dim'); }
+      if (hiddenTypes.has(byId.get(e.from).type) || hiddenTypes.has(byId.get(e.to).type)) el.classList.add('dim');
+      el.setAttribute('marker-end', 'url(#arrow-' + marker + ')');
+    });
+
+    renderFlows();
+    renderDetail();
+  }
+
+  function select(id) {
+    selected = (id === selected) ? null : id;
+    render();
+  }
+
+  // ---------- legend ----------
+  const legend = document.getElementById('legend');
+  Object.entries(TYPES).forEach(([key, t]) => {
+    const row = document.createElement('div');
+    row.className = 'lg-item on';
+    row.innerHTML = '<span class="sw" style="background:' + t.color + '"></span><span>' + t.label + '</span>';
+    row.onclick = () => {
+      if (hiddenTypes.has(key)) hiddenTypes.delete(key); else hiddenTypes.add(key);
+      row.classList.toggle('on', !hiddenTypes.has(key));
+      row.classList.toggle('off', hiddenTypes.has(key));
+      render();
+    };
+    legend.append(row);
+  });
+
+  // ---------- flows ----------
+  const flowsEl = document.getElementById('flows');
+  function renderFlows() {
+    flowsEl.innerHTML = '';
+    DATA.flows.forEach(f => {
+      const d = document.createElement('div');
+      d.className = 'flow-item' + (activeFlow === f.id ? ' on' : '');
+      const t = document.createElement('div'); t.className = 'ft'; t.textContent = f.id;
+      const s = document.createElement('div'); s.className = 'fd';
+      s.textContent = activeFlow === f.id ? f.trigger + ' → ' + f.outcome : f.steps.length + ' steps · ' + f.steps[0] + ' → ' + f.steps[f.steps.length - 1];
+      d.append(t, s);
+      d.onclick = () => { activeFlow = activeFlow === f.id ? null : f.id; render(); };
+      flowsEl.append(d);
+    });
+  }
+
+  // ---------- detail panel ----------
+  const detailEl = document.getElementById('detail');
+  function ul(items, prose) {
+    if (!items || !items.length) return '<div class="empty">none</div>';
+    return '<ul class="tight' + (prose ? ' prose' : '') + '">' + items.map(i => '<li>' + esc(i) + '</li>').join('') + '</ul>';
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  }
+
+  function renderDetail() {
+    if (!selected) {
+      detailEl.innerHTML =
+        '<h2>Module detail</h2><p class="hint">Click a module to see its upstream callers, downstream dependencies, tests and the flows it belongs to. ' +
+        'Drag nodes to rearrange, scroll to zoom, drag the background to pan. Dashed amber edges are relationships with no resolved source evidence.</p>';
+      return;
+    }
+    const n = byId.get(selected);
+    const color = TYPES[n.type].color;
+    const upstream = DATA.edges.filter(e => e.to === n.id);
+    const downstream = DATA.edges.filter(e => e.from === n.id);
+    const inFlows = DATA.flows.filter(f => f.steps.includes(n.id));
+
+    detailEl.innerHTML =
+      '<h2>Module detail</h2>' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">' +
+        '<strong style="font-size:15px">' + esc(n.label) + '</strong>' +
+        '<span class="pill" style="color:' + color + '">' + n.type + '</span>' +
+      '</div>' +
+      '<div class="path">' + esc(n.path) + '</div>' +
+      '<p class="role">' + esc(n.role) + '</p>' +
+      '<h2 style="margin-top:18px">Upstream callers (' + upstream.length + ')</h2><div id="d-up"></div>' +
+      '<h2 style="margin-top:18px">Downstream dependencies (' + downstream.length + ')</h2><div id="d-down"></div>' +
+      '<h2 style="margin-top:18px">Flows (' + inFlows.length + ')</h2><div id="d-flows"></div>' +
+      '<h2 style="margin-top:18px">Entrypoints</h2>' + ul(n.entrypoints) +
+      '<h2 style="margin-top:18px">Tests (' + n.tests.length + ')</h2>' + ul(n.tests) +
+      '<h2 style="margin-top:18px">Constraints</h2>' + ul(n.constraints, true) +
+      '<h2 style="margin-top:18px">Evidence</h2>' + ul(n.evidence);
+
+    function relList(target, edges, otherKey) {
+      const box = document.getElementById(target);
+      if (!edges.length) { box.innerHTML = '<div class="empty">none</div>'; return; }
+      edges.forEach(e => {
+        const other = byId.get(e[otherKey]);
+        const d = document.createElement('div');
+        d.className = 'rel';
+        d.innerHTML = '<span class="rn" style="color:' + TYPES[other.type].color + '">' + esc(other.label) + '</span>' +
+                      '<span class="rt">' + e.type + '</span>';
+        d.title = e.evidence;
+        d.onclick = () => select(other.id);
+        box.append(d);
+      });
+    }
+    relList('d-up', upstream, 'from');
+    relList('d-down', downstream, 'to');
+
+    const fbox = document.getElementById('d-flows');
+    if (!inFlows.length) fbox.innerHTML = '<div class="empty">none</div>';
+    inFlows.forEach(f => {
+      const d = document.createElement('div');
+      d.className = 'flow-item' + (activeFlow === f.id ? ' on' : '');
+      d.innerHTML = '<div class="ft">' + esc(f.id) + '</div><div class="fd">' + esc(f.outcome) + '</div>';
+      d.onclick = () => { activeFlow = activeFlow === f.id ? null : f.id; render(); };
+      fbox.append(d);
+    });
+  }
+
+  // ---------- search ----------
+  document.getElementById('search').addEventListener('input', ev => {
+    query = ev.target.value.trim().toLowerCase();
+    render();
+  });
+  document.getElementById('clearsel').onclick = () => {
+    selected = null; activeFlow = null; query = '';
+    document.getElementById('search').value = '';
+    render(); fit();
+  };
+
+  render();
+  fit();
+  window.addEventListener('resize', () => { /* keep current view */ });
+})();
+</script>

@@ -1,0 +1,230 @@
+{
+  "lock_version": 1,
+  "commit": "210892f293c445b492dee96e348f4c381c806e11",
+  "branch": "main",
+  "working_tree_dirty": true,
+  "working_tree_changes": {
+    "modified": [
+      ".ombutocode/.instance.lock",
+      ".ombutocode/src/src/renderer/App.vue",
+      ".ombutocode/src/src/renderer/components/BoardList.vue",
+      ".ombutocode/src/src/renderer/components/HelpView.vue",
+      ".ombutocode/src/src/renderer/components/PlanPrdView.vue",
+      ".ombutocode/src/src/renderer/utils/skills.js"
+    ],
+    "untracked": [
+      ".ombutocode/src/src/renderer/components/ReviewCodeMapView.vue",
+      ".ombutocode/templates/skills/Insight/",
+      "docs/Skills/Insight/"
+    ]
+  },
+  "generated_at": "2026-08-08T01:02:57.805Z",
+  "scanned_scope": [
+    ".ombutocode/src/main.js",
+    ".ombutocode/src/preload.js",
+    ".ombutocode/src/headless.js",
+    ".ombutocode/src/src/main/",
+    ".ombutocode/src/src/renderer/",
+    ".ombutocode/src/test/",
+    ".ombutocode/codingagents/",
+    "src/",
+    "scripts/dev.js"
+  ],
+  "excluded_directories": [
+    "node_modules/",
+    "dist/",
+    "build/",
+    "release/",
+    ".git/",
+    ".claude/",
+    ".ombutocode/data/",
+    ".ombutocode/src/dist/",
+    ".ombutocode/src/node_modules/",
+    ".ombutocode/src/release/",
+    "docs/",
+    "marketing/",
+    "migration-tool/",
+    "create-ombutocode/"
+  ],
+  "fingerprint": {
+    "algorithm": "sha256",
+    "input": "For each module, the git-tracked file paths matching its prefixes, sorted ascending by path, hashed as: sha256( for each file: utf8(path) || 0x00 || file_bytes || 0x00 ). Untracked and ignored files are excluded, so the fingerprint is reproducible from a clean checkout of the recorded commit.",
+    "source": "git ls-files at the recorded commit's working tree"
+  },
+  "modules": {
+    "electron-main": {
+      "paths": [".ombutocode/src/main.js"],
+      "file_count": 1,
+      "fingerprint": "sha256:5441ea5945354b3ffa0245edc8412069cfd2c2265ba78555fdbb2754701e4709",
+      "status": "new"
+    },
+    "preload-bridge": {
+      "paths": [".ombutocode/src/preload.js"],
+      "file_count": 1,
+      "fingerprint": "sha256:98ae5f0ce61297c1d63452f11bfa1fc5eaad00f063d14a3b014ccdd83980e7ae",
+      "status": "new"
+    },
+    "renderer-shell": {
+      "paths": [
+        ".ombutocode/src/src/renderer/main.js",
+        ".ombutocode/src/src/renderer/App.vue",
+        ".ombutocode/src/src/renderer/router",
+        ".ombutocode/src/src/renderer/plugins",
+        ".ombutocode/src/src/renderer/utils"
+      ],
+      "file_count": 11,
+      "fingerprint": "sha256:7f548c04988cb9b14b576dfafdb3f91e02678d071041d4e01efadf8bcbaabdbf",
+      "status": "new"
+    },
+    "renderer-stores": {
+      "paths": [".ombutocode/src/src/renderer/stores"],
+      "file_count": 12,
+      "fingerprint": "sha256:5ba36178ccfd0ac4f5c62a219582fe3ee2ee6830690b85d0f53f29ec36d4632c",
+      "status": "new"
+    },
+    "renderer-views": {
+      "paths": [
+        ".ombutocode/src/src/renderer/views",
+        ".ombutocode/src/src/renderer/components",
+        ".ombutocode/src/src/renderer/pages"
+      ],
+      "file_count": 55,
+      "fingerprint": "sha256:59f9d9a65cbeadb91857c13e7fd264140d6541d70eb71b82bd84d75b08a30d19",
+      "status": "new"
+    },
+    "scheduler": {
+      "paths": [".ombutocode/src/src/main/scheduler.js"],
+      "file_count": 1,
+      "fingerprint": "sha256:88d32151968ba0ed9e77422a205031c2aee9e0466228e7015c4011533d186989",
+      "status": "new"
+    },
+    "scheduler-support": {
+      "paths": [
+        ".ombutocode/src/src/main/windowTracker.js",
+        ".ombutocode/src/src/main/schedulerLogger.js",
+        ".ombutocode/src/src/main/schedulerLogEvents.js",
+        ".ombutocode/src/src/main/epicReader.js"
+      ],
+      "file_count": 4,
+      "fingerprint": "sha256:f9f748e3a9a0fc17be59d2d70a7f5ab74578791198b16961877742d8cf6818d8",
+      "status": "new"
+    },
+    "agent-runtime": {
+      "paths": [
+        ".ombutocode/src/src/main/codingAgentRuntime.js",
+        ".ombutocode/codingagents/codingagents.yml"
+      ],
+      "file_count": 2,
+      "fingerprint": "sha256:5073306c1cabc736891729a4489242a212894641c70aafb8425071e7f1aa7d59",
+      "status": "new"
+    },
+    "runtime-callbacks": {
+      "paths": [".ombutocode/src/src/main/coreCallbacks.js"],
+      "file_count": 1,
+      "fingerprint": "sha256:725485dc29a5b007618f471a453f4e3c7b7fc4ada90334c771c44fdfa57c2c78",
+      "status": "new"
+    },
+    "run-analysis": {
+      "paths": [
+        ".ombutocode/src/src/main/runLifecycle.js",
+        ".ombutocode/src/src/main/runSummary.js",
+        ".ombutocode/src/src/main/runOutputCleanup.js",
+        ".ombutocode/src/src/main/statusTransitionCleanup.js"
+      ],
+      "file_count": 4,
+      "fingerprint": "sha256:847d101b292d4f48b425543dfb1fd06807b1ae7fc581cacdf73f821fb9dcf992",
+      "status": "new"
+    },
+    "worktree-manager": {
+      "paths": [
+        ".ombutocode/src/src/main/worktreeManager.js",
+        ".ombutocode/src/src/main/gitVersionCheck.js"
+      ],
+      "file_count": 2,
+      "fingerprint": "sha256:aec574fe499267eaba436530c68cc04e4641c1ac60e7677166ad5ef94c745824",
+      "status": "new"
+    },
+    "git-diff-service": {
+      "paths": [
+        ".ombutocode/src/src/main/gitDiffService.js",
+        ".ombutocode/src/src/main/versionService.js"
+      ],
+      "file_count": 2,
+      "fingerprint": "sha256:5f91c9e3d4b5405465424becbad0d475c77a98107db37c97b1cb80572514c03e",
+      "status": "new"
+    },
+    "backlog-operations": {
+      "paths": [
+        ".ombutocode/src/src/main/backlogOperations.js",
+        ".ombutocode/src/src/main/adHocTickets.js",
+        ".ombutocode/src/src/main/ticketFileManager.js"
+      ],
+      "file_count": 3,
+      "fingerprint": "sha256:2e9f4a35020c10009de2b0e2bc8bde513f968d95e7268e4250b699f748cbc1d6",
+      "status": "new"
+    },
+    "persistence-db": {
+      "paths": [
+        ".ombutocode/src/src/main/ombutocodeDb.js",
+        ".ombutocode/src/src/main/backlogDb.js",
+        ".ombutocode/src/src/main/archiveDb.js",
+        ".ombutocode/src/src/main/logsDb.js",
+        ".ombutocode/src/src/main/requestsDb.js",
+        ".ombutocode/src/src/main/jobManager.js"
+      ],
+      "file_count": 6,
+      "fingerprint": "sha256:2f995be3761f445250fd61462849746ce57269da9573139431c8f91fc585b41a",
+      "status": "new"
+    },
+    "artifact-subsystem": {
+      "paths": [
+        ".ombutocode/src/src/main/artifactDb.js",
+        ".ombutocode/src/src/main/artifactService.js",
+        ".ombutocode/src/src/main/treeService.js",
+        ".ombutocode/src/src/main/planCoreUtilities.js"
+      ],
+      "file_count": 4,
+      "fingerprint": "sha256:e83e758e53d96498e0d977cbb0f03d1b5f98c82d6d21ae68129f0371e3c75df2",
+      "status": "new"
+    },
+    "file-services": {
+      "paths": [
+        ".ombutocode/src/src/main/fileTreeService.js",
+        ".ombutocode/src/src/main/fileWatcher.js",
+        ".ombutocode/src/src/main/projectInit.js",
+        ".ombutocode/src/src/main/projectMigration.js",
+        ".ombutocode/src/src/main/coreUtilities.js"
+      ],
+      "file_count": 5,
+      "fingerprint": "sha256:f31e849bdca7fdb1b11a5249a0fff45475565cf1f7ce51ebc8a457e2050f8ed7",
+      "status": "new"
+    },
+    "headless-cli": {
+      "paths": [
+        ".ombutocode/src/headless.js",
+        ".ombutocode/src/src/main/headlessSettings.js"
+      ],
+      "file_count": 2,
+      "fingerprint": "sha256:40efaa12bb9f3bddd08dc157c812bd509dcdc817f7cfa5906146faf27b76f1b4",
+      "status": "new"
+    },
+    "dropsync-app": {
+      "paths": ["src/main", "src/preload", "src/renderer", "scripts/dev.js"],
+      "file_count": 12,
+      "fingerprint": "sha256:a85774b1f60a341011c4729748cc59f7d805efff0c8803e9196ef984347d18dc",
+      "status": "new"
+    },
+    "test-suite": {
+      "paths": [".ombutocode/src/test"],
+      "file_count": 53,
+      "fingerprint": "sha256:6e43cff8a51f66670b734e5f065c6158ff3c7b50465f6d12c988c850707e1b23",
+      "status": "new"
+    }
+  },
+  "notes": [
+    "No prior codemap.lock existed, so every module is recorded with status 'new' and the full map was generated.",
+    "The working tree is dirty at generation time. Fingerprints are computed from git-tracked file contents as they exist in the working tree, which includes the 6 modified files listed above; the untracked files (including components/ReviewCodeMapView.vue) are NOT included in any fingerprint.",
+    "Because the tree is dirty, re-running from a clean checkout of 210892f will produce different fingerprints for renderer-shell and renderer-views.",
+    "The external nodes 'external-agent-cli' and 'git-repo' have no module fingerprint of their own: codingagents.yml is fingerprinted under agent-runtime, and .git is excluded from scanning."
+  ]
+}

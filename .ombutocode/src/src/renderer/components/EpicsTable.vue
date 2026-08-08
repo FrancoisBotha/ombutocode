@@ -117,6 +117,12 @@
       :epic="ticketsDialogEpic"
       @close="ticketsDialogEpic = null"
     />
+
+    <EpicStatusDialog
+      v-if="statusDialogEpic"
+      :epic="statusDialogEpic"
+      @close="statusDialogEpic = null"
+    />
   </div>
 </template>
 
@@ -127,6 +133,7 @@ import { marked } from 'marked';
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
 import EpicTicketsDialog from '@/components/EpicTicketsDialog.vue';
+import EpicStatusDialog from '@/components/EpicStatusDialog.vue';
 
 const RESIZE_HANDLE_WIDTH = 10;
 const MIN_TABLE_WIDTH = 420;
@@ -135,7 +142,7 @@ const MAX_DETAIL_WIDTH = 880;
 
 export default {
   name: 'EpicsTable',
-  components: { EpicTicketsDialog },
+  components: { EpicTicketsDialog, EpicStatusDialog },
   setup() {
     const epicStore = useEpicStore();
     const featuresViewRef = ref(null);
@@ -154,6 +161,12 @@ export default {
     const ticketsDialogEpic = ref(null);
     function openTicketsDialog(epic) {
       if (epic) ticketsDialogEpic.value = epic;
+    }
+
+    // Epic that owns the open status dialog (null when closed).
+    const statusDialogEpic = ref(null);
+    function openStatusDialog(epic) {
+      if (epic) statusDialogEpic.value = epic;
     }
 
     const features = computed(() => epicStore.epics);
@@ -213,9 +226,6 @@ export default {
       });
     });
 
-    // Epic lifecycle statuses (see CLAUDE.md): NEW → TICKETS → BUILDING → DONE
-    const EPIC_STATUSES = ['NEW', 'TICKETS', 'BUILDING', 'DONE'];
-
     // Track currently selected row for manual highlighting
     let currentSelectedRow = null;
     let evalCompleteCleanup = null;
@@ -243,48 +253,24 @@ export default {
             field: 'status',
             width: 130,
             headerSort: true,
+            // A button rather than an inline <select>: changing an epic's
+            // status is a deliberate act, and a dropdown one stray scroll away
+            // from rewriting the file was too easy to trigger by accident.
             formatter: function(cell) {
               const current = cell.getValue() || '';
-              const select = document.createElement('select');
-              select.className = 'epic-status-select';
-              select.title = 'Change epic status';
-
-              // Canonical lifecycle plus the current value if it's something
-              // else (legacy lowercase statuses, 'implemented', etc.) so the
-              // dropdown always reflects what's actually in the file.
-              const options = [...EPIC_STATUSES];
-              if (current && !options.includes(current)) {
-                options.unshift(current);
-              }
-              if (!current) {
-                const placeholder = document.createElement('option');
-                placeholder.value = '';
-                placeholder.textContent = '—';
-                placeholder.disabled = true;
-                select.appendChild(placeholder);
-              }
-              for (const s of options) {
-                const opt = document.createElement('option');
-                opt.value = s;
-                opt.textContent = s;
-                select.appendChild(opt);
-              }
-              select.value = current;
-
-              select.addEventListener('change', async (e) => {
-                const epic = cell.getRow().getData();
-                const newStatus = e.target.value;
-                if (!newStatus || newStatus === epic.status) return;
-                try {
-                  await epicStore.updateEpicStatus(epic, newStatus);
-                } catch (err) {
-                  console.error('Failed to update epic status:', err);
-                  // Revert the dropdown — the store reload didn't happen
-                  e.target.value = epic.status || '';
-                }
-              });
-
-              return select;
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'epic-status-btn';
+              btn.title = 'Update epic status';
+              const label = current || '—';
+              btn.innerHTML =
+                `<span class="epic-status-text">${label}</span>` +
+                '<span class="mdi mdi-pencil-outline epic-status-pencil"></span>';
+              return btn;
+            },
+            cellClick: function(e, cell) {
+              e.stopPropagation();
+              openStatusDialog(cell.getRow().getData());
             },
             cssClass: 'col-status'
           },
@@ -514,6 +500,7 @@ export default {
       renderedContent,
       selectedEpicBlockers,
       ticketsDialogEpic,
+      statusDialogEpic,
       selectEpic: (id) => epicStore.selectEpic(id),
       startSelectedFeature,
       evaluateSelectedFeature,
@@ -622,31 +609,54 @@ export default {
   min-height: 0;
 }
 
-/* Status dropdown rendered by the Tabulator formatter (needs :deep) */
-:deep(.epic-status-select) {
+/* Status button rendered by the Tabulator formatter (needs :deep) */
+:deep(.epic-status-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
   width: 100%;
-  padding: 0.2rem 0.3rem;
+  padding: 0.2rem 0.4rem;
   border: 1px solid #e1e4e8;
   border-radius: 4px;
   background-color: #ffffff;
   color: #2c3e50;
   font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
   outline: none;
 }
 
-:deep(.epic-status-select:focus) {
+:deep(.epic-status-btn:hover) {
   border-color: #4a90e2;
 }
 
-[data-theme='dark'] .epics-view :deep(.epic-status-select) {
+/* The pencil stays quiet until hover — the status itself is the information. */
+:deep(.epic-status-pencil) {
+  opacity: 0;
+  font-size: 0.85rem;
+  color: #4a90e2;
+  transition: opacity 0.12s;
+}
+
+:deep(.epic-status-btn:hover) .epic-status-pencil,
+:deep(.epic-status-btn:focus-visible) .epic-status-pencil {
+  opacity: 1;
+}
+
+[data-theme='dark'] .epics-view :deep(.epic-status-btn) {
   background-color: #1a1e24;
   border-color: var(--border-color, #373d45);
   color: var(--text-color, #d4d8dd);
 }
 
-[data-theme='dark'] .epics-view :deep(.epic-status-select:focus) {
+[data-theme='dark'] .epics-view :deep(.epic-status-btn:hover) {
   border-color: #5b9bd5;
+}
+
+[data-theme='dark'] .epics-view :deep(.epic-status-pencil) {
+  color: #5b9bd5;
 }
 
 /* "Tickets" row button rendered by the Tabulator formatter (needs :deep) */

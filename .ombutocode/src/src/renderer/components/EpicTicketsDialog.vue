@@ -41,6 +41,7 @@
                 <th class="et-col-id">ID</th>
                 <th class="et-col-title">Title</th>
                 <th class="et-col-status">Status</th>
+                <th class="et-col-actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -52,6 +53,34 @@
                     {{ formatStatus(t.status) }}
                   </span>
                 </td>
+                <td class="et-col-actions">
+                  <div class="et-actions">
+                    <button
+                      class="et-icon-btn"
+                      title="View ticket details"
+                      @click="detailTicket = t"
+                    >
+                      <span class="mdi mdi-information-outline"></span>
+                    </button>
+                    <button
+                      class="et-icon-btn"
+                      :class="{ 'is-generating': runSummaryState(t) === 'generating' }"
+                      :disabled="!runSummaryState(t) || runSummaryState(t) === 'generating'"
+                      :title="runSummaryTitle(t)"
+                      @click="runSummaryTicket = t"
+                    >
+                      <span class="mdi" :class="runSummaryIcon(t)"></span>
+                    </button>
+                    <button
+                      class="et-icon-btn"
+                      :disabled="!hasChanges(t)"
+                      :title="hasChanges(t) ? 'View code changes' : 'No code changes — this ticket has not been merged'"
+                      @click="changesTicket = t"
+                    >
+                      <span class="mdi mdi-source-branch"></span>
+                    </button>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -62,14 +91,34 @@
         <button class="et-btn" @click="$emit('close')">Close</button>
       </div>
     </div>
+
+    <TicketDetailDialog
+      v-if="detailTicket"
+      :ticket="detailTicket"
+      @close="detailTicket = null"
+    />
+    <RunSummaryDialog
+      v-if="runSummaryTicket"
+      :ticket="runSummaryTicket"
+      @close="runSummaryTicket = null"
+    />
+    <TicketChangesDialog
+      v-if="changesTicket"
+      :ticket="changesTicket"
+      @close="changesTicket = null"
+    />
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue';
+import TicketDetailDialog from '@/components/TicketDetailDialog.vue';
+import RunSummaryDialog from '@/components/RunSummaryDialog.vue';
+import TicketChangesDialog from '@/components/TicketChangesDialog.vue';
 
 export default {
   name: 'EpicTicketsDialog',
+  components: { TicketDetailDialog, RunSummaryDialog, TicketChangesDialog },
   props: {
     epic: { type: Object, required: true },
   },
@@ -78,6 +127,42 @@ export default {
     const tickets = ref([]);
     const loading = ref(true);
     const error = ref(null);
+
+    // Row action dialogs — same three views the review column offers.
+    const detailTicket = ref(null);
+    const runSummaryTicket = ref(null);
+    const changesTicket = ref(null);
+
+    // Mirrors KanbanColumn: a null state means no summary exists at all (the
+    // feature was off, or the ticket merged before summaries shipped).
+    function runSummaryState(ticket) {
+      const status = ticket?.run_summary?.status;
+      return ['generating', 'ready', 'failed', 'unavailable'].includes(status) ? status : null;
+    }
+
+    function runSummaryIcon(ticket) {
+      switch (runSummaryState(ticket)) {
+        case 'generating': return 'mdi-loading mdi-spin';
+        case 'ready': return 'mdi-text-box-search-outline';
+        default: return 'mdi-text-box-remove-outline';
+      }
+    }
+
+    function runSummaryTitle(ticket) {
+      switch (runSummaryState(ticket)) {
+        case 'generating': return 'Summarising run output…';
+        case 'ready': return 'View run summary';
+        case 'failed': return `Run summary failed: ${ticket?.run_summary?.error || 'unknown error'}`;
+        default: return 'No run summary available';
+      }
+    }
+
+    // Changes exist once a ticket has been merged. The squash sha was only
+    // persisted from a later release, so gate on status rather than the sha —
+    // the dialog recovers older commits from the commit subject.
+    function hasChanges(ticket) {
+      return ['review', 'done'].includes(ticket?.status);
+    }
 
     // Status ordering follows the ticket lifecycle so the summary reads in a
     // natural left-to-right progression.
@@ -135,7 +220,11 @@ export default {
 
     onMounted(load);
 
-    return { tickets, loading, error, statusGroups, formatStatus };
+    return {
+      tickets, loading, error, statusGroups, formatStatus,
+      detailTicket, runSummaryTicket, changesTicket,
+      runSummaryState, runSummaryIcon, runSummaryTitle, hasChanges,
+    };
   },
 };
 </script>
@@ -255,6 +344,30 @@ export default {
   white-space: nowrap;
 }
 .et-col-status { width: 110px; }
+.et-col-actions { width: 96px; }
+
+.et-actions { display: flex; gap: 0.2rem; justify-content: flex-end; }
+.et-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted, #6b778c);
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.et-icon-btn:hover:not(:disabled) {
+  background: var(--secondary-color, #f1f2f4);
+  border-color: var(--border-color, #e1e4e8);
+  color: var(--text-color, #2c3e50);
+}
+.et-icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.et-icon-btn.is-generating { opacity: 0.7; cursor: progress; }
 
 .et-status-badge {
   display: inline-block;

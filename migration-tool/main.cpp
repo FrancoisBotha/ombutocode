@@ -6,16 +6,21 @@
 //   - Overwrites .ombutocode/src/ (skipping node_modules + dist)
 //   - Overwrites buildandrun.bat / buildandrun / codingagents.yml /
 //     codingagent-templates.json
+//   - Overwrites .ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md
 //   - Migrates skills to the v0.2.4 category layout: moves flat files in
 //     docs/Skills/ and .ombutocode/templates/skills/ into their category
-//     sub-folder (PRD, Architecture, Styling, ...), and adds any skills the
-//     target is missing
+//     sub-folder (PRD, Architecture, Styling, ...)
+//   - Syncs shipped skills: adds the ones the target lacks AND overwrites the
+//     ones whose content has changed. Shipped skills and the engineering guide
+//     are tool-owned — they encode the workflow the workbench implements, so a
+//     project must not be left running a superseded copy. Local edits to a
+//     shipped skill are replaced; copy it to a new filename to customise it.
 //   - Removes target's node_modules + dist so next launch does a clean
 //     npm install + vite build
 //
 // What is NOT touched: target's .ombutocode/data/ (the SQLite DBs), logs/,
-// run-output/, planning/, and the existing docs/ tree (other than the skill
-// moves/additions above).
+// run-output/, planning/, skills the target added itself, and the rest of the
+// docs/ tree (PRD, Architecture, Epics, ... are all project-owned).
 //
 // Build:  see build.bat in this folder.
 
@@ -29,6 +34,9 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <fstream>
+#include <algorithm>
+#include <iterator>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
@@ -59,7 +67,7 @@ constexpr int IDC_CLEAR_BTN     = 108;
 // Bootstrapping, Other). This list exists ONLY to move a target's existing
 // flat skill files into the right folder — it is a historical mapping and
 // does not need new entries. Skills added after 0.2.4 reach the target
-// through copyNewSkills(), which walks the source tree instead.
+// through syncSkills(), which walks the source tree instead.
 struct SkillEntry { const wchar_t* category; const wchar_t* file; };
 static const std::vector<SkillEntry> kSkills = {
     { L"PRD",               L"PRD Skill.md" },
@@ -281,22 +289,36 @@ static std::wstring migrateSkillAt(const fs::path& srcFile, const fs::path& root
     return L"missing in source";
 }
 
-static bool isCanonicalSkill(const fs::path& rel) {
-    for (auto& sk : kSkills) {
-        if (rel == fs::path(sk.category) / sk.file) return true;
-    }
-    return false;
+// Byte-for-byte comparison, so an unchanged skill is neither rewritten nor
+// reported. Cheap enough — skills are a few KB of Markdown.
+static bool filesIdentical(const fs::path& a, const fs::path& b) {
+    std::error_code ec;
+    if (fs::file_size(a, ec) != fs::file_size(b, ec) || ec) return false;
+    std::ifstream fa(a, std::ios::binary), fb(b, std::ios::binary);
+    if (!fa || !fb) return false;
+    return std::equal(std::istreambuf_iterator<char>(fa), std::istreambuf_iterator<char>{},
+                      std::istreambuf_iterator<char>(fb));
 }
 
-// Copy every skill the source has and the target lacks, whatever its category
-// and whether or not it appears in kSkills. kSkills only knows the skills that
-// existed when this tool was written, so without this pass any skill shipped
-// later (Bootstrap Prototype, and whatever follows it) silently never reaches
-// a migrated project. Additive only — an existing file is never touched.
-static std::vector<std::wstring> copyNewSkills(const fs::path& src, const fs::path& tgt, bool apply) {
-    std::vector<std::wstring> added;
+// Bring the target's skills up to the source's, adding what is missing AND
+// overwriting what has changed.
+//
+// Shipped skills are tool-owned, not project-owned. They encode the workflow
+// the workbench implements — the code map policy, the mandatory closeout
+// tickets, the epic strategies. A project running last release's copy follows
+// rules the tool no longer implements, which is a worse outcome than losing a
+// local edit. So a shipped skill whose content has moved on is replaced.
+//
+// To customise a shipped skill, copy it to a new filename. Files that exist
+// only in the target are never touched, so that copy is safe forever.
+//
+// kSkills only knows the skills that existed when this tool was written, so
+// this walks the source tree instead — skills shipped later come across with
+// no code change here.
+static std::vector<std::wstring> syncSkills(const fs::path& src, const fs::path& tgt, bool apply) {
+    std::vector<std::wstring> changes;
     auto srcRoot = src / L"docs" / L"Skills";
-    if (!fs::exists(srcRoot)) return added;
+    if (!fs::exists(srcRoot)) return changes;
 
     const fs::path roots[] = {
         tgt / L"docs" / L"Skills",
@@ -311,25 +333,31 @@ static std::vector<std::wstring> copyNewSkills(const fs::path& src, const fs::pa
             if (entry.path().extension() != L".md") continue;
 
             auto rel = fs::relative(entry.path(), srcRoot);
-            // kSkills already handles these, including the flat -> category move.
-            if (isCanonicalSkill(rel)) continue;
 
             for (auto& root : roots) {
                 auto dst = root / rel;
-                // A pre-0.2.4 flat copy of the same skill counts as present.
-                auto flat = root / rel.filename();
-                if (fs::exists(dst) || fs::exists(flat)) continue;
+                const bool exists = fs::exists(dst);
+
+                // A pre-0.2.4 flat copy and no categorised file means the
+                // layout migration hasn't run for this skill yet. Adding the
+                // categorised copy here would leave a duplicate in the picker,
+                // so leave it to the kSkills pass.
+                if (!exists && fs::exists(root / rel.filename())) continue;
+
+                if (exists && filesIdentical(entry.path(), dst)) continue;
+
                 if (apply) {
                     fs::create_directories(dst.parent_path());
-                    fs::copy_file(entry.path(), dst);
+                    fs::copy_file(entry.path(), dst, fs::copy_options::overwrite_existing);
                 }
-                added.push_back(rel.wstring() + L"  -> " + root.wstring());
+                changes.push_back(std::wstring(exists ? L"[update] " : L"[add]    ")
+                                  + rel.wstring() + L"  -> " + root.wstring());
             }
         }
     } catch (const std::exception&) {
         // Fall through with whatever was collected; the caller logs it.
     }
-    return added;
+    return changes;
 }
 
 // ── Preview ────────────────────────────────────────────────────────────────
@@ -371,16 +399,18 @@ static void doPreview(const fs::path& src, const fs::path& tgt) {
         for (auto& a : toolActions) appendLog(L"  " + a);
     }
 
-    auto newSkills = copyNewSkills(src, tgt, /*apply=*/false);
-    if (!newSkills.empty()) {
+    auto skillChanges = syncSkills(src, tgt, /*apply=*/false);
+    if (!skillChanges.empty()) {
         appendLog(L"");
-        appendLog(L"Newer skills the target is missing (would be added):");
-        for (auto& s : newSkills) appendLog(L"  [add] " + s);
+        appendLog(L"Shipped skills to add or update (these files are tool-owned —");
+        appendLog(L"an [update] REPLACES the target's copy, including local edits):");
+        for (auto& s : skillChanges) appendLog(L"  " + s);
     }
 
     appendLog(L"");
     appendLog(L"Would remove target's .ombutocode\\src\\node_modules\\ and dist\\");
-    appendLog(L"(target's .ombutocode\\data\\, logs\\, run-output\\, planning\\, and docs\\ are NOT touched apart from new skills.)");
+    appendLog(L"(target's .ombutocode\\data\\, logs\\, run-output\\, planning\\, its own skills,");
+    appendLog(L" and the rest of docs\\ are NOT touched.)");
     appendLog(L"");
     appendLog(L"Click Migrate to apply these changes.");
 }
@@ -394,9 +424,11 @@ static void doMigrate(const fs::path& src, const fs::path& tgt) {
     if (!validateTarget(tgt, err)) { appendLog(L"[ERROR] " + err); return; }
 
     int rc = MessageBoxW(nullptr,
-        L"This will overwrite the .ombutocode/src/ folder, launchers, and agent\n"
-        L"config in the target project. A timestamped backup of the existing\n"
-        L"src/ folder will be made first.\n\nContinue?",
+        L"This will overwrite the .ombutocode/src/ folder, launchers, agent\n"
+        L"config, the engineering guide, and any shipped skill whose content\n"
+        L"has changed — local edits to those skills will be replaced.\n\n"
+        L"Skills the project added itself are not touched. A timestamped\n"
+        L"backup of the existing src/ folder will be made first.\n\nContinue?",
         L"Confirm migration", MB_OKCANCEL | MB_ICONWARNING);
     if (rc != IDOK) { appendLog(L"Cancelled."); return; }
 
@@ -448,8 +480,8 @@ static void doMigrate(const fs::path& src, const fs::path& tgt) {
             }
         }
 
-        for (auto& s : copyNewSkills(src, tgt, /*apply=*/true)) {
-            appendLog(L"Added skill " + s);
+        for (auto& s : syncSkills(src, tgt, /*apply=*/true)) {
+            appendLog(L"Skill " + s);
         }
 
         // 4b. Agent tools: refresh .ombutocode\tools\ and drop the .js copies

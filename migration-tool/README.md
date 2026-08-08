@@ -35,8 +35,10 @@ Produces `migrate-ombutocode.exe` in the same folder. Output is around
   `dist/`, which would carry over platform-specific binaries)
 - `.ombutocode/buildandrun.bat`
 - `.ombutocode/buildandrun`
+- `.ombutocode/initombuto` and `.ombutocode/initombuto.bat`
 - `.ombutocode/codingagents/codingagents.yml`
 - `.ombutocode/codingagent-templates.json`
+- `.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md`
 
 **Backs up first:**
 - Target's existing `.ombutocode/src/` → `.ombutocode/src.backup-<timestamp>/`
@@ -49,12 +51,20 @@ active `docs/Skills/` and `.ombutocode/templates/skills/`):
   (content preserved — user edits travel with the file).
 - Skills missing from the target are copied from the source. The source
   tree is walked, so skills added to Ombuto Code after this tool was built
-  (e.g. Bootstrapping/Bootstrap Prototype) come across too — no code change
-  needed here for each new skill.
+  (e.g. Bootstrapping/Bootstrap Prototype, Insight/Code Map) come across
+  too — no code change needed here for each new skill.
+- **Shipped skills whose content has changed are overwritten.** They are
+  tool-owned, not project-owned: they encode the workflow the workbench
+  implements (the code map policy, the mandatory closeout tickets, the epic
+  strategies), so a project left on last release's copy follows rules the
+  tool no longer implements. Preview labels these `[update]`, and the
+  confirmation dialog says so before anything is written.
 - A flat file that also exists in categorised form is left in place
   (never deleted — it may carry user edits) and noted in the log.
-- Custom user skills not in the canonical list are untouched; the app
-  shows them under the "Other" category until moved into a folder.
+- Custom user skills — anything not present in the source tree — are never
+  touched. **To customise a shipped skill, copy it to a new filename**; that
+  copy is yours and survives every future migration. Editing a shipped skill
+  in place will be undone on the next run.
 
 **Refreshes the agent CLI tools** (`.ombutocode/tools/`):
 - Every file in the source's `tools/` folder is copied over the target's.
@@ -73,7 +83,8 @@ active `docs/Skills/` and `.ombutocode/templates/skills/`):
 - `.ombutocode/logs/`
 - `.ombutocode/run-output/`
 - `.ombutocode/planning/`
-- `docs/` (apart from the skill moves/additions above)
+- `docs/` (apart from the skill moves/additions/updates above) — the PRD,
+  Architecture, Epics, Code Map and every other document are project-owned
 
 ## After migration
 

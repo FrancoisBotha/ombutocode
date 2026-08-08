@@ -56,9 +56,6 @@ You need:
 - **[Git](https://git-scm.com/)** — Ombuto Code versions your requirements
   documents with Git just like source code. The installer has already
   initialised a fresh repo for you.
-
-Optional (but recommended — this is what makes the Build phase interesting):
-
 - **At least one AI coding CLI**, installed globally and authenticated:
   - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) —
     `npm install -g @anthropic-ai/claude-code`, then `claude login`
@@ -66,8 +63,12 @@ Optional (but recommended — this is what makes the Build phase interesting):
     `npm install -g @openai/codex`
   - [Kimi](https://github.com/moonshotai/kimi-cli) (optional)
 
-You can always add these later — Ombuto Code's Plan mode works fine
-without any coding agent installed.
+A coding agent is needed for Plan as well as Build. The Plan pages — PRD,
+Architecture, Epics, Ticket Generation and the rest — work by launching an
+AI session against a skill, and their buttons stay disabled until a
+connected agent is configured under Settings → Coding Agents. You can still
+read and hand-edit documents without one, but nothing will be generated for
+you.
 
 ---
 

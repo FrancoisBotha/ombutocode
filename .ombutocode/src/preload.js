@@ -52,6 +52,8 @@ const validChannels = [
   'epics:evaluate',
   'epics:evalStatus',
   'epics:evalComplete',
+  'plan:buildEpicPrompt',
+  'plan:buildTicketPrompt',
   'agents:read',
   'agents:write',
   'agents:state',

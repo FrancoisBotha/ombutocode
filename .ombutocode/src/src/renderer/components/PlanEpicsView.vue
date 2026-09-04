@@ -155,16 +155,21 @@
       <!-- Manual epic create (top of page) -->
       <div class="epics-manual-create">
         <div v-if="showNewInput" class="epics-new-input-wrap">
+          <!-- The ref callback (not just onNewEpic) does the focusing: this view
+               stays mounted across Plan navigation and the list is re-created
+               whenever an agent session ends, so the field can appear without
+               onNewEpic having run. It only claims focus when nothing else
+               holds it, so it never pulls focus off another control. -->
           <input
-            ref="newNameInput"
+            :ref="el => { newNameInput = el; if (el && (!document.activeElement || document.activeElement === document.body)) el.focus(); }"
             v-model="newName"
             class="epics-new-input"
             placeholder="Epic name (e.g. User Authentication)"
             @keyup.enter="createManualEpic"
-            @keyup.escape="showNewInput = false"
+            @keyup.escape="cancelManualEpic"
           />
           <button class="epics-btn epics-btn-primary epics-btn-sm" @click="createManualEpic" :disabled="!newName.trim()">Create</button>
-          <button class="epics-btn epics-btn-secondary epics-btn-sm" @click="showNewInput = false">Cancel</button>
+          <button class="epics-btn epics-btn-secondary epics-btn-sm" @click="cancelManualEpic">Cancel</button>
         </div>
         <button v-else class="epics-btn epics-btn-secondary" @click="onNewEpic">
           <span class="mdi mdi-plus"></span> New Epic (manual)
@@ -563,6 +568,11 @@ export default {
       if (newNameInput.value) newNameInput.value.focus();
     }
 
+    function cancelManualEpic() {
+      showNewInput.value = false;
+      newName.value = '';
+    }
+
     async function createManualEpic() {
       const name = newName.value.trim();
       if (!name) return;
@@ -631,39 +641,20 @@ export default {
       const shellId = 'epics-agent-' + (++sessionCounter);
       currentShellId.value = shellId;
 
-      const contextParts = [`Read the PRD at "docs/${selectedPrd.value}"`];
-      if (selectedArch.value) contextParts.push(`the Architecture document at "docs/${selectedArch.value}"`);
-      if (selectedStyleGuide.value) contextParts.push(`the Style Guide at "docs/${selectedStyleGuide.value}"`);
-      if (selectedCodeMap.value) contextParts.push(`the Code Map at "docs/${selectedCodeMap.value}"`);
-
-      const skillPrefix = selectedSkillContent.value ? selectedSkillContent.value + '\n\n---\n\n' : '';
-      const baseContext = `${contextParts.join(', and ')}. Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the project conventions and ticket workflow.`;
-
-      // List of existing epic stems so the agent doesn't duplicate work.
-      const existingEpicLines = epics.value.length
-        ? epics.value.map(e => `- ${e.name.replace(/\.md$/, '')} (${e.status || 'NEW'})`).join('\n')
-        : '(none yet)';
-
-      let instruction;
-      if (mode === 'refine' && targetEpicPath) {
-        instruction = `Refine the epic at "docs/${targetEpicPath}". First, read that file in full. Then propose specific edits to tighten its purpose, scope, acceptance criteria, FR/NFR cross-references, dependencies, and any other section that needs work. Ask me to confirm each significant edit before writing changes. Keep the existing numeric prefix and \`Status:\` value untouched unless I explicitly ask to change them.
-
-Existing epics for context (do not duplicate scope across them):
-${existingEpicLines}`;
-      } else if (mode === 'single') {
-        instruction = `Apply the Epic Generation skill above to propose ONE NEW epic that fills a gap in the existing set. Do NOT redo the whole epic breakdown. Identify what's missing relative to the source documents above, then propose a single epic with title + one-line summary and ask me to confirm before creating the file. Pick the next available numeric prefix (continue from the highest \`epic_NN_\` already in use).
-
-Existing epics (do not duplicate scope):
-${existingEpicLines}`;
-      } else if (epicStrategy.value === 'layered') {
-        instruction = `Apply the Epic Generation - Layered skill above to produce the initial epic set. Decompose by subsystem and architectural layer, favouring seams that let epics be built in parallel, and declare real prerequisites in \`Depends On:\`. Start by proposing the list of epics with a one-line summary for each. Ask me to confirm before creating the files.`;
-      } else {
-        instruction = `Apply the Epic Generation - Vertical Slice skill above to produce the initial epic set. Every epic must end with an application that builds, runs, and lets a user complete a real task end to end — no epic whose value only materialises in a later epic. Apply "The test" from the skill to each proposed epic before showing it to me. Propose the list as a table of sequence number, title, and what a user can do once that epic is DONE. Ask me to confirm before creating the files.`;
-      }
-
-      const prompt = `${skillPrefix}${baseContext}
-
-${instruction}`;
+      // The prompt itself is assembled in the main process (planningPrompts.js)
+      // so the interactive view and the headless CLI share one source. The
+      // existing epic names go along so the agent doesn't duplicate work.
+      const prompt = await window.electron.ipcRenderer.invoke('plan:buildEpicPrompt', {
+        mode,
+        strategy: epicStrategy.value,
+        skillContent: selectedSkillContent.value,
+        prd: selectedPrd.value,
+        arch: selectedArch.value,
+        styleGuide: selectedStyleGuide.value,
+        codeMap: selectedCodeMap.value,
+        existingEpics: epics.value.map(e => ({ name: e.name, status: e.status })),
+        targetEpicPath
+      });
 
       sessionPrompt.value = prompt;
 
@@ -710,6 +701,7 @@ ${instruction}`;
       if (currentShellId.value) window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
       cleanup();
       sessionActive.value = false;
+      cancelManualEpic();
       loadEpics();
     }
 
@@ -781,6 +773,9 @@ ${instruction}`;
       // only fires once. Refresh the epic list on every visit so newly-created
       // epics (e.g. from FilePreview or external file changes) show up.
       loadEpics();
+      // Drop any half-finished manual entry from the previous visit — otherwise
+      // the field comes back open, unfocused and still holding the old name.
+      cancelManualEpic();
       const refinePath = window.__planEpicsRefinePath;
       if (refinePath) {
         window.__planEpicsRefinePath = null;
@@ -811,7 +806,7 @@ ${instruction}`;
       epicStrategy, setEpicStrategy,
       selectedSkillContent, showSkillPreview, skillManuallyChosen, onSkillPicked,
       showNewInput, newName, newNameInput,
-      openEpic, deleteEpic, onNewEpic, createManualEpic,
+      openEpic, deleteEpic, onNewEpic, createManualEpic, cancelManualEpic,
       startSession, stopSession, startResize,
     };
   }

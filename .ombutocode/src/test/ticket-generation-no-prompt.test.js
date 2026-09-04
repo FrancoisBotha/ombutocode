@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 
+const { buildTicketPrompt } = require('../src/main/planningPrompts');
+
 const read = (rel) => fs.readFileSync(path.join(__dirname, rel), 'utf-8');
 
 const SKILLS = [
@@ -58,7 +60,15 @@ test('the shipped skills and the project copies match', () => {
 });
 
 test('the launcher prompts agree with the skills', () => {
-  const ticketGen = read('../src/renderer/components/PlanTicketGenView.vue');
+  // PlanTicketGenView no longer builds its prompt inline — it asks the main
+  // process (planningPrompts.js) over IPC, so check the built prompt and that
+  // the view actually goes through that channel.
+  const ticketGenView = read('../src/renderer/components/PlanTicketGenView.vue');
+  assert.ok(
+    ticketGenView.includes("invoke('plan:buildTicketPrompt'"),
+    'PlanTicketGenView should build its prompt via plan:buildTicketPrompt'
+  );
+  const ticketGen = buildTicketPrompt({ epicPath: 'Epics/epic_01_EXAMPLE.md' });
   const bddView = read('../src/renderer/components/PlanBddUseCasesView.vue');
 
   for (const [name, content] of [['PlanTicketGenView', ticketGen], ['PlanBddUseCasesView', bddView]]) {

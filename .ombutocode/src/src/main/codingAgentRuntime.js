@@ -261,8 +261,11 @@ class AgentRuntime {
     const template = this.resolveTemplate(normalizedAgent, normalized, options);
     const commandDef = renderCommand(template, normalized, runId, runCwd);
     const now = new Date().toISOString();
-    const isEval = normalizedAgent.endsWith('_eval'); // Detect eval runs to use HEAD truncation instead of TAIL
-    const isTest = normalizedAgent.endsWith('_test'); // Detect test runs (no auto-commit, HEAD truncation)
+    // The scheduler passes the bare tool id plus `templateVariant`, so the
+    // phase must be read from the variant as well as from a suffixed name.
+    const templateVariant = normalizeTemplateVariant(options?.templateVariant);
+    const isEval = normalizedAgent.endsWith('_eval') || templateVariant === 'eval'; // Detect eval runs to use HEAD truncation instead of TAIL
+    const isTest = normalizedAgent.endsWith('_test') || templateVariant === 'test'; // Detect test runs (no auto-commit, HEAD truncation)
     const run = {
       agentName: normalizedAgent,
       runId,

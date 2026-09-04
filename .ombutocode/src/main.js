@@ -57,6 +57,7 @@ const {
   normalizeDependencyId,
   setArchiveDb
 } = require('./src/main/backlogOperations');
+const { buildEpicPrompt, buildTicketPrompt } = require('./src/main/planningPrompts');
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
 // Ombuto Code's own installation directory (.ombutocode/src/ → project root)
@@ -3772,6 +3773,13 @@ ipcMain.handle('prd:read', async () => {
     throw e;
   }
 });
+
+// Planning prompts are assembled in the main process so the Plan views and the
+// headless CLI share one source. Builder errors (missing PRD/epic path)
+// propagate to the renderer as IPC errors.
+ipcMain.handle('plan:buildEpicPrompt', async (_, input) => buildEpicPrompt(input));
+
+ipcMain.handle('plan:buildTicketPrompt', async (_, input) => buildTicketPrompt(input));
 
 ipcMain.handle('requests:search', async (_, params = {}) => {
   try {

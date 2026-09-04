@@ -286,45 +286,29 @@ export default {
       enableTerminalPaste(term);
       termInstance = term;
 
-      buildPrompt();
+      await buildPrompt();
 
       term.write('\x1b[36mSelect a skill and agent, then click "Generate Tickets" to start.\x1b[0m\r\n');
     }
 
-    function buildPrompt() {
+    // The prompt is assembled in the main process (planningPrompts.js) so the
+    // interactive view and the headless CLI share one source. The view always
+    // writes tickets as backlog with no assignee — the builder's defaults.
+    async function buildPrompt() {
       const epic = currentEpic.value;
       if (!epic) return;
-      const skillPrefix = selectedSkillContent.value ? selectedSkillContent.value + '\n\n' : '';
 
-      sessionPrompt.value = `${skillPrefix}Read the epic specification at "docs/${epic.path}". Also read the engineering guide at ".ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md" to understand the ticket conventions and workflow.
-
-Generate implementation tickets that break this epic into concrete development tasks, and WRITE THEM to the canonical backlog database using the ticket-write tool at ".ombutocode/tools/ticket-write.cjs". Do not write to ".ombutocode/planning/backlog.yml" — it is legacy.
-
-Each ticket needs:
-- id: an epic-derived uppercase prefix plus a zero-padded sequence, e.g. AUTH-001 (choose the prefix yourself from the epic name)
-- title: clear, actionable title
-- status: backlog
-- assignee: null
-- epic_ref: docs/${epic.path}
-- acceptance_criteria: list of testable criteria
-- dependencies: list of ticket IDs this depends on (if any)
-
-Guidelines:
-- Each ticket should be completable by one agent in one session
-- Include setup/infrastructure tickets before feature tickets
-- Aim for 3-8 tickets per epic
-- After writing the tickets, update the epic status from NEW to TICKETS
-
-DO NOT ASK ME ANYTHING. This session is often left unattended: if you stop to ask about the ID prefix, the ticket split, or permission to write, the run stalls and nothing gets written at all. Make your best decision, record any assumption in the ticket's notes field, and proceed. Print the summary table as a record of what you are writing — not as a request for approval — then write immediately.
-
-Start by reading the epic. Finish with exactly "DONE - TICKETS WRITTEN" as your last line once you have verified the tickets are in the database, or "FAILED - NO TICKETS WRITTEN" if writing did not succeed.`;
+      sessionPrompt.value = await window.electron.ipcRenderer.invoke('plan:buildTicketPrompt', {
+        epicPath: epic.path,
+        skillContent: selectedSkillContent.value
+      });
     }
 
     async function launchAgent() {
       if (!selectedSessionAgent.value || !currentEpic.value) return;
       agentRunning.value = true;
 
-      buildPrompt();
+      await buildPrompt();
 
       const shellId = 'ticketgen-' + (++sessionCounter);
       currentShellId.value = shellId;

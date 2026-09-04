@@ -134,6 +134,16 @@ Then launch the app:
 bash .ombutocode/buildandrun         # macOS / Linux
 ```
 
+### Adopt Ombuto Code into an existing repository
+
+Already have a codebase? Instead of scaffolding a new project, add Ombuto Code to it:
+
+```bash
+npx create-ombutocode --into-existing /path/to/your/repo
+```
+
+This adds `.ombutocode/` and a `docs/` skeleton (starter documents, skills) without touching any file that already exists, and without creating a commit — review and commit the new files yourself. Add `--omit-dev` to skip the Electron/Vite toolchain when you only need the headless CLI (see "Headless CLI & unattended mode" below); a UI install can be layered on later by re-running `npm install` in `.ombutocode/src`.
+
 ### Push your new project to GitHub
 
 The installer initialised a local Git repository and made an initial commit,

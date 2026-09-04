@@ -483,7 +483,10 @@ function createScheduler(deps) {
     rebaseOnConflict = rebaseTicketBranch,
     updateTicketBranchFn = updateTicketBranch,
     onEvalPreparationFailed = () => {},
-    logEvent = () => {}
+    logEvent = () => {},
+    // Pause before the next eval dispatch after a squash-merge to main. The
+    // headless benchmark profile sets this to 0 to remove idle time.
+    evalPostMergeCooldownMs = EVAL_POST_MERGE_COOLDOWN_MS
   } = deps;
 
   let running = false;
@@ -1572,7 +1575,7 @@ function createScheduler(deps) {
     }
 
     if (ticket?.status === 'eval') {
-      if (Date.now() - lastSquashMergeAt < EVAL_POST_MERGE_COOLDOWN_MS) {
+      if (evalPostMergeCooldownMs > 0 && Date.now() - lastSquashMergeAt < evalPostMergeCooldownMs) {
         return false;
       }
       return activeEvaluationCount < 1;
@@ -1906,9 +1909,9 @@ function createScheduler(deps) {
   function recordSquashMerge() {
     lastSquashMergeAt = Date.now();
     logEvent('eval.post_merge_cooldown', 'info',
-      `Squash-merge detected — eval cooldown ${EVAL_POST_MERGE_COOLDOWN_MS}ms`,
-      { details: { cooldownMs: EVAL_POST_MERGE_COOLDOWN_MS } });
-    setTimeout(() => dispatch({ reason: 'post-merge-cooldown' }), EVAL_POST_MERGE_COOLDOWN_MS);
+      `Squash-merge detected — eval cooldown ${evalPostMergeCooldownMs}ms`,
+      { details: { cooldownMs: evalPostMergeCooldownMs } });
+    setTimeout(() => dispatch({ reason: 'post-merge-cooldown' }), Math.max(0, evalPostMergeCooldownMs));
   }
 
   return {

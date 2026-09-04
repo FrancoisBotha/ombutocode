@@ -79,6 +79,13 @@ function ensureOmbutocodeStructure(projectRoot, appRoot) {
     path.join(projectRoot, 'docs', 'Skills')
   );
 
+  // Seed headless benchmark profiles (.ombutocode/profiles/<name>.json) the
+  // same way — only files that are missing are added.
+  copyMissingFiles(
+    path.join(appRoot, '.ombutocode', 'profiles'),
+    path.join(ombutocodeDir, 'profiles')
+  );
+
   // Copy OMBUTOCODE_ENGINEERING_GUIDE.md to target .ombutocode/ if not present
   const guideSrc = path.join(appRoot, '.ombutocode', 'OMBUTOCODE_ENGINEERING_GUIDE.md');
   const guideDst = path.join(ombutocodeDir, 'OMBUTOCODE_ENGINEERING_GUIDE.md');

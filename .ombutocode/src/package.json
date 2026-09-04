@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder",
-    "headless": "node headless.js"
+    "headless": "node headless.js",
+    "cli": "node headless.js"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.3",

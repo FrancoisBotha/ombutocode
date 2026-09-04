@@ -1,0 +1,33 @@
+{
+  "_doc": {
+    "purpose": "Benchmark profile for `node .ombutocode/src/headless.js run --profile benchmark`: removes every idle/cooldown source so the scheduler drains the backlog as fast as the agents allow. Applied in memory only — nothing here is persisted to headless-settings.json or codingagents.yml.",
+    "settings": {
+      "run_summary_enabled": "false = do not spend an extra agent run summarising each merged ticket's transcripts (the run-output logs are kept instead).",
+      "app_refresh_interval": "seconds between scheduler status/ETA refreshes and CLI progress lines (5 instead of the default 30).",
+      "max_eval_retries": "how many test/eval/merge failures a ticket may accumulate before the scheduler halts it (assignee → NONE). 2 matches the app default."
+    },
+    "agents": {
+      "cooldown_minutes": "per-tool pause between runs from codingagents.yml. The current scheduler records but never enforces it; zeroed for completeness.",
+      "rolling_window_hours": "length of the usage-counting window. 0 falls back to the 5h default inside windowTracker, but the window no longer pauses pickup, so it has no scheduling effect either way.",
+      "rate_limit_cooldown_minutes": "fallback pause when an agent reports a rate limit without a reset time (default 60 min). 0 = do not pause at all.",
+      "max_concurrent": "implementation runs a tool may have in flight at once (test, eval and merge each get one extra dedicated slot)."
+    },
+    "scheduler": {
+      "eval_post_merge_cooldown_ms": "wait before the next eval dispatch after a squash-merge to main (default 15000 ms) so ticket branches can be rebased. 0 = dispatch immediately."
+    }
+  },
+  "settings": {
+    "run_summary_enabled": false,
+    "app_refresh_interval": 5,
+    "max_eval_retries": 2
+  },
+  "agents": {
+    "cooldown_minutes": 0,
+    "rolling_window_hours": 0,
+    "rate_limit_cooldown_minutes": 0,
+    "max_concurrent": 2
+  },
+  "scheduler": {
+    "eval_post_merge_cooldown_ms": 0
+  }
+}

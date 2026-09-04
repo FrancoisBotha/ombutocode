@@ -201,6 +201,40 @@ cd .ombutocode/src
 npx vite build && npx electron .
 ```
 
+### Headless CLI & unattended mode
+
+The scheduler and the two planning stages (epic creation, ticket generation) can run without the Electron UI, so a whole PRD-to-merged-code pipeline can be driven from a shell or a container. The CLI builds the same prompts the workbench shows in Plan mode; nothing about it is a separate code path.
+
+```bash
+node .ombutocode/src/headless.js [<project-root>]                                  # scheduler console (unchanged)
+node .ombutocode/src/headless.js epic create --input <file> [--agent <tool>] [--model <model>] [--skill <name>] [--no-commit] [--timeout-sec N] [--json] [--project <root>]
+node .ombutocode/src/headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog] [--agent <tool>] [--model <model>] [--skill <name>] [--timeout-sec N] [--json] [--project <root>]
+node .ombutocode/src/headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--stall-minutes N] [--max-merge-reverts N] [--poll-seconds N] [--json] [--project <root>]
+node .ombutocode/src/headless.js status [--json] [--project <root>]
+```
+
+Every command accepts `--help`. Exit codes: `0` ok, `1` failure, `2` usage error, `3` timeout.
+
+- `epic create` turns a **reference specification** file (`--input`) into exactly one epic in `docs/Epics/` using the *Epic Generation - Unattended* skill (`docs/Skills/Epics/Epic Generation - Unattended.md`). That skill never asks a question: it analyses the repository first, writes externally verifiable acceptance criteria (a command that runs, a test that passes), records every assumption in the epic's Risks & Unknowns, commits the file unless `--no-commit` is given, and ends its output with `DONE - EPIC WRITTEN docs/Epics/<file>.md` or `FAILED - NO EPIC WRITTEN`. The PRD, Architecture, Style Guide and Code Map are optional context — it never creates them.
+- `tickets create` runs the *Ticket Generation* skill against an epic and writes the tickets to the backlog database. Tickets are written straight to `todo` by default so the scheduler can pick them up, and `--assignee` is then required: the scheduler never dispatches a `todo` ticket without an agent, so tickets written without one would sit there forever. `--status backlog` writes them the way the workbench does (not dispatchable until promoted). The CLI enforces the status and assignee on every ticket it created, whatever the agent wrote, and flips the epic's `Status:` to `TICKETS`.
+- `--model`, and the model part of `--assignee <tool:model>`, are the model `id`s from `.ombutocode/codingagents/codingagents.yml` (for example `opus-4.7`, `sonnet-4.6`, `gpt-5.4`) — not provider model identifiers. `--agent` and `--model` on the planning commands choose the agent that *writes* the epic or tickets, independently of who will build them.
+- `run --until drained` starts the scheduler and exits `0` only when no ticket is in flight (`todo`, `in_progress`, `building`, `test`, `eval`, `merging`), every ticket it tracked has reached `review`/`done`, and each ticket's squash-merge commit is reachable from `HEAD`. It exits `1` when a ticket ends `blocked`, when a merge is reverted more than `--max-merge-reverts` times (default 3), or when nothing changes for `--stall-minutes` (default 10) with no agent running. `--max-seconds` bounds the wait (exit code `3` when hit); `--poll-seconds` sets the polling cadence (default 3). Drain mode is implied by `--json` or `--max-seconds`; without either, `run` behaves like the console. `--profile <name>` loads `.ombutocode/profiles/<name>.json`; the shipped `benchmark` profile zeroes the scheduler cooldowns and disables run summaries so a drain is as fast as the agents allow.
+- Every stage appends to `.ombutocode/run-manifest.json`: timings, token counts, the tickets it created or processed, and the order in which they were executed.
+
+End to end, inside a container that already holds the source repository at `/app`:
+
+```bash
+npx create-ombutocode --into-existing /app --omit-dev
+cd /app
+node .ombutocode/src/headless.js epic create --input spec/feature.md --agent claude --model opus-4.7 --json
+node .ombutocode/src/headless.js tickets create --epic docs/Epics/epic_01_FEATURE.md --assignee claude:opus-4.7 --status todo --json
+node .ombutocode/src/headless.js run --until drained --max-seconds 7200 --profile benchmark --json
+```
+
+`--into-existing` adds `.ombutocode/` and a `docs/` skeleton to a repository without touching any file that already exists and without committing; `--omit-dev` skips Electron, Vite and electron-builder, which the CLI does not need. The agent CLI (`claude`, `codex`, …) must be installed and authenticated in the container as it would be on a desktop.
+
+**Reproducible experiments.** Pin the Ombuto Code release tag (the installer clones a fixed tag; use the matching `create-ombutocode` version) and the agent model `id` on every command rather than relying on defaults. Set `OMBUTOCODE_EVAL_DEFAULT_AGENT` so the per-ticket evaluation phase uses a known agent instead of whatever a settings file happens to contain. Keep `docs/Skills/` exactly as the release shipped it — the skills are prepended to every planning prompt, so an edited skill is a different experiment. The `run-manifest.json` from each run is the record to keep alongside the results.
+
 ### Configuring Coding Agents
 
 1. Install a CLI agent (e.g. `npm install -g @anthropic-ai/claude-code`)

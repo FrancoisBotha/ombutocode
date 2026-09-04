@@ -82,4 +82,14 @@ cd .ombutocode/src && node --test test/*.test.js
 
 # Run single test
 cd .ombutocode/src && node --test test/scheduler.test.js
-mo
+
+# Headless CLI (no Electron UI) — see README "Headless CLI & unattended mode"
+node .ombutocode/src/headless.js [<project-root>]                                  # scheduler console
+node .ombutocode/src/headless.js epic create --input <file> [--agent <tool>] [--model <model>] [--skill <name>] [--no-commit] [--timeout-sec N] [--json] [--project <root>]
+node .ombutocode/src/headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog] [--agent <tool>] [--model <model>] [--skill <name>] [--timeout-sec N] [--json] [--project <root>]
+node .ombutocode/src/headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--stall-minutes N] [--max-merge-reverts N] [--poll-seconds N] [--json] [--project <root>]
+node .ombutocode/src/headless.js status [--json] [--project <root>]
+
+# Adopt Ombuto Code into an existing repo (headless-only install)
+npx create-ombutocode --into-existing <dir> --omit-dev
+```

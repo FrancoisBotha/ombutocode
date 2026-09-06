@@ -370,7 +370,9 @@ esac
 # install, run the acceptance commands and fix what they reveal.
 # OMBUTO_FINALIZE=0 disables it (ablation: score the merged tree alone).
 if [ "${OMBUTO_FINALIZE:-1}" != "0" ]; then
-  run_stage finalize node .ombutocode/src/headless.js finalize \n    --epic "$EPIC_PATH" --input "$SPEC" --branch main \n    --agent "$OMBUTO_AGENT" --model "$OMBUTO_MODEL_ID" --json
+  run_stage finalize node .ombutocode/src/headless.js finalize \
+    --epic "$EPIC_PATH" --input "$SPEC" --branch main \
+    --agent "$OMBUTO_AGENT" --model "$OMBUTO_MODEL_ID" --json
   log "stage finalize: exit $?"
 fi
 finish "OK: pipeline drained (epic $EPIC_PATH)"

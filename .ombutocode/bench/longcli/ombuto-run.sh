@@ -11,6 +11,7 @@
 #   epic    node .ombutocode/src/headless.js epic create --input <spec> --json
 #   tickets node .ombutocode/src/headless.js tickets create --epic <path> --json
 #   run     node .ombutocode/src/headless.js run --until drained --profile benchmark --json
+#   finalize node .ombutocode/src/headless.js finalize --epic <path> --input <spec> --json
 #   status  node .ombutocode/src/headless.js status --json
 # and finally copies .ombutocode/run-manifest.json, run-output/ and logs/ to
 # $LOGS/ombuto/. The script always exits 0: the harness grades the /app
@@ -353,7 +354,23 @@ run_stage run node .ombutocode/src/headless.js run --until drained \
   --max-seconds "$OMBUTO_MAX_SECONDS" --profile benchmark --json
 RUN_CODE=$?
 case "$RUN_CODE" in
-  0) finish "OK: pipeline drained (epic $EPIC_PATH)";;
+  0) ;;
   3) finish "TIMEOUT: run hit --max-seconds $OMBUTO_MAX_SECONDS (exit 3)";;
   *) finish "FAILED at run stage (exit $RUN_CODE, see $LOGS/run.json / run.stderr.log)";;
 esac
+
+# ---------------------------------------------------------------------------
+# Stage: finalize (integration verification on main, in /app itself)
+# ---------------------------------------------------------------------------
+# Every ticket was built, tested and evaluated in an isolated git worktree and
+# squash-merged onto main, so /app holds the merged CODE but none of the
+# environment state the epic's acceptance criteria may require (an editable
+# install on PATH, artefacts from running the delivered tool). Ombuto's
+# `finalize` command runs one agent session in the real working tree to
+# install, run the acceptance commands and fix what they reveal.
+# OMBUTO_FINALIZE=0 disables it (ablation: score the merged tree alone).
+if [ "${OMBUTO_FINALIZE:-1}" != "0" ]; then
+  run_stage finalize node .ombutocode/src/headless.js finalize \n    --epic "$EPIC_PATH" --input "$SPEC" --branch main \n    --agent "$OMBUTO_AGENT" --model "$OMBUTO_MODEL_ID" --json
+  log "stage finalize: exit $?"
+fi
+finish "OK: pipeline drained (epic $EPIC_PATH)"

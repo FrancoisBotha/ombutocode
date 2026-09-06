@@ -44,6 +44,20 @@ function buildRetryContext(ticket) {
     }
   }
 
+  // An epic-scope failure is a separate verdict from the criteria checks — a
+  // ticket can pass every criterion and still fail on EPIC_REFERENCE_CHECK.
+  // Without this the retry gets an empty context and repeats the mistake.
+  if (ticket.eval_summary?.epic_reference_check === 'FAIL') {
+    if (!parts.some((p) => p.startsWith('Eval verdict:'))) {
+      parts.push(`Eval verdict: ${ticket.eval_summary.verdict || 'FAIL'}`);
+    }
+    parts.push('EPIC_REFERENCE_CHECK: FAIL — the implementation was judged not to match the epic specification.');
+    if (ticket.eval_summary.epic_reference_evidence) {
+      parts.push(`  Evaluator evidence: ${ticket.eval_summary.epic_reference_evidence}`);
+    }
+    parts.push('  Fix the scope/spec mismatch described above; do not simply resubmit the same change.');
+  }
+
   // Extract test failures from test_summary
   const testChecks = ticket.test_summary?.checks;
   if (Array.isArray(testChecks)) {

@@ -154,7 +154,14 @@ As a [role], I want [capability], So that [benefit].
 - **Capabilities:** one bullet per capability the epic delivers
 - **Constraints:** one bullet per rule the implementation must respect —
   compatibility, performance ceilings, conventions found in the repository,
-  existing tests that must keep passing
+  existing tests that must keep passing. Phrase file-protection rules as
+  "existing files X are not to be modified" — never as "no other files may be
+  created". Ombuto's implementation phase is required to add unit tests and
+  may add new test files and helpers; a constraint that forbids *creating*
+  files makes every ticket fail its evaluation while the code is correct.
+  If the reference specification protects a directory (e.g. an existing
+  `tests/` tree), say "existing files under tests/ are read-only; new test
+  files may be added alongside them".
 - **Out of Scope:** …
 
 ## 4. Functional Requirements

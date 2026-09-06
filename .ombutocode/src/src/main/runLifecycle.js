@@ -190,6 +190,15 @@ function parseStructuredEvalOutput(outputText) {
   const epicReferencePass = featureCheckMatch
     ? featureCheckMatch[1].toLowerCase() === 'pass'
     : null;
+  // The rest of that line ("| evidence: ...") is the only place the
+  // evaluator explains an epic-scope failure; keep it so a retry can act on it.
+  let epicReferenceEvidence = null;
+  if (featureCheckMatch) {
+    const lineEnd = text.indexOf('\n', featureCheckMatch.index);
+    const line = text.slice(featureCheckMatch.index, lineEnd === -1 ? undefined : lineEnd);
+    const evidence = line.replace(/^[^|]*\|?\s*/, '').replace(/^evidence\s*:\s*/i, '').trim();
+    epicReferenceEvidence = evidence ? evidence.slice(0, 1500) : null;
+  }
   const criteriaChecks = hasAcceptanceCriteriaChecksBody
     ? parseAcceptanceCriteriaChecks(acceptanceCriteriaChecksBodyMatch[1] || '')
     : [];
@@ -200,6 +209,7 @@ function parseStructuredEvalOutput(outputText) {
     hasAcceptanceCriteriaChecks,
     hasFeatureReferenceCheck,
     epicReferencePass,
+    epicReferenceEvidence,
     criteriaChecks
   };
 }
@@ -363,6 +373,9 @@ function buildEvalSummary({ verdict, structured, timestamp, rawOutput, reasons }
       : 'NOT_FOUND',
     timestamp: timestamp || new Date().toISOString()
   };
+  if (structured?.hasFeatureReferenceCheck && structured.epicReferencePass === false && structured.epicReferenceEvidence) {
+    summary.epic_reference_evidence = structured.epicReferenceEvidence;
+  }
 
   if (reasons && reasons.length > 0) {
     summary.failure_reasons = reasons;

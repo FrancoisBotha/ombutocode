@@ -1,0 +1,65 @@
+#!/bin/bash
+# Ombuto Code {{ version }} installed-agent setup.
+#
+# Sourced once per container by AbstractInstalledAgent.perform_task
+# (`source /installed-agent/install-agent.sh || echo INSTALL_FAIL_STATUS`), so
+# no `set -e`: the body is a function that returns non-zero on failure.
+#
+# 1. node 22 via nvm (already in tb/make-pytest:v0; installed if missing)
+# 2. npm install -g @anthropic-ai/claude-code@{{ claude_version }}
+# 3. npx create-ombutocode@{{ installer_version }} --into-existing /app --omit-dev
+#    (the installer clones the {{ version }} tag and runs npm install --omit=dev
+#    in /app/.ombutocode/src)
+# 4. writes /installed-agent/ombuto-run.sh and /installed-agent/fake-claude
+
+ombuto_install() {
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  export DEBIAN_FRONTEND=noninteractive
+
+  if ! command -v git >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+    apt-get update && apt-get install -y --no-install-recommends git curl ca-certificates || return 1
+  fi
+
+  if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash || return 1
+  fi
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh" || return 1
+  nvm install 22 || return 1
+  nvm use 22 || return 1
+  npm config set fund false >/dev/null 2>&1
+  npm config set update-notifier false >/dev/null 2>&1
+  echo "node $(node --version) npm $(npm --version)"
+
+  npm install -g @anthropic-ai/claude-code@{{ claude_version }} || return 1
+  echo "claude $(claude --version 2>/dev/null || echo '(version unknown)')"
+
+  mkdir -p /installed-agent
+  cat > /installed-agent/ombuto-run.sh <<'OMBUTO_RUN_SH_EOF'
+{{ run_script }}
+OMBUTO_RUN_SH_EOF
+  cat > /installed-agent/fake-claude <<'OMBUTO_FAKE_CLAUDE_EOF'
+{{ fake_agent_script }}
+OMBUTO_FAKE_CLAUDE_EOF
+  chmod 755 /installed-agent/ombuto-run.sh /installed-agent/fake-claude
+
+  if [ ! -d /app ]; then
+    echo "/app does not exist — nothing to adopt Ombuto Code into" >&2
+    return 1
+  fi
+  if [ -f /app/.ombutocode/src/headless.js ]; then
+    echo "Ombuto Code already present in /app/.ombutocode — skipping install"
+  else
+    if [ -d /app/.ombutocode ]; then
+      # create-ombutocode refuses a half-installed directory
+      rm -rf /app/.ombutocode
+    fi
+    (cd / && npx --yes create-ombutocode@{{ installer_version }} --into-existing /app --omit-dev) || return 1
+  fi
+  test -f /app/.ombutocode/src/headless.js || { echo "Ombuto install incomplete: /app/.ombutocode/src/headless.js missing" >&2; return 1; }
+  test -d /app/.ombutocode/src/node_modules/sql.js || { echo "Ombuto install incomplete: sql.js missing" >&2; return 1; }
+  (cd /app && node .ombutocode/src/headless.js status --help >/dev/null) || return 1
+  echo "Ombuto Code {{ version }} installed into /app"
+}
+
+ombuto_install

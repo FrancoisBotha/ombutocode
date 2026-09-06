@@ -69,7 +69,8 @@
       "--output-format",
       "stream-json",
       "--verbose",
-      "--dangerously-skip-permissions",
+      "--allowedTools",
+      "Bash Edit Write Read Glob Grep LS WebFetch Agent",
       "--add-dir",
       "{{workingDirectory}}"
     ],
@@ -84,7 +85,8 @@
       "--output-format",
       "stream-json",
       "--verbose",
-      "--dangerously-skip-permissions",
+      "--allowedTools",
+      "Bash Edit Write Read Glob Grep LS WebFetch Agent",
       "--add-dir",
       "{{workingDirectory}}"
     ],
@@ -99,7 +101,8 @@
       "--output-format",
       "stream-json",
       "--verbose",
-      "--dangerously-skip-permissions",
+      "--allowedTools",
+      "Bash Edit Write Read Glob Grep LS WebFetch Agent",
       "--add-dir",
       "{{workingDirectory}}"
     ],
@@ -135,7 +138,8 @@
       "--output-format",
       "stream-json",
       "--verbose",
-      "--dangerously-skip-permissions",
+      "--allowedTools",
+      "Bash Edit Write Read Glob Grep LS WebFetch Agent",
       "--add-dir",
       "{{workingDirectory}}"
     ],
@@ -170,7 +174,8 @@
       "--output-format",
       "stream-json",
       "--verbose",
-      "--dangerously-skip-permissions",
+      "--allowedTools",
+      "Bash Edit Write Read Glob Grep LS WebFetch Agent",
       "--add-dir",
       "{{workingDirectory}}"
     ],

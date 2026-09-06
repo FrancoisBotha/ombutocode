@@ -212,6 +212,68 @@ function appendOutputHead(previous, chunk, maxChars) {
   return next.slice(0, maxChars); // Keep first maxChars for eval runs where EVALUATION_RESULT is at the beginning
 }
 
+// Stream-json lines whose loss would lose the agent's own words: the
+// assistant's text blocks and the final result. Everything else (tool_result
+// echoes of every file the agent read, system/init/progress events) is bulk.
+const STREAM_JSON_TEXT_LINE = /^\{"type":"(assistant|result)"/;
+
+/**
+ * Capture agent stdout without ever dropping the agent's verdict.
+ *
+ * Claude Code's --output-format stream-json emits the whole tool transcript
+ * — every file the agent reads comes back as a tool_result line — before the
+ * final assistant text. A thorough evaluator on a large change fills the
+ * capture budget with tool results long before it writes EVALUATION_RESULT,
+ * so a plain head or tail slice cuts off exactly the part the parser needs.
+ *
+ * This keeps every assistant/result line in full (they are small) and
+ * subjects only the bulk lines to `maxChars`, keeping the head for eval/test
+ * runs (structured verdict first) and the tail for implementation runs
+ * (recent errors last). Output that is not stream-json falls back to the
+ * plain head/tail slice.
+ */
+function createOutputCapture({ keepHead, maxChars }) {
+  let bulk = '';
+  let bulkTruncated = false;
+  const keptLines = [];   // assistant/result lines, verbatim, in order
+  let partial = '';       // an incomplete trailing line between chunks
+
+  function acceptLine(line) {
+    if (STREAM_JSON_TEXT_LINE.test(line)) {
+      keptLines.push(line);
+      return;
+    }
+    const next = `${bulk}${line}\n`;
+    if (next.length <= maxChars) {
+      bulk = next;
+      return;
+    }
+    bulkTruncated = true;
+    bulk = keepHead ? next.slice(0, maxChars) : next.slice(next.length - maxChars);
+  }
+
+  return {
+    append(text) {
+      const combined = `${partial}${text}`;
+      const lines = combined.split('\n');
+      partial = lines.pop();
+      for (const line of lines) acceptLine(line);
+      // A very long partial line (a huge tool_result) must not grow unbounded.
+      if (partial.length > maxChars) {
+        acceptLine(partial);
+        partial = '';
+      }
+    },
+    get truncated() { return bulkTruncated; },
+    // Kept lines are appended after the bulk so a head-keeping consumer
+    // still sees the verdict, and a tail-keeping consumer sees it last.
+    toString() {
+      const tail = partial ? `${partial}` : '';
+      return `${bulk}${keptLines.join('\n')}${keptLines.length ? '\n' : ''}${tail}`;
+    }
+  };
+}
+
 function inferSemanticFailure(stdout, stderr) {
   const combined = `${stdout || ''}\n${stderr || ''}`.trim();
   if (!combined) return null;
@@ -359,14 +421,18 @@ class AgentRuntime {
     };
 
     if (child.stdout) {
+      // Eval/test runs put the structured verdict first, impl runs put the
+      // useful errors last — but with stream-json the agent's own text must
+      // survive regardless of where the size cap lands (see createOutputCapture).
+      const stdoutCapture = createOutputCapture({
+        keepHead: !!(run.isEval || run.isTest),
+        maxChars: MAX_OUTPUT_CAPTURE_CHARS
+      });
       child.stdout.on('data', (chunk) => {
         const text = Buffer.isBuffer(chunk) ? chunk.toString('utf-8') : String(chunk);
-        const beforeLength = run.stdout.length;
-        // For eval/test runs, keep HEAD (beginning) where structured result is; for impl runs, keep TAIL
-        run.stdout = (run.isEval || run.isTest)
-          ? appendOutputHead(run.stdout, text, MAX_OUTPUT_CAPTURE_CHARS)
-          : appendOutputTail(run.stdout, text, MAX_OUTPUT_CAPTURE_CHARS);
-        if (beforeLength + text.length > MAX_OUTPUT_CAPTURE_CHARS) {
+        stdoutCapture.append(text);
+        run.stdout = stdoutCapture.toString();
+        if (stdoutCapture.truncated) {
           run.stdoutTruncated = true;
         }
         notifyRunUpdated();
@@ -490,6 +556,7 @@ class AgentRuntime {
 }
 
 module.exports = {
+  createOutputCapture,
   AgentInvocationError,
   AgentRuntime,
   normalizeStartPayload,

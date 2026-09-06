@@ -88,6 +88,7 @@ node .ombutocode/src/headless.js [<project-root>]                               
 node .ombutocode/src/headless.js epic create --input <file> [--agent <tool>] [--model <model>] [--skill <name>] [--no-commit] [--timeout-sec N] [--json] [--project <root>]
 node .ombutocode/src/headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog] [--closeout all|eval|none] [--agent <tool>] [--model <model>] [--skill <name>] [--timeout-sec N] [--json] [--project <root>]
 node .ombutocode/src/headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--stall-minutes N] [--max-merge-reverts N] [--poll-seconds N] [--json] [--project <root>]
+node .ombutocode/src/headless.js finalize --epic <path> [--input <file>] [--branch main] [--agent <tool>] [--model <model>] [--timeout-sec N] [--json] [--project <root>]
 node .ombutocode/src/headless.js status [--json] [--project <root>]
 
 # Adopt Ombuto Code into an existing repo (headless-only install)

@@ -24,7 +24,8 @@ const { buildDraftArgsFromTemplate } = require('./adHocTickets');
 
 const DEFAULT_TIMEOUTS_MS = {
   epic: 30 * 60 * 1000,
-  tickets: 20 * 60 * 1000
+  tickets: 20 * 60 * 1000,
+  finalize: 30 * 60 * 1000
 };
 const KILL_GRACE_MS = 5000;
 const OUTPUT_TAIL_CHARS = 200_000;

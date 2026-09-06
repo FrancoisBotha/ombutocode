@@ -23,6 +23,8 @@ const EPIC_DONE_SENTINEL = 'DONE - EPIC WRITTEN';
 const EPIC_FAILED_SENTINEL = 'FAILED - NO EPIC WRITTEN';
 const TICKETS_DONE_SENTINEL = 'DONE - TICKETS WRITTEN';
 const TICKETS_FAILED_SENTINEL = 'FAILED - NO TICKETS WRITTEN';
+const FINALIZE_DONE_SENTINEL = 'DONE - FINALIZED';
+const FINALIZE_FAILED_SENTINEL = 'FAILED - NOT FINALIZED';
 
 const EPIC_MODES = new Set(['bulk', 'single', 'refine', 'unattended']);
 const EPIC_STRATEGIES = new Set(['vertical', 'layered']);
@@ -235,6 +237,47 @@ CLOSEOUT TICKETS FOR THIS RUN — this overrides the skill's "four mandatory clo
 };
 
 /**
+ * Build the integration-verification prompt that runs on the mainline after
+ * every ticket has merged.
+ *
+ * Tickets are built, tested and evaluated in isolated worktrees, so the
+ * mainline receives committed source only. Environment state the epic's
+ * acceptance criteria may depend on — an editable install on the system
+ * path, artefacts produced by running the delivered tool — never reaches it.
+ * This session runs in the real working tree and brings it to the delivered
+ * state: install, run every acceptance / validation command, fix what fails.
+ *
+ * @param {Object} input
+ * @param {string} input.epicPath          docs-relative epic path, e.g. "Epics/epic_01_FOO.md"
+ * @param {string} [input.referenceFile]   project-relative reference spec, when there is one
+ * @param {string} [input.branch='main']
+ * @returns {string}
+ */
+function buildFinalizePrompt(input = {}) {
+  if (!input.epicPath) {
+    throw new Error('buildFinalizePrompt: epicPath is required');
+  }
+  const branch = input.branch || 'main';
+  const referenceLine = input.referenceFile
+    ? ` Then read the original reference specification at "${input.referenceFile}".`
+    : '';
+
+  return `You are finalising a delivered epic in this repository on branch ${branch}. Read the epic specification at "docs/${input.epicPath}" in full.${referenceLine}
+
+Every implementation ticket for this epic has already been built, unit-tested, evaluated against its acceptance criteria and merged onto ${branch} — do NOT re-implement or refactor that work. Your job is INTEGRATION VERIFICATION in the real working tree, which no earlier phase touched (they all ran in isolated worktrees):
+
+1. Perform every installation and setup step the epic or reference specification requires so the delivered software is usable from a plain shell at the repository root (for example an editable install of a package so its CLI entry point is on PATH — check with \`command -v <tool>\` from a shell with no virtualenv active). Install into the system Python / global tool locations, not only into a project virtualenv.
+2. Execute every acceptance command, validation run and end-to-end check the epic's acceptance criteria and the reference specification call for, from the repository root, and leave their outputs where the specification says they belong.
+3. If anything fails, fix the cause in place with minimal, targeted changes and re-run until it passes, or until you have established that it cannot pass in this environment (say so explicitly, e.g. "no Docker daemon available").
+4. Do not delete or rewrite existing files outside the epic's scope, and never modify existing tests.
+5. Commit any source changes you made on ${branch} with a short message of the form "finalize: <what>". Leave generated run artefacts uncommitted but in place.
+
+DO NOT ASK ME ANYTHING. This session is unattended: if you stop to ask, the run stalls. Make your best decision and record it in your report.
+
+Finish with a short report — what you installed, what you ran, what passed, and what could not pass here — and end with exactly "${FINALIZE_DONE_SENTINEL}" as your last line, or "${FINALIZE_FAILED_SENTINEL}" if you could not complete the verification.`;
+}
+
+/**
  * Read the completion sentinel off the end of an agent transcript.
  * Returns { state: 'done'|'failed'|'missing', path? } — `path` is the file
  * the epic sentinel names, when present.
@@ -261,6 +304,8 @@ module.exports = {
   EPIC_FAILED_SENTINEL,
   TICKETS_DONE_SENTINEL,
   TICKETS_FAILED_SENTINEL,
+  FINALIZE_DONE_SENTINEL,
+  FINALIZE_FAILED_SENTINEL,
   STRATEGY_SKILL_NAMES,
   UNATTENDED_SKILL_NAME,
   REFINEMENT_SKILL_NAME,
@@ -271,5 +316,6 @@ module.exports = {
   selectEpicSkill,
   buildEpicPrompt,
   buildTicketPrompt,
+  buildFinalizePrompt,
   parseSentinel
 };

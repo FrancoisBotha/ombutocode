@@ -70,6 +70,15 @@ function formatRunResult(r) {
   return lines.join('\n');
 }
 
+function formatFinalizeResult(r) {
+  const res = r.result;
+  const head = `finalize ${res.ok ? 'OK' : 'FAILED'}: ${res.epicPath} on ${res.branch} (sentinel ${res.sentinel?.state}, ${Math.round((res.durationMs || 0) / 1000)}s)`;
+  const lines = [head];
+  if (res.commitSha) lines.push(`  committed by ${res.committedBy}: ${String(res.commitSha).slice(0, 10)}`);
+  if (res.report) lines.push('  report:', ...res.report.split('\n').slice(-25).map((l) => `    ${l}`));
+  return lines.join('\n');
+}
+
 /**
  * Run the CLI for a `process.argv`-shaped array. Returns the exit code
  * instead of exiting so it is testable; `headless.js` calls process.exit.
@@ -89,7 +98,7 @@ async function main(argv, io = {}) {
   }
 
   const { command, options, specKey } = parsed;
-  const stage = command; // epic | tickets | run | status
+  const stage = command; // epic | tickets | run | finalize | status
   const startedAt = new Date().toISOString();
 
   let projectRoot;
@@ -144,6 +153,8 @@ async function main(argv, io = {}) {
       outcome = await require('./ticketsCreate').runTicketsCreate(ctx, options);
     } else if (command === 'run') {
       outcome = await require('./run').runSchedulerUntilDrained(ctx, options);
+    } else if (command === 'finalize') {
+      outcome = await require('./finalize').runFinalize(ctx, options);
     } else {
       outcome = await require('./status').runStatus(ctx, options);
     }
@@ -203,6 +214,8 @@ async function main(argv, io = {}) {
     out(formatEpicResult(outcome));
   } else if (specKey === 'tickets create') {
     out(formatTicketsResult(outcome));
+  } else if (command === 'finalize') {
+    out(formatFinalizeResult(outcome));
   } else {
     out(formatRunResult(outcome));
   }

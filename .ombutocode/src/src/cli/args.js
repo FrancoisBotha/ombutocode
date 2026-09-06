@@ -10,13 +10,14 @@
  *                                   [--timeout-sec N] [--json] [--project <root>]
  *   node headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--json] [--project <root>]
  *                        [--stall-minutes N] [--max-merge-reverts N] [--poll-seconds N]
+ *   node headless.js finalize --epic <path> [--input <file>] [--branch main] [--agent <tool>] [--model <model>]
  *   node headless.js status [--json] [--project <root>]
  *
  * Pure: argv in, `{ ok, command, subcommand, options }` or `{ ok: false, error, usage }` out.
  * Exit code 2 is the caller's job.
  */
 
-const CLI_COMMANDS = new Set(['epic', 'tickets', 'run', 'status']);
+const CLI_COMMANDS = new Set(['epic', 'tickets', 'run', 'finalize', 'status']);
 
 const EXIT_OK = 0;
 const EXIT_FAILURE = 1;
@@ -60,6 +61,13 @@ const COMMAND_SPECS = {
     'poll-seconds': { type: 'number' },
     ...COMMON_OPTIONS
   },
+  finalize: {
+    epic: { type: 'string', required: true },
+    input: { type: 'string' },
+    branch: { type: 'string', default: 'main' },
+    ...PLANNING_OPTIONS,
+    ...COMMON_OPTIONS
+  },
   status: {
     ...COMMON_OPTIONS
   }
@@ -74,6 +82,8 @@ const USAGE = `Usage:
                                   [--timeout-sec N] [--json] [--project <root>]
   node headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--json] [--project <root>]
                        [--stall-minutes N] [--max-merge-reverts N] [--poll-seconds N]
+  node headless.js finalize --epic <path> [--input <file>] [--branch main] [--agent <tool>] [--model <model>]
+                            [--timeout-sec N] [--json] [--project <root>]
   node headless.js status [--json] [--project <root>]
 
 Exit codes: 0 success, 1 failure, 2 usage error, 3 timeout / budget exhausted.`;
@@ -95,7 +105,7 @@ function parseCliArgs(argv) {
   const rest = Array.isArray(argv) ? argv.slice(2) : [];
   const command = rest[0];
   if (!CLI_COMMANDS.has(command)) {
-    return usageError(`Unknown command "${command || ''}". Expected one of: epic, tickets, run, status.`);
+    return usageError(`Unknown command "${command || ''}". Expected one of: epic, tickets, run, finalize, status.`);
   }
 
   let subcommand = null;

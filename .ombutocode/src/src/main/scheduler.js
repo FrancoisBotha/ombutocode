@@ -1485,7 +1485,18 @@ function createScheduler(deps) {
   }
 
   function resolveEvalQueueAssignee(ticket = null) {
-    return resolveEvalAssignee() || ticket?.assignee || null;
+    const evalDefault = resolveEvalAssignee();
+    const own = ticket?.assignee;
+    // A tool-only eval default ("claude") would match that tool's first
+    // enabled model. When the ticket itself pins a model on the same tool,
+    // keep that pin so the eval phase runs on the model the ticket was built
+    // with rather than on whichever model happens to be listed first.
+    if (evalDefault && typeof evalDefault === 'string'
+      && own && typeof own === 'object' && own.tool && own.model
+      && String(own.tool).toLowerCase() === evalDefault.trim().toLowerCase()) {
+      return own;
+    }
+    return evalDefault || own || null;
   }
 
   /**

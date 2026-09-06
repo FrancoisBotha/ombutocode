@@ -290,6 +290,7 @@ async function bootProject(options = {}) {
     projectRoot: paths.PROJECT_ROOT,
     onTitleBrandingUpdate: null,  // No Electron windows in headless mode
     isRunSummaryEnabled,
+    isRunOutputRetained: () => settingsStore.get('retain_run_output', false) === true,
     startRunSummary: (ticket) => {
       if (!isRunSummaryEnabled()) return;
       if (!Array.isArray(ticket?.run_log_index) || ticket.run_log_index.length === 0) return;

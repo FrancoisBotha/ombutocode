@@ -7,3 +7,6 @@ data/tickets/*.json
 data/tickets/*.tmp
 planning/archive.db
 planning/*.migrated
+data/headless-settings.json
+run-manifest.json
+.instance.lock

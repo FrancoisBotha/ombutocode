@@ -120,6 +120,45 @@ function readRunPhasesFromSchedulerLogs(logsDb, runIds) {
 }
 
 /**
+ * Execution order from the scheduler's `ticket.status_changed` events: the
+ * first transition into an in-flight status per ticket, oldest first. The
+ * poll-based tracker can miss a ticket entirely when it goes todo → review
+ * between two polls, which is routine for short runs; the log cannot.
+ * Falls back to the tracker's order for anything the log did not record.
+ */
+function readExecutionOrderFromSchedulerLogs(logsDb, trackerOrder, sinceIso) {
+  const order = [];
+  const seen = new Set();
+  if (logsDb && typeof logsDb.readLogs === 'function') {
+    let logs = [];
+    try {
+      logs = logsDb.readLogs({ event_type: 'ticket.status_changed', limit: 5000 }).logs || [];
+    } catch {
+      logs = [];
+    }
+    // readLogs returns newest first; walk oldest → newest.
+    for (const entry of logs.slice().reverse()) {
+      const ticketId = entry?.ticket_id;
+      if (!ticketId || seen.has(ticketId)) continue;
+      if (sinceIso && entry.timestamp && String(entry.timestamp) < sinceIso) continue;
+      let details = entry.details;
+      if (typeof details === 'string') {
+        try { details = JSON.parse(details); } catch { details = null; }
+      }
+      const to = String(details?.to || '').toLowerCase();
+      if (to === 'in_progress' || to === 'building') {
+        seen.add(ticketId);
+        order.push(ticketId);
+      }
+    }
+  }
+  for (const id of trackerOrder || []) {
+    if (!seen.has(id)) { seen.add(id); order.push(id); }
+  }
+  return order;
+}
+
+/**
  * Build the per-ticket manifest result from the final backlog, the tracker
  * and the agent-run log entries produced during this run.
  */
@@ -324,7 +363,11 @@ async function runSchedulerUntilDrained(ctx, options, deps = {}) {
     headBefore,
     headAfter: gitImpl.headSha(projectRoot),
     mergeReverts: tracker.mergeRevertCount,
-    executionOrder: tracker.executionOrder,
+    executionOrder: readExecutionOrderFromSchedulerLogs(
+      ctx.dbReady ? require('../main/logsDb') : null,
+      tracker.executionOrder,
+      startedAt
+    ),
     tickets: ticketResults,
     limits: { maxSeconds, stallMs, maxMergeReverts, pollMs }
   };

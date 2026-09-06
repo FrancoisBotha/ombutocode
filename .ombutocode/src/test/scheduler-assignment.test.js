@@ -320,6 +320,51 @@ test('scheduler picks eval tickets via default eval agent', () => {
   assert.equal(agentRuntime.started[0].agentName, 'kimi');
 });
 
+test('a tool-only eval default keeps the model pinned on the ticket', () => {
+  // eval_default_agent = "claude" with no eval_default_model must not send
+  // the eval run to claude's first enabled model when the ticket was built
+  // with a specific one.
+  const projectRoot = createTempProjectRoot();
+  const agentRuntime = buildAgentRuntimeStub();
+  const backlog = {
+    tickets: [
+      {
+        id: 'EVAL_WORKFLOW-EVAL-MODEL-PIN',
+        status: 'eval',
+        title: 'Needs evaluator on the same model',
+        assignee: { tool: 'claude', model: 'sonnet-4.6' }
+      }
+    ]
+  };
+
+  const scheduler = createScheduler({
+    projectRoot,
+    agentRuntime,
+    readBacklogData: () => backlog,
+    readEvalDefaultAgent: () => 'claude',
+    readAgentsConfig: () => ({
+      tools: [
+        {
+          id: 'claude',
+          name: 'Claude',
+          enabled: true,
+          models: [
+            { id: 'opus-4.7', model_id: 'claude-opus-4-7', enabled: true, rate_per_hour: 5 },
+            { id: 'sonnet-4.6', model_id: 'claude-sonnet-4-6', enabled: true, rate_per_hour: 5 }
+          ]
+        }
+      ]
+    })
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  assert.equal(agentRuntime.started.length, 1);
+  assert.equal(agentRuntime.started[0].agentName, 'claude');
+  assert.equal(agentRuntime.started[0].payload.modelId, 'claude-sonnet-4-6');
+});
+
 test('scheduler prepares and cleans up eval trial merge for eval runs', () => {
   const projectRoot = createTempProjectRoot();
   const agentRuntime = buildAgentRuntimeStub({ trackActiveRuns: true });

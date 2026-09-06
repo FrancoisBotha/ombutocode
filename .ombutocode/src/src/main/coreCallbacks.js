@@ -30,6 +30,7 @@ const { recordMergeCommitOnTicket } = require('./gitDiffService');
  * @param {string}   deps.projectRoot
  * @param {Function} [deps.onTitleBrandingUpdate] - optional Electron-only callback
  * @param {Function} [deps.isRunSummaryEnabled] - () => boolean; gates log retention and the manifest
+ * @param {Function} [deps.isRunOutputRetained] - () => boolean; keep every run's stdout/stderr on disk even when the run succeeded and no summary will read them (headless benchmarks need the transcripts for token/cost accounting)
  * @param {Function} [deps.startRunSummary] - (ticket) => void; fired after a successful squash merge
  * @returns {Object}
  */
@@ -52,6 +53,7 @@ function createRuntimeCallbacks(deps) {
     projectRoot,
     onTitleBrandingUpdate,
     isRunSummaryEnabled = () => false,
+    isRunOutputRetained = () => false,
     startRunSummary = () => {}
   } = deps;
 
@@ -101,7 +103,17 @@ function createRuntimeCallbacks(deps) {
         ticket.status = 'in_progress';
         logSchedulerEvent('ticket.status_changed', 'info', `Ticket ${run.ticketId} status: ${prevStatus} → in_progress`, { ticketId: run.ticketId, runId: run.runId, agentName: run.agentName, details: { from: prevStatus, to: 'in_progress' } });
       }
-      ticket.assignee = run.agentName;
+      // Record who is working the ticket, but never downgrade an explicit
+      // { tool, model } assignee to the bare tool name — the model pin has to
+      // survive into the test/eval/retry runs or they silently fall back to
+      // the tool's first enabled model.
+      const currentAssignee = ticket.assignee;
+      const assignedTool = currentAssignee && typeof currentAssignee === 'object'
+        ? String(currentAssignee.tool || '').trim().toLowerCase()
+        : String(currentAssignee || '').trim().toLowerCase();
+      if (assignedTool !== String(run.agentName || '').toLowerCase()) {
+        ticket.assignee = run.agentName;
+      }
       ticket.agent = {
         name: run.agentName,
         run_id: run.runId,
@@ -188,7 +200,7 @@ function createRuntimeCallbacks(deps) {
     // until the ticket merges, so while the feature is on we retain them and
     // let the summary job delete the set once it has read them.
     const retainForRunSummary = isRunSummaryEnabled() === true;
-    let keepRunLogs = retainForRunSummary || run.state !== 'completed';
+    let keepRunLogs = retainForRunSummary || isRunOutputRetained() === true || run.state !== 'completed';
 
     // Automatic git commit for successful implementation runs
     let implementationCommitted = false;

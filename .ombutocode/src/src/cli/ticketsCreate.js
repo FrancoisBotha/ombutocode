@@ -31,6 +31,7 @@ const {
   updateEpicStatus
 } = require('./epicFiles');
 const { EXIT_OK, EXIT_FAILURE, EXIT_USAGE, EXIT_TIMEOUT } = require('./args');
+const git = require('./gitUtil');
 
 function normalizeEpicRef(value) {
   return String(value || '').replace(/\\/g, '/').replace(/^\.?\//, '').trim().toLowerCase();
@@ -91,7 +92,7 @@ function listDbBackups(dataDir) {
  * @param {Object} [deps]   { runAgent, now } for tests
  */
 async function runTicketsCreate(ctx, options, deps = {}) {
-  const { runAgent = runUnattendedAgent, now = () => new Date() } = deps;
+  const { runAgent = runUnattendedAgent, gitImpl = git, now = () => new Date() } = deps;
   const { paths, settingsStore, utils, backlogDb, ombutocodeDb, logger } = ctx;
   const projectRoot = paths.PROJECT_ROOT;
   const startedAt = now().toISOString();
@@ -260,6 +261,21 @@ async function runTicketsCreate(ctx, options, deps = {}) {
     epicStatus = 'TICKETS';
     logger.log(`[tickets] set ${epic.epicRef} Status: TICKETS`);
   }
+  // Commit the status flip when the epic itself is tracked: build agents work
+  // in worktrees and would otherwise read the epic in its last committed
+  // (NEW) state, and a dirty tree gets in the way of the squash-merge stash.
+  let epicStatusCommitted = false;
+  if (epicStatusUpdated) {
+    try {
+      if (!gitImpl.isFileCommitted(projectRoot, epic.epicRef)) {
+        const commitResult = gitImpl.commitFile(projectRoot, epic.epicRef, `docs: ${epic.fileName.replace(/\.md$/, '')} status TICKETS`);
+        epicStatusCommitted = !!commitResult?.ok;
+        if (epicStatusCommitted) logger.log(`[tickets] committed epic status change`);
+      }
+    } catch (error) {
+      logger.warn(`[tickets] could not commit epic status change: ${error.message}`);
+    }
+  }
 
   // ticket-write leaves a pre-insert DB backup for the caller to remove once verified.
   const removedBackups = [];
@@ -294,6 +310,7 @@ async function runTicketsCreate(ctx, options, deps = {}) {
       fixedUp,
       epicStatus,
       epicStatusUpdated,
+      epicStatusCommitted,
       removedBackups
     }
   };

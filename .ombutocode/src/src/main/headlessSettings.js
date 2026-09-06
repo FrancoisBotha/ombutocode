@@ -11,6 +11,8 @@ const path = require('path');
  *   OMBUTOCODE_EVAL_DEFAULT_AGENT  -> eval_default_agent
  *   OMBUTOCODE_REFRESH_INTERVAL    -> app_refresh_interval
  *   OMBUTOCODE_MAX_EVAL_RETRIES    -> max_eval_retries
+ *   OMBUTOCODE_EVAL_DEFAULT_MODEL  -> eval_default_model
+ *   OMBUTOCODE_RETAIN_RUN_OUTPUT   -> retain_run_output ("1"/"true")
  */
 
 const DEFAULTS = {
@@ -23,13 +25,16 @@ const DEFAULTS = {
   enable_review_notification_sound: true,
   auto_assign_promoted_tickets: false,
   max_eval_retries: 2,
+  retain_run_output: false,
   theme: 'dark'
 };
 
 const ENV_OVERRIDES = {
   OMBUTOCODE_EVAL_DEFAULT_AGENT: 'eval_default_agent',
   OMBUTOCODE_REFRESH_INTERVAL: 'app_refresh_interval',
-  OMBUTOCODE_MAX_EVAL_RETRIES: 'max_eval_retries'
+  OMBUTOCODE_MAX_EVAL_RETRIES: 'max_eval_retries',
+  OMBUTOCODE_EVAL_DEFAULT_MODEL: 'eval_default_model',
+  OMBUTOCODE_RETAIN_RUN_OUTPUT: 'retain_run_output'
 };
 
 /**
@@ -70,6 +75,9 @@ function createHeadlessSettings(ombutocodeDir) {
         if (key === 'app_refresh_interval' || key === 'max_eval_retries') {
           const num = Number(envVal);
           return Number.isFinite(num) ? num : (defaultValue !== undefined ? defaultValue : DEFAULTS[key]);
+        }
+        if (key === 'retain_run_output') {
+          return ['1', 'true', 'yes'].includes(String(envVal).trim().toLowerCase());
         }
         return envVal;
       }

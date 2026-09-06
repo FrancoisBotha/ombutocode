@@ -2,9 +2,10 @@
   "_doc": {
     "purpose": "Benchmark profile for `node .ombutocode/src/headless.js run --profile benchmark`: removes every idle/cooldown source so the scheduler drains the backlog as fast as the agents allow. Applied in memory only — nothing here is persisted to headless-settings.json or codingagents.yml.",
     "settings": {
-      "run_summary_enabled": "false = do not spend an extra agent run summarising each merged ticket's transcripts (the run-output logs are kept instead).",
+      "run_summary_enabled": "false = do not spend an extra agent run summarising each merged ticket's transcripts.",
       "app_refresh_interval": "seconds between scheduler status/ETA refreshes and CLI progress lines (5 instead of the default 30).",
-      "max_eval_retries": "how many test/eval/merge failures a ticket may accumulate before the scheduler halts it (assignee → NONE). 2 matches the app default."
+      "max_eval_retries": "how many test/eval/merge failures a ticket may accumulate before the scheduler halts it (assignee → NONE). 2 matches the app default.",
+      "retain_run_output": "true = keep every run's stdout/stderr under .ombutocode/run-output/ even after a successful run. Without this the scheduler deletes them once the ticket merges, and per-ticket token/cost figures are lost."
     },
     "agents": {
       "cooldown_minutes": "per-tool pause between runs from codingagents.yml. The current scheduler records but never enforces it; zeroed for completeness.",
@@ -18,6 +19,7 @@
   },
   "settings": {
     "run_summary_enabled": false,
+    "retain_run_output": true,
     "app_refresh_interval": 5,
     "max_eval_retries": 2
   },

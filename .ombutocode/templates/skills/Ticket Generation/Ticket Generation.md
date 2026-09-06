@@ -214,6 +214,7 @@ Example:
 ## Dependency Rules
 
 - A ticket's dependencies must only reference other tickets in the same epic or already-completed tickets
+- Declare only **real** dependencies — a ticket depends on another only when it cannot be built or verified without that ticket's output (a module it imports, a schema it reads, a setup step it needs). Do NOT chain tickets in a line just to impose an order: independent tickets (e.g. four separate procedures in one file, or two unrelated endpoints) must have empty or shared dependencies so the scheduler can run them in parallel
 - Setup tickets should have no dependencies (they come first)
 - UI tickets typically depend on their corresponding API tickets
 

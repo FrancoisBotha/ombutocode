@@ -160,11 +160,13 @@ async function runTicketsCreate(ctx, options, deps = {}) {
   }
   const skillContent = readSkillContent(skill);
 
+  const closeout = String(options.closeout || 'all').toLowerCase();
   const prompt = buildTicketPrompt({
     epicPath: epic.docsRelative,
     skillContent,
     status,
-    assignee
+    assignee,
+    closeout
   });
 
   const dataDir = path.dirname(paths.OMBUTOCODE_DB_PATH);
@@ -311,6 +313,7 @@ async function runTicketsCreate(ctx, options, deps = {}) {
       epicStatus,
       epicStatusUpdated,
       epicStatusCommitted,
+      closeout,
       removedBackups
     }
   };

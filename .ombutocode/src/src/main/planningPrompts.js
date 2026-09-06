@@ -173,12 +173,18 @@ ${existingEpicLines}`;
  * @param {string} [input.skillContent]
  * @param {'backlog'|'todo'} [input.status='backlog']
  * @param {null|{tool: string, model?: string}} [input.assignee=null]
+ * @param {'all'|'eval'|'none'} [input.closeout='all']  which of the skill's mandatory
+ *        closeout tickets to append. The Ticket Generation skill insists on four
+ *        (epic-eval, regression tests, help docs, code map); headless runs against a
+ *        repository that has no help docs or code map can restrict that to the
+ *        epic-level evaluation only, or drop them entirely.
  * @returns {string}
  */
 function buildTicketPrompt(input = {}) {
   if (!input.epicPath) {
     throw new Error('buildTicketPrompt: epicPath is required');
   }
+  const closeout = normalizeCloseout(input.closeout);
   const status = String(input.status || 'backlog').trim().toLowerCase() === 'todo' ? 'todo' : 'backlog';
   const assignee = input.assignee && typeof input.assignee === 'object' && input.assignee.tool
     ? JSON.stringify(input.assignee.model ? { tool: input.assignee.tool, model: input.assignee.model } : { tool: input.assignee.tool })
@@ -205,9 +211,28 @@ Guidelines:
 - After writing the tickets, update the epic status from NEW to TICKETS
 
 DO NOT ASK ME ANYTHING. This session is often left unattended: if you stop to ask about the ID prefix, the ticket split, or permission to write, the run stalls and nothing gets written at all. Make your best decision, record any assumption in the ticket's notes field, and proceed. Print the summary table as a record of what you are writing — not as a request for approval — then write immediately.
-
+${CLOSEOUT_INSTRUCTIONS[closeout]}
 Start by reading the epic. Finish with exactly "${TICKETS_DONE_SENTINEL}" as your last line once you have verified the tickets are in the database, or "${TICKETS_FAILED_SENTINEL}" if writing did not succeed.`;
 }
+
+const CLOSEOUT_MODES = new Set(['all', 'eval', 'none']);
+
+function normalizeCloseout(value) {
+  const mode = String(value || 'all').trim().toLowerCase();
+  return CLOSEOUT_MODES.has(mode) ? mode : 'all';
+}
+
+// The skill calls its four closeout tickets "non-negotiable", so restricting
+// them needs an equally explicit override or the agent follows the skill.
+const CLOSEOUT_INSTRUCTIONS = {
+  all: '',
+  eval: `
+CLOSEOUT TICKETS FOR THIS RUN — this overrides the skill's "four mandatory closeout tickets" rule: append ONLY the epic-level evaluation closeout ticket (Closeout #1), depending on every feature ticket. Do NOT create the regression-tests, help-docs, or code-map-refresh closeout tickets; this repository has no help documentation or code map to maintain and those tickets would only add cost.
+`,
+  none: `
+CLOSEOUT TICKETS FOR THIS RUN — this overrides the skill's "four mandatory closeout tickets" rule: do NOT append any closeout tickets (no epic-eval, regression-tests, help-docs, or code-map-refresh ticket). The ticket list ends with the last feature ticket.
+`
+};
 
 /**
  * Read the completion sentinel off the end of an agent transcript.
@@ -241,6 +266,7 @@ module.exports = {
   REFINEMENT_SKILL_NAME,
   normalizeEpicMode,
   normalizeStrategy,
+  normalizeCloseout,
   formatExistingEpics,
   selectEpicSkill,
   buildEpicPrompt,

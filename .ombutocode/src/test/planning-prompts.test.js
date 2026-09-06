@@ -102,3 +102,20 @@ test('parseSentinel reads the tail of the transcript', () => {
   assert.deepEqual(parseSentinel('I would like to confirm first', sentinels), { state: 'missing' });
   assert.deepEqual(parseSentinel('DONE - TICKETS WRITTEN', { done: TICKETS_DONE_SENTINEL, failed: TICKETS_FAILED_SENTINEL }), { state: 'done' });
 });
+
+test('ticket prompt closeout modes: all is the default and adds nothing, eval/none add an explicit override', () => {
+  const base = buildTicketPrompt({ epicPath: 'Epics/e.md' });
+  assert.equal(buildTicketPrompt({ epicPath: 'Epics/e.md', closeout: 'all' }), base);
+  assert.equal(buildTicketPrompt({ epicPath: 'Epics/e.md', closeout: 'bogus' }), base);
+  assert.doesNotMatch(base, /CLOSEOUT TICKETS FOR THIS RUN/);
+
+  const evalOnly = buildTicketPrompt({ epicPath: 'Epics/e.md', closeout: 'eval' });
+  assert.match(evalOnly, /CLOSEOUT TICKETS FOR THIS RUN/);
+  assert.match(evalOnly, /append ONLY the epic-level evaluation closeout ticket/);
+  assert.match(evalOnly, /Do NOT create the regression-tests, help-docs, or code-map-refresh/);
+  assert.ok(evalOnly.trim().endsWith('if writing did not succeed.'), 'sentinel instruction must stay last');
+
+  const none = buildTicketPrompt({ epicPath: 'Epics/e.md', closeout: 'none' });
+  assert.match(none, /do NOT append any closeout tickets/);
+});
+

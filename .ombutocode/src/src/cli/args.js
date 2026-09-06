@@ -5,7 +5,7 @@
  *
  *   node headless.js epic create --input <file> [--agent <tool>] [--model <model>] [--skill <name>]
  *                                [--no-commit] [--timeout-sec N] [--json] [--project <root>]
- *   node headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog]
+ *   node headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog] [--closeout all|eval|none] [--closeout all|eval|none]
  *                                   [--agent <tool>] [--model <model>] [--skill <name>]
  *                                   [--timeout-sec N] [--json] [--project <root>]
  *   node headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--json] [--project <root>]
@@ -47,6 +47,7 @@ const COMMAND_SPECS = {
     epic: { type: 'string', required: true },
     assignee: { type: 'string' },
     status: { type: 'string', choices: ['todo', 'backlog'], default: 'todo' },
+    closeout: { type: 'string', choices: ['all', 'eval', 'none'], default: 'all' },
     ...PLANNING_OPTIONS,
     ...COMMON_OPTIONS
   },
@@ -68,7 +69,7 @@ const USAGE = `Usage:
   node headless.js [<project-root>]                                  scheduler console (unchanged)
   node headless.js epic create --input <file> [--agent <tool>] [--model <model>] [--skill <name>]
                                [--no-commit] [--timeout-sec N] [--json] [--project <root>]
-  node headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog]
+  node headless.js tickets create --epic <path> --assignee <tool[:model]> [--status todo|backlog] [--closeout all|eval|none]
                                   [--agent <tool>] [--model <model>] [--skill <name>]
                                   [--timeout-sec N] [--json] [--project <root>]
   node headless.js run [--until drained] [--max-seconds N] [--profile <name>] [--json] [--project <root>]

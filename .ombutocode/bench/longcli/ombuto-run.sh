@@ -334,8 +334,12 @@ log "epic: $EPIC_PATH"
 # ---------------------------------------------------------------------------
 # Stage: tickets
 # ---------------------------------------------------------------------------
+# OMBUTO_CLOSEOUT (all|eval|none, default eval): which of the Ticket Generation
+# skill's mandatory closeout tickets to keep. Benchmark repositories have no
+# help docs or code map, so only the epic-level evaluation closeout is useful.
 if ! run_stage tickets node .ombutocode/src/headless.js tickets create \
     --epic "$EPIC_PATH" --assignee "$OMBUTO_AGENT:$OMBUTO_MODEL_ID" --status todo \
+    --closeout "${OMBUTO_CLOSEOUT:-eval}" \
     --agent "$OMBUTO_AGENT" --model "$OMBUTO_MODEL_ID" --json; then
   finish "FAILED at tickets stage (see $LOGS/tickets.json / tickets.stderr.log)"
 fi

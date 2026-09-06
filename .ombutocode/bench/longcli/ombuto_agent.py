@@ -52,6 +52,12 @@ class OmbutoAgent(AbstractInstalledAgent):
             or os.environ.get("OMBUTO_MAX_SECONDS")
             or self.DEFAULT_MAX_SECONDS
         )
+        # Which of the Ticket Generation skill's closeout tickets to keep
+        # (all|eval|none). Benchmark repositories have no help docs or code
+        # map, so only the epic-level evaluation closeout is useful.
+        self._closeout = str(
+            kwargs.get("closeout") or os.environ.get("OMBUTO_CLOSEOUT") or "eval"
+        )
 
     def _get_template_variables(self) -> dict[str, str]:
         version = str(self.version or self.DEFAULT_VERSION)
@@ -76,6 +82,7 @@ class OmbutoAgent(AbstractInstalledAgent):
             # default to this tool when no --agent is given.
             "OMBUTOCODE_EVAL_DEFAULT_AGENT": "claude",
             "OMBUTO_MAX_SECONDS": self._max_seconds,
+            "OMBUTO_CLOSEOUT": self._closeout,
             # Ombuto commits epics, ticket branches and squash-merges, so git
             # needs an identity in the container.
             "GIT_AUTHOR_NAME": os.environ.get("GIT_AUTHOR_NAME", "Ombuto Code"),

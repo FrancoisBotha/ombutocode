@@ -21,7 +21,10 @@ added to `AgentFactory` in `terminal_bench/agents/agent_factory.py`.
 
 Agent kwargs: `--agent-kwarg version=v0.2.7` (Ombuto tag; the installer npm
 version is the tag without `v`), `--agent-kwarg claude_version=latest`,
-`--agent-kwarg max_seconds=7000` (or env `OMBUTO_MAX_SECONDS`).
+`--agent-kwarg max_seconds=7000` (or env `OMBUTO_MAX_SECONDS`),
+`--agent-kwarg closeout=eval` (or env `OMBUTO_CLOSEOUT`; `all|eval|none`, default
+`eval` — keep only the epic-level evaluation closeout ticket; benchmark
+repositories have no help docs or code map for the other three to maintain).
 
 Dry run (no paid calls):
 

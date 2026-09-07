@@ -48,9 +48,9 @@ Emit `DONE - TICKETS WRITTEN` only after the verification step has confirmed the
 - **Read the engineering guide** (`.ombutocode/OMBUTOCODE_ENGINEERING_GUIDE.md`) to understand ticket conventions
 - **One ticket = one deliverable** — each ticket should produce a testable, reviewable change
 - **Order matters** — infrastructure and setup tickets come before feature tickets
-- **Do not create per-criterion unit-test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket. (The mandatory closeout regression-test ticket described below is a separate, project-level concern — that one IS required.)
+- **Do not create per-criterion unit-test tickets** — Ombuto Code has a built-in test and validation step that runs automatically for every ticket.
 - **Size tickets appropriately** — aim for 3-8 tickets per epic, each completable in one agent session
-- **Always append the four mandatory closeout tickets** described in the section below — every epic ends with epic-eval, regression-tests, help-docs, and code-map-refresh. Non-negotiable.
+- **Closeout tickets are optional** — append them only when the request that launched this session asks for them (see "Optional Closeout Tickets" below). By default the breakdown ends with the last feature ticket.
 - **Never ask for permission — write the tickets.** See "Run to completion without prompting" below.
 
 ## Ticket Structure
@@ -125,9 +125,9 @@ This ensures the agent implements the UI to match the approved mockup designs.
 - User-facing help content
 - Architecture decision records
 
-## Mandatory Closeout Tickets (always end every epic with these four)
+## Optional Closeout Tickets
 
-Every epic breakdown MUST end with four additional tickets, in this exact order, **after** all feature/setup/UI tickets you have proposed. They are the safety net that turns "feature code shipped" into "feature genuinely complete and discoverable". Skip them and the breakdown is rejected.
+Ombuto Code already tests and evaluates every ticket against its acceptance criteria and the epic before merging it, so a breakdown is complete once the feature tickets are written. Four additional closeout tickets are available for projects that want them; **append them only when the request that launched this session asks for closeout tickets** (`tickets create --closeout eval` adds the first; `--closeout all` adds all four). When asked for, they go in this exact order, **after** all feature/setup/UI tickets. They turn "feature code shipped" into "feature verified end to end, locked in, and documented".
 
 Give each closeout ticket the same `<EPIC_PREFIX>-NNN` numbering as the rest of the epic (i.e. continue the sequence — don't use a separate suffix). Each one's `dependencies` MUST include every preceding feature ticket in the epic, plus the previous closeout ticket where applicable. They run last because they verify, lock in, and document the work the earlier tickets did.
 
@@ -261,9 +261,9 @@ Do NOT write one-shot sql.js insert scripts. All ticket writes go through `ticke
 2. **Check existing tickets** — run `node .ombutocode/tools/db-query.cjs tickets` to see current backlog and avoid ID collisions
 3. **Identify** the logical work units
 4. **Order** them by dependency (setup → core → integration → UI)
-5. **Append** the four mandatory closeout tickets (epic-eval → regression-tests → help-docs → code-map-refresh) at the END of the list, after all feature work. See the "Mandatory Closeout Tickets" section above. Skipping them is a workflow error.
+5. **Append** closeout tickets at the END of the list only if the request asked for them (epic-eval → regression-tests → help-docs → code-map-refresh; see "Optional Closeout Tickets" above). Otherwise the list ends with the last feature ticket.
 6. **Detect** project documents for references (PRD, Architecture, Style Guide) and check the epic's References section for any linked mockups
-7. **Print** a summary table with: ID, Title, Type, Dependencies — stating the epic-derived prefix you chose. The closeout tickets MUST appear in this table as the last four rows. This is a record of what you are about to write; do NOT pause for approval.
+7. **Print** a summary table with: ID, Title, Type, Dependencies — stating the epic-derived prefix you chose. Any closeout tickets appear as the last rows. This is a record of what you are about to write; do NOT pause for approval.
 8. **Insert** the tickets into the canonical backlog database using the `ticket-write` tool at `.ombutocode/tools/ticket-write.cjs` (see "Writing Tickets to the Database" below). Do NOT write to `.ombutocode/planning/backlog.yml`; that file is legacy and the database is the source of truth (per `CLAUDE.md` §"Source of Truth"). Do NOT hand-roll your own sql.js insert script — the `ticket-write` tool is the canonical writer.
 9. **Verify** — run `node .ombutocode/tools/db-query.cjs tickets --status backlog` to confirm the tickets were inserted correctly
 10. **Update** the epic status from `NEW` to `TICKETS`
@@ -347,7 +347,7 @@ Confirm the schema round-trips through `backlogDb.deserializeTicket` (in `.ombut
 | 8 | AUTH-008 | Update help.html with the features delivered by this epic | Closeout — Docs | AUTH-007 |
 | 9 | AUTH-009 | Regenerate the code map for the changes delivered by this epic | Closeout — Code Map | AUTH-008 |
 
-Note: the final four rows are the **mandatory closeout tickets** — they appear at the end of every epic breakdown, regardless of the epic's subject. See the "Mandatory Closeout Tickets" section for full acceptance criteria.
+Note: the final four rows are the **optional closeout tickets**, shown here for a request that asked for all of them (`--closeout all`). Without such a request the table ends at AUTH-005. See the "Optional Closeout Tickets" section for full acceptance criteria.
 
 ### Example Ticket Object
 

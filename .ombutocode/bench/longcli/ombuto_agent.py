@@ -121,6 +121,11 @@ class OmbutoAgent(AbstractInstalledAgent):
         # point every Ombuto agent template at /installed-agent/fake-claude, a
         # stub that satisfies each phase's output contract without calling any
         # model. Used to exercise the pipeline at zero API cost.
+        # Experiment knobs passed straight through when set on the host.
+        for key in ("OMBUTOCODE_MAX_EVAL_RETRIES", "OMBUTO_FINALIZE", "OMBUTO_CLOSEOUT"):
+            if os.environ.get(key):
+                env[key] = os.environ[key]
+
         if os.environ.get("OMBUTO_FAKE_AGENT"):
             env["OMBUTO_FAKE_AGENT"] = os.environ["OMBUTO_FAKE_AGENT"]
 

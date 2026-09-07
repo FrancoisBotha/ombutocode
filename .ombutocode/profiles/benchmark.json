@@ -4,7 +4,7 @@
     "settings": {
       "run_summary_enabled": "false = do not spend an extra agent run summarising each merged ticket's transcripts.",
       "app_refresh_interval": "seconds between scheduler status/ETA refreshes and CLI progress lines (5 instead of the default 30).",
-      "max_eval_retries": "how many test/eval/merge failures a ticket may accumulate before the scheduler halts it (assignee → NONE). 2 matches the app default.",
+      "max_eval_retries": "not set here: keep the app default (2) or override per experiment with OMBUTOCODE_MAX_EVAL_RETRIES — an unattended-completion run typically allows 3.",
       "retain_run_output": "true = keep every run's stdout/stderr under .ombutocode/run-output/ even after a successful run. Without this the scheduler deletes them once the ticket merges, and per-ticket token/cost figures are lost."
     },
     "agents": {
@@ -20,8 +20,7 @@
   "settings": {
     "run_summary_enabled": false,
     "retain_run_output": true,
-    "app_refresh_interval": 5,
-    "max_eval_retries": 2
+    "app_refresh_interval": 5
   },
   "agents": {
     "cooldown_minutes": 0,

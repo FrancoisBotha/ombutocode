@@ -259,6 +259,21 @@ data.eval_default_model = model;
 fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
 EOF
 
+# OMBUTOCODE_MAX_EVAL_RETRIES: the benchmark profile shipped with releases up
+# to v0.2.11 pins max_eval_retries=2, and profile settings win over env. Patch
+# the profile in place so the experiment's retry budget takes effect.
+if [ -n "${OMBUTOCODE_MAX_EVAL_RETRIES:-}" ] && [ -f "$APP/.ombutocode/profiles/benchmark.json" ]; then
+  node - "$APP/.ombutocode/profiles/benchmark.json" "$OMBUTOCODE_MAX_EVAL_RETRIES" <<'EOF'
+const fs = require('fs');
+const [file, retries] = process.argv.slice(2);
+const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+data.settings = data.settings || {};
+data.settings.max_eval_retries = Number(retries);
+fs.writeFileSync(file, JSON.stringify(data, null, 2) + '\n');
+EOF
+  log "benchmark profile: max_eval_retries=$OMBUTOCODE_MAX_EVAL_RETRIES"
+fi
+
 # ---------------------------------------------------------------------------
 # Stage: git — Ombuto builds in worktrees, which only see committed content.
 # ---------------------------------------------------------------------------

@@ -40,7 +40,10 @@ test('the shipped benchmark profile zeroes every cooldown and turns run summarie
   const profile = loadProfile(path.resolve(__dirname, '..', '..', 'profiles'), 'benchmark');
   assert.equal(profile.settings.run_summary_enabled, false);
   assert.equal(profile.settings.app_refresh_interval, 5);
-  assert.equal(profile.settings.max_eval_retries, 2);
+  // Retries are left to the app default / OMBUTOCODE_MAX_EVAL_RETRIES so an
+  // experiment can set them without editing the profile.
+  assert.equal(profile.settings.max_eval_retries, undefined);
+  assert.equal(profile.settings.retain_run_output, true);
   assert.deepEqual(profile.agents, { cooldown_minutes: 0, rolling_window_hours: 0, rate_limit_cooldown_minutes: 0, max_concurrent: 2 });
   assert.equal(profile.scheduler.eval_post_merge_cooldown_ms, 0);
   assert.deepEqual(profile.ignored, []);

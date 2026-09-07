@@ -142,12 +142,24 @@ test('epic prompt parity: single with no existing epics prints "(none yet)"', ()
   assert.equal(moduleEpicPrompt(state), vueEpicPrompt(state));
 });
 
+// Closeout tickets became opt-in (default none) after the prompt moved out of
+// the view, so today's prompt is the historical one plus one explicit closeout
+// paragraph before the final "Start by reading the epic" line. Everything else
+// must still match byte for byte.
+const CLOSEOUT_NONE_PARAGRAPH = '\nCLOSEOUT TICKETS FOR THIS RUN: none. Do NOT append any closeout tickets (no epic-eval, regression-tests, help-docs, or code-map-refresh ticket); the ticket list ends with the last feature ticket.\n';
+function vueTicketPromptWithCloseout(epic, skill) {
+  const legacy = vueTicketPrompt(epic, skill);
+  const marker = '\nStart by reading the epic.';
+  const i = legacy.lastIndexOf(marker);
+  return legacy.slice(0, i) + CLOSEOUT_NONE_PARAGRAPH + legacy.slice(i);
+}
+
 for (const skill of [SKILL, '']) {
   test(`ticket prompt parity: ${skill ? 'with' : 'without'} skill`, () => {
     const epic = EPICS[0];
     assert.equal(
       buildTicketPrompt({ epicPath: epic.path, skillContent: skill }),
-      vueTicketPrompt(epic, skill)
+      vueTicketPromptWithCloseout(epic, skill)
     );
   });
 }

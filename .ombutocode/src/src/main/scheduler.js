@@ -13,7 +13,10 @@ const {
 const { readEpics, createEpicReadinessGate } = require('./epicReader');
 
 const DEFAULT_QUEUE_ESTIMATE_INTERVAL_MS = 30000; // 30 seconds
-const LIMIT_SIGNAL_PATTERN = /\b(rate[_\s-]?limit(?:ed)?\b|session[_\s-]?limit\b|too many requests|quota exceeded|(?:status|code|error|http)[:\s]*429|429[:\s]*(?:too many|rate|limit)|out of (?:.*\s)?messages|hit (?:.*\s)?limit|usage (?:limit|cap)|message limit|messages remaining:\s*0)\b/i;
+// Exhausted API credit ("Credit balance is too low") is a provider-side stop
+// like a rate limit: retrying the ticket only burns its failure budget, so it
+// is treated as a pause on the tool rather than a failure of the ticket.
+const LIMIT_SIGNAL_PATTERN = /\b(rate[_\s-]?limit(?:ed)?\b|session[_\s-]?limit\b|too many requests|quota exceeded|(?:status|code|error|http)[:\s]*429|429[:\s]*(?:too many|rate|limit)|out of (?:.*\s)?messages|hit (?:.*\s)?limit|usage (?:limit|cap)|message limit|messages remaining:\s*0|credit balance is too low|insufficient credits?|billing (?:hard )?limit)\b/i;
 const EXPIRY_KEY_PATTERN = /\b(reset(?:_at|at|time)?|retry(?:_after|after)?|expires?(?:_at|at)?|resume(?:_at|at)?)\b/i;
 
 const RETRY_CONTEXT_MAX_LENGTH = 2000;

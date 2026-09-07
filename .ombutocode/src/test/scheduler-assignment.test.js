@@ -1456,3 +1456,14 @@ test('parseProviderPauseFromRun falls back to local timezone when reset timezone
   );
   assert.equal(pause.pauseUntil, expected.toISOString());
 });
+
+test('exhausted API credit is treated as a provider pause, not a ticket failure', () => {
+  const pause = parseProviderPauseFromRun(
+    { stdout: '{"type":"result","result":"Credit balance is too low"}', stderr: '' },
+    { rate_limit_cooldown_minutes: 15 }
+  );
+  assert.ok(pause, 'credit exhaustion should pause the tool');
+  assert.match(pause.reason, /rate limit|cooling down/i);
+  assert.equal(parseProviderPauseFromRun({ stdout: 'credit where credit is due; all tests pass', stderr: '' }, {}), null);
+});
+

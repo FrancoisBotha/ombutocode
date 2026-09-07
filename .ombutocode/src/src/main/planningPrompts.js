@@ -23,8 +23,6 @@ const EPIC_DONE_SENTINEL = 'DONE - EPIC WRITTEN';
 const EPIC_FAILED_SENTINEL = 'FAILED - NO EPIC WRITTEN';
 const TICKETS_DONE_SENTINEL = 'DONE - TICKETS WRITTEN';
 const TICKETS_FAILED_SENTINEL = 'FAILED - NO TICKETS WRITTEN';
-const FINALIZE_DONE_SENTINEL = 'DONE - FINALIZED';
-const FINALIZE_FAILED_SENTINEL = 'FAILED - NOT FINALIZED';
 
 const EPIC_MODES = new Set(['bulk', 'single', 'refine', 'unattended']);
 const EPIC_STRATEGIES = new Set(['vertical', 'layered']);
@@ -175,11 +173,10 @@ ${existingEpicLines}`;
  * @param {string} [input.skillContent]
  * @param {'backlog'|'todo'} [input.status='backlog']
  * @param {null|{tool: string, model?: string}} [input.assignee=null]
- * @param {'all'|'eval'|'none'} [input.closeout='all']  which of the skill's mandatory
- *        closeout tickets to append. The Ticket Generation skill insists on four
- *        (epic-eval, regression tests, help docs, code map); headless runs against a
- *        repository that has no help docs or code map can restrict that to the
- *        epic-level evaluation only, or drop them entirely.
+ * @param {'all'|'eval'|'none'} [input.closeout='none']  which optional closeout
+ *        tickets to append after the feature tickets: none (default), the
+ *        epic-level evaluation only, or all four (evaluation, regression tests,
+ *        help docs, code map).
  * @returns {string}
  */
 function buildTicketPrompt(input = {}) {
@@ -220,62 +217,24 @@ Start by reading the epic. Finish with exactly "${TICKETS_DONE_SENTINEL}" as you
 const CLOSEOUT_MODES = new Set(['all', 'eval', 'none']);
 
 function normalizeCloseout(value) {
-  const mode = String(value || 'all').trim().toLowerCase();
-  return CLOSEOUT_MODES.has(mode) ? mode : 'all';
+  const mode = String(value || 'none').trim().toLowerCase();
+  return CLOSEOUT_MODES.has(mode) ? mode : 'none';
 }
 
-// The skill calls its four closeout tickets "non-negotiable", so restricting
-// them needs an equally explicit override or the agent follows the skill.
+// Closeout tickets are opt-in: the skill appends them only when the request
+// asks. `all` and `eval` therefore carry an explicit instruction; `none` says
+// so too, so an older skill copy that still mandates them stands corrected.
 const CLOSEOUT_INSTRUCTIONS = {
-  all: '',
+  all: `
+CLOSEOUT TICKETS FOR THIS RUN: append all four optional closeout tickets after the feature tickets, in the skill's order — epic-level evaluation, regression tests, help-docs update, code-map refresh — each depending on the tickets before it as the skill describes.
+`,
   eval: `
-CLOSEOUT TICKETS FOR THIS RUN — this overrides the skill's "four mandatory closeout tickets" rule: append ONLY the epic-level evaluation closeout ticket (Closeout #1), depending on every feature ticket. Do NOT create the regression-tests, help-docs, or code-map-refresh closeout tickets; this repository has no help documentation or code map to maintain and those tickets would only add cost.
+CLOSEOUT TICKETS FOR THIS RUN: append ONLY the epic-level evaluation closeout ticket after the feature tickets, depending on every feature ticket. Do NOT create the regression-tests, help-docs, or code-map-refresh closeout tickets.
 `,
   none: `
-CLOSEOUT TICKETS FOR THIS RUN — this overrides the skill's "four mandatory closeout tickets" rule: do NOT append any closeout tickets (no epic-eval, regression-tests, help-docs, or code-map-refresh ticket). The ticket list ends with the last feature ticket.
+CLOSEOUT TICKETS FOR THIS RUN: none. Do NOT append any closeout tickets (no epic-eval, regression-tests, help-docs, or code-map-refresh ticket); the ticket list ends with the last feature ticket.
 `
 };
-
-/**
- * Build the integration-verification prompt that runs on the mainline after
- * every ticket has merged.
- *
- * Tickets are built, tested and evaluated in isolated worktrees, so the
- * mainline receives committed source only. Environment state the epic's
- * acceptance criteria may depend on — an editable install on the system
- * path, artefacts produced by running the delivered tool — never reaches it.
- * This session runs in the real working tree and brings it to the delivered
- * state: install, run every acceptance / validation command, fix what fails.
- *
- * @param {Object} input
- * @param {string} input.epicPath          docs-relative epic path, e.g. "Epics/epic_01_FOO.md"
- * @param {string} [input.referenceFile]   project-relative reference spec, when there is one
- * @param {string} [input.branch='main']
- * @returns {string}
- */
-function buildFinalizePrompt(input = {}) {
-  if (!input.epicPath) {
-    throw new Error('buildFinalizePrompt: epicPath is required');
-  }
-  const branch = input.branch || 'main';
-  const referenceLine = input.referenceFile
-    ? ` Then read the original reference specification at "${input.referenceFile}".`
-    : '';
-
-  return `You are finalising a delivered epic in this repository on branch ${branch}. Read the epic specification at "docs/${input.epicPath}" in full.${referenceLine}
-
-Every implementation ticket for this epic has already been built, unit-tested, evaluated against its acceptance criteria and merged onto ${branch} — do NOT re-implement or refactor that work. Your job is INTEGRATION VERIFICATION in the real working tree, which no earlier phase touched (they all ran in isolated worktrees):
-
-1. Perform every installation and setup step the epic or reference specification requires so the delivered software is usable from a plain shell at the repository root (for example an editable install of a package so its CLI entry point is on PATH — check with \`command -v <tool>\` from a shell with no virtualenv active). Install into the system Python / global tool locations, not only into a project virtualenv.
-2. Execute every acceptance command, validation run and end-to-end check the epic's acceptance criteria and the reference specification call for, from the repository root, and leave their outputs where the specification says they belong.
-3. If anything fails, fix the cause in place with minimal, targeted changes and re-run until it passes, or until you have established that it cannot pass in this environment (say so explicitly, e.g. "no Docker daemon available").
-4. Do not delete or rewrite existing files outside the epic's scope, and never modify existing tests.
-5. Commit any source changes you made on ${branch} with a short message of the form "finalize: <what>". Leave generated run artefacts uncommitted but in place.
-
-DO NOT ASK ME ANYTHING. This session is unattended: if you stop to ask, the run stalls. Make your best decision and record it in your report.
-
-Finish with a short report — what you installed, what you ran, what passed, and what could not pass here — and end with exactly "${FINALIZE_DONE_SENTINEL}" as your last line, or "${FINALIZE_FAILED_SENTINEL}" if you could not complete the verification.`;
-}
 
 /**
  * Read the completion sentinel off the end of an agent transcript.
@@ -304,8 +263,6 @@ module.exports = {
   EPIC_FAILED_SENTINEL,
   TICKETS_DONE_SENTINEL,
   TICKETS_FAILED_SENTINEL,
-  FINALIZE_DONE_SENTINEL,
-  FINALIZE_FAILED_SENTINEL,
   STRATEGY_SKILL_NAMES,
   UNATTENDED_SKILL_NAME,
   REFINEMENT_SKILL_NAME,
@@ -316,6 +273,5 @@ module.exports = {
   selectEpicSkill,
   buildEpicPrompt,
   buildTicketPrompt,
-  buildFinalizePrompt,
   parseSentinel
 };

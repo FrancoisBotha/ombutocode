@@ -11,7 +11,6 @@
 #   epic    node .ombutocode/src/headless.js epic create --input <spec> --json
 #   tickets node .ombutocode/src/headless.js tickets create --epic <path> --json
 #   run     node .ombutocode/src/headless.js run --until drained --profile benchmark --json
-#   finalize node .ombutocode/src/headless.js finalize --epic <path> --input <spec> --json
 #   status  node .ombutocode/src/headless.js status --json
 # and finally copies .ombutocode/run-manifest.json, run-output/ and logs/ to
 # $LOGS/ombuto/. The script always exits 0: the harness grades the /app
@@ -350,12 +349,11 @@ log "epic: $EPIC_PATH"
 # ---------------------------------------------------------------------------
 # Stage: tickets
 # ---------------------------------------------------------------------------
-# OMBUTO_CLOSEOUT (all|eval|none, default eval): which of the Ticket Generation
-# skill's mandatory closeout tickets to keep. Benchmark repositories have no
-# help docs or code map, so only the epic-level evaluation closeout is useful.
+# OMBUTO_CLOSEOUT (all|eval|none): optional closeout tickets appended by ticket
+# generation. Default none — the same as the product default.
 if ! run_stage tickets node .ombutocode/src/headless.js tickets create \
     --epic "$EPIC_PATH" --assignee "$OMBUTO_AGENT:$OMBUTO_MODEL_ID" --status todo \
-    --closeout "${OMBUTO_CLOSEOUT:-eval}" \
+    --closeout "${OMBUTO_CLOSEOUT:-none}" \
     --agent "$OMBUTO_AGENT" --model "$OMBUTO_MODEL_ID" --json; then
   finish "FAILED at tickets stage (see $LOGS/tickets.json / tickets.stderr.log)"
 fi
@@ -374,20 +372,4 @@ case "$RUN_CODE" in
   *) finish "FAILED at run stage (exit $RUN_CODE, see $LOGS/run.json / run.stderr.log)";;
 esac
 
-# ---------------------------------------------------------------------------
-# Stage: finalize (integration verification on main, in /app itself)
-# ---------------------------------------------------------------------------
-# Every ticket was built, tested and evaluated in an isolated git worktree and
-# squash-merged onto main, so /app holds the merged CODE but none of the
-# environment state the epic's acceptance criteria may require (an editable
-# install on PATH, artefacts from running the delivered tool). Ombuto's
-# `finalize` command runs one agent session in the real working tree to
-# install, run the acceptance commands and fix what they reveal.
-# OMBUTO_FINALIZE=0 disables it (ablation: score the merged tree alone).
-if [ "${OMBUTO_FINALIZE:-1}" != "0" ]; then
-  run_stage finalize node .ombutocode/src/headless.js finalize \
-    --epic "$EPIC_PATH" --input "$SPEC" --branch main \
-    --agent "$OMBUTO_AGENT" --model "$OMBUTO_MODEL_ID" --json
-  log "stage finalize: exit $?"
-fi
 finish "OK: pipeline drained (epic $EPIC_PATH)"

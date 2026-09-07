@@ -79,7 +79,6 @@ function emit(text) {
 function detectPhase(prompt) {
   if (prompt.includes('DONE - EPIC WRITTEN')) return 'epic';
   if (prompt.includes('DONE - TICKETS WRITTEN')) return 'tickets';
-  if (prompt.includes('DONE - FINALIZED')) return 'finalize';
   if (/You are in TEST mode/i.test(prompt)) return 'test';
   if (/You are in EVAL mode/i.test(prompt)) return 'eval';
   if (/EPIC EVALUATION mode/i.test(prompt)) return 'epic_eval';
@@ -263,9 +262,6 @@ switch (phase) {
   case 'eval': runEval(prompt); break;
   case 'epic_eval': runEpicEval(prompt); break;
   case 'merge_resolve': runMergeResolve(); break;
-  case 'finalize':
-    emit('Fake finalize: nothing to install, no acceptance commands to run in a dry run.\n\nDONE - FINALIZED');
-    break;
   default:
     emit(`fake-claude: could not classify the prompt (${prompt.length} chars). First line: ${prompt.split('\n')[0]}`);
     process.exitCode = 1;

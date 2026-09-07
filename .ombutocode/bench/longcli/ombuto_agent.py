@@ -52,11 +52,10 @@ class OmbutoAgent(AbstractInstalledAgent):
             or os.environ.get("OMBUTO_MAX_SECONDS")
             or self.DEFAULT_MAX_SECONDS
         )
-        # Which of the Ticket Generation skill's closeout tickets to keep
-        # (all|eval|none). Benchmark repositories have no help docs or code
-        # map, so only the epic-level evaluation closeout is useful.
+        # Optional closeout tickets appended by ticket generation
+        # (all|eval|none). Default none, matching the product default.
         self._closeout = str(
-            kwargs.get("closeout") or os.environ.get("OMBUTO_CLOSEOUT") or "eval"
+            kwargs.get("closeout") or os.environ.get("OMBUTO_CLOSEOUT") or "none"
         )
 
     def _get_template_variables(self) -> dict[str, str]:
@@ -122,7 +121,7 @@ class OmbutoAgent(AbstractInstalledAgent):
         # stub that satisfies each phase's output contract without calling any
         # model. Used to exercise the pipeline at zero API cost.
         # Experiment knobs passed straight through when set on the host.
-        for key in ("OMBUTOCODE_MAX_EVAL_RETRIES", "OMBUTO_FINALIZE", "OMBUTO_CLOSEOUT"):
+        for key in ("OMBUTOCODE_MAX_EVAL_RETRIES", "OMBUTO_CLOSEOUT"):
             if os.environ.get(key):
                 env[key] = os.environ[key]
 

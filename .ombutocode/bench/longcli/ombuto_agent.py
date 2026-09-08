@@ -28,7 +28,7 @@ from terminal_bench.terminal.models import TerminalCommand
 class OmbutoAgent(AbstractInstalledAgent):
     # Ombuto Code release tag (git tag on GitHub; the matching
     # `create-ombutocode` npm version is the tag without the leading "v").
-    DEFAULT_VERSION = "v0.2.12"
+    DEFAULT_VERSION = "v0.2.13"
     # @anthropic-ai/claude-code version Ombuto drives.
     DEFAULT_CLAUDE_VERSION = "latest"
     # Ombuto's own wall-clock budget for `run --until drained`. Kept a little

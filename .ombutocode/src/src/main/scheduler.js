@@ -123,6 +123,21 @@ function toValidDate(candidate) {
   return date;
 }
 
+/**
+ * Milliseconds until a ticket's optional `scheduled_start` (a not-before
+ * timestamp set from the Kanban "Schedule" action). Returns 0 when the field
+ * is absent, unparsable, already in the past, or the ticket is no longer
+ * `todo` — the gate only ever holds a ticket back from its first pickup.
+ */
+function getScheduledStartDelayMs(ticket, nowMs = Date.now()) {
+  if (ticket?.status !== 'todo') return 0;
+  const raw = ticket?.scheduled_start;
+  if (raw === null || raw === undefined || String(raw).trim() === '') return 0;
+  const startMs = Date.parse(String(raw));
+  if (!Number.isFinite(startMs)) return 0;
+  return Math.max(0, startMs - nowMs);
+}
+
 function parseNumericExpiry(keyword, numericValue, nowMs) {
   const normalizedKeyword = String(keyword || '').toLowerCase();
   const numeric = Number(numericValue);
@@ -503,7 +518,10 @@ function createScheduler(deps) {
     logEvent = () => {},
     // Pause before the next eval dispatch after a squash-merge to main. The
     // headless benchmark profile sets this to 0 to remove idle time.
-    evalPostMergeCooldownMs = EVAL_POST_MERGE_COOLDOWN_MS
+    evalPostMergeCooldownMs = EVAL_POST_MERGE_COOLDOWN_MS,
+    // Timer primitives for the scheduled-start wake-up (injectable for tests).
+    scheduleTimer = setTimeout,
+    cancelTimer = clearTimeout
   } = deps;
 
   let running = false;
@@ -515,6 +533,13 @@ function createScheduler(deps) {
   const lastFinished = {}; // { [toolId]: Date timestamp }
   let lastSquashMergeAt = 0; // timestamp of last squash-merge to main
   const runAssignments = new Map(); // runId -> { toolId, modelId, costPerRun }
+
+  // Wake-up timer for the earliest pending `scheduled_start`. Dispatch is
+  // event-driven, so without it a ticket scheduled for 01:01 would sit until
+  // some unrelated event happened to arrive.
+  let scheduledStartTimer = null;
+  let scheduledStartTimerAt = 0; // epoch ms the armed timer targets
+  const scheduledStartReached = new Set(); // ticket ids already logged as released
 
   // Rolling window tracker for usage counting and auto-pause/resume
   const windowTracker = createWindowTracker({ projectRoot });
@@ -566,6 +591,7 @@ function createScheduler(deps) {
     // Revert 'merging' tickets (without active agents) back to 'todo'
     revertMergingToTodo();
 
+    clearScheduledStartTimer();
     running = false;
     console.log('[Scheduler] Stopped');
     logEvent('scheduler.stopped', 'info', 'Scheduler stopped');
@@ -641,6 +667,66 @@ function createScheduler(deps) {
     return combos;
   }
 
+  /**
+   * True while a todo ticket's `scheduled_start` is still in the future. Such
+   * a ticket is held exactly like one with an unmet dependency; the moment the
+   * time passes it becomes eligible with no other change. The first time a
+   * ticket is seen past its scheduled time a `ticket.scheduled_start_reached`
+   * event is logged so the timeline shows why it woke up.
+   */
+  function isWaitingForScheduledStart(ticket, nowMs = Date.now()) {
+    if (getScheduledStartDelayMs(ticket, nowMs) > 0) return true;
+    const raw = ticket?.scheduled_start;
+    if (ticket?.status === 'todo' && raw && Number.isFinite(Date.parse(String(raw))) && !scheduledStartReached.has(ticket.id)) {
+      scheduledStartReached.add(ticket.id);
+      logEvent('ticket.scheduled_start_reached', 'info', `Scheduled start reached for ${ticket.id} — now eligible for pickup`, { ticketId: ticket.id, details: { scheduledStart: String(raw) } });
+    }
+    return false;
+  }
+
+  function clearScheduledStartTimer() {
+    if (scheduledStartTimer !== null) {
+      cancelTimer(scheduledStartTimer);
+      scheduledStartTimer = null;
+    }
+    scheduledStartTimerAt = 0;
+  }
+
+  /**
+   * (Re)arm the wake-up timer for the earliest future `scheduled_start` among
+   * assigned todo tickets. Called from every queue pass so the timer tracks
+   * ticket edits without a separate change hook; a no-op when the earliest
+   * target is unchanged.
+   */
+  function armScheduledStartTimer(tickets) {
+    const nowMs = Date.now();
+    let earliestMs = 0;
+    for (const ticket of tickets) {
+      if (!hasExplicitAssignee(ticket)) continue;
+      const delayMs = getScheduledStartDelayMs(ticket, nowMs);
+      if (delayMs <= 0) continue;
+      const targetMs = nowMs + delayMs;
+      if (!earliestMs || targetMs < earliestMs) earliestMs = targetMs;
+    }
+
+    if (!earliestMs) {
+      clearScheduledStartTimer();
+      return;
+    }
+    if (scheduledStartTimer !== null && scheduledStartTimerAt === earliestMs) return;
+
+    clearScheduledStartTimer();
+    scheduledStartTimerAt = earliestMs;
+    // Node timers overflow past ~24.8 days; clamp and let the next pass re-arm.
+    const delayMs = Math.min(earliestMs - nowMs + 1000, 0x7fffffff);
+    scheduledStartTimer = scheduleTimer(() => {
+      scheduledStartTimer = null;
+      scheduledStartTimerAt = 0;
+      dispatch({ reason: 'scheduled-start' });
+    }, delayMs);
+    if (scheduledStartTimer && typeof scheduledStartTimer.unref === 'function') scheduledStartTimer.unref();
+  }
+
   function transitionEligibleTodoToBuilding() {
     if (typeof writeBacklogData !== 'function') return;
 
@@ -666,6 +752,7 @@ function createScheduler(deps) {
       if (ticket.agent?.state === 'merge_failed' || ticket.agent?.state === 'merge_aborted') continue; // These go to merging, not building
       if (!hasExplicitAssignee(ticket)) continue;
       if (!hasResolvedDependencies(ticket, ticketStatusById)) continue;
+      if (isWaitingForScheduledStart(ticket)) continue; // not-before time still ahead
       if (!epicGate.isTicketAllowed(ticket)) continue; // parent epic still blocked by an unfinished prerequisite epic
       if (!hasAssigneeCapacity(ticket, enabledCombos, ticketStatusById, buildingCountByTool)) continue;
 
@@ -680,6 +767,8 @@ function createScheduler(deps) {
         break; // Count once per ticket (first matching tool)
       }
     }
+
+    armScheduledStartTimer(tickets);
 
     if (changed) {
       try {
@@ -1165,6 +1254,7 @@ function createScheduler(deps) {
           continue;
         }
         if (!hasResolvedDependencies(ticket, ticketStatusByIdForTransition)) continue;
+        if (isWaitingForScheduledStart(ticket)) continue; // not-before time still ahead
         if (!epicGate.isTicketAllowed(ticket)) continue; // parent epic still blocked
         if (!hasAssigneeCapacity(ticket, enabledCombos, ticketStatusByIdForTransition, buildingCountByTool)) continue;
 
@@ -1188,6 +1278,8 @@ function createScheduler(deps) {
         }
       }
     }
+
+    armScheduledStartTimer(backlog?.tickets || []);
 
     const queuedTickets = (backlog?.tickets || []).filter(
       (ticket) => ticket?.status === 'todo' || ticket?.status === 'building' || ticket?.status === 'test' || ticket?.status === 'eval' || ticket?.status === 'merging'
@@ -1266,6 +1358,11 @@ function createScheduler(deps) {
 
       // Skip tickets blocked by unresolved dependencies.
       if (!hasResolvedDependencies(ticket, ticketStatusById)) {
+        continue;
+      }
+
+      // Skip tickets whose scheduled start is still ahead.
+      if (isWaitingForScheduledStart(ticket)) {
         continue;
       }
 
@@ -1802,6 +1899,7 @@ function createScheduler(deps) {
           : ticket.assignee
       }))
       .filter((ticket) => hasResolvedDependencies(ticket, ticketStatusById))
+      .filter((ticket) => getScheduledStartDelayMs(ticket, queueBaseMs) <= 0)
       // Don't count tickets whose parent epic is still blocked by an unfinished
       // prerequisite epic — they will be skipped at dispatch, so the queue ETA
       // shouldn't promise them either. `eval`-status tickets are exempt: their
@@ -1817,6 +1915,21 @@ function createScheduler(deps) {
           queueBaseMs + ((index + 1) * currentQueueEstimateIntervalMs)
         ).toISOString()
       }));
+    // Assigned todo tickets held back only by a future `scheduled_start`, so
+    // the UI and CLI can say "waiting until …" instead of showing nothing.
+    const scheduledTickets = queuedTickets
+      .filter((ticket) => !activeTicketIds.has(ticket.id))
+      .filter((ticket) => hasExplicitAssignee(ticket))
+      .filter((ticket) => getScheduledStartDelayMs(ticket, queueBaseMs) > 0)
+      .map((ticket) => ({
+        id: ticket.id,
+        title: ticket.title || ticket.id,
+        assignee: ticket.assignee || null,
+        status: ticket.status || null,
+        scheduled_start: ticket.scheduled_start,
+        scheduledStartsInMs: getScheduledStartDelayMs(ticket, queueBaseMs),
+        waitReason: `Waiting until scheduled start ${ticket.scheduled_start}`
+      }));
     const implementationTickets = queuedTickets.filter((ticket) => ticket?.status === 'todo' || ticket?.status === 'building' || ticket?.status === 'merging');
     const evaluationTickets = queuedTickets.filter((ticket) => ticket?.status === 'eval');
     const readyImplementationCount = nextTickets.filter((ticket) => ticket.status === 'todo' || ticket.status === 'building' || ticket.status === 'merging').length;
@@ -1831,6 +1944,8 @@ function createScheduler(deps) {
       readyCount: nextTickets.length,
       readyImplementationCount,
       readyEvaluationCount,
+      scheduledCount: scheduledTickets.length,
+      scheduledTickets: scheduledTickets.slice(0, 10),
       nextTickets: nextTickets.slice(0, 10)
     };
   }
@@ -1961,3 +2076,4 @@ function createScheduler(deps) {
 module.exports = { createScheduler };
 module.exports.parseProviderPauseFromRun = parseProviderPauseFromRun;
 module.exports.buildRetryContext = buildRetryContext;
+module.exports.getScheduledStartDelayMs = getScheduledStartDelayMs;

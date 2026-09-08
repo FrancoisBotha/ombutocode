@@ -616,6 +616,7 @@ agentRuntime = new AgentRuntime({
         // Keep merging status while merge agent runs
       } else {
         ticket.status = 'in_progress';
+        ticket.scheduled_start = null; // a started ticket has consumed its not-before time
       }
       ticket.assignee = run.agentName;
       ticket.agent = {
@@ -2339,6 +2340,11 @@ ipcMain.handle('backlog:updateFields', async (_, { ticketId, fields }) => {
   const updates = { ...fields, last_updated: new Date().toISOString() };
   backlogDb.updateTicketFields(ticketId, updates);
   ombutocodeDb.saveDb();
+
+  // A changed not-before time must re-arm the scheduler's wake-up timer.
+  if ('scheduled_start' in (fields || {}) && ticket.status === 'todo' && scheduler && typeof scheduler.dispatch === 'function') {
+    scheduler.dispatch({ reason: 'ticket-schedule-change', ticketId });
+  }
 
   return { success: true, ticketId };
 });

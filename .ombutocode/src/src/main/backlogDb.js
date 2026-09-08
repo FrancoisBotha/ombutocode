@@ -162,6 +162,20 @@ function initializeSchema() {
 // ---------------------------------------------------------------------------
 
 /**
+ * Normalise a ticket's optional `scheduled_start` (an ISO-8601 timestamp the
+ * scheduler must not dispatch before). Missing, empty or unparsable values
+ * collapse to null so a stale or hand-edited string never blocks a ticket.
+ * @param {*} value
+ * @returns {string|null}
+ */
+function normalizeScheduledStart(value) {
+  if (value === null || value === undefined) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  return Number.isFinite(Date.parse(text)) ? text : null;
+}
+
+/**
  * Deserialize a row from the new 3-column schema into a ticket object.
  * @param {Object} row - { id, sort_order, data }
  * @returns {Object} Ticket object with all fields
@@ -203,6 +217,7 @@ function deserializeTicket(row) {
   if (data.assignee === undefined) data.assignee = null;
   if (data.agent === undefined) data.agent = null;
   if (data.eval_summary === undefined) data.eval_summary = null;
+  data.scheduled_start = normalizeScheduledStart(data.scheduled_start);
 
   return data;
 }
@@ -407,7 +422,7 @@ function updateTicketFields(id, updates) {
   const merged = { ...existing };
   for (const [key, value] of Object.entries(updates)) {
     if (key === 'id') continue; // never change id
-    merged[key] = value;
+    merged[key] = key === 'scheduled_start' ? normalizeScheduledStart(value) : value;
   }
 
   const newStatus = merged.status;
@@ -720,6 +735,7 @@ module.exports = {
 
   // For tests
   deserializeTicket,
+  normalizeScheduledStart,
 
   // Constants
   ACTIVE_STATUSES

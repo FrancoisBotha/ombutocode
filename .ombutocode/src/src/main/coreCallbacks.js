@@ -104,6 +104,7 @@ function createRuntimeCallbacks(deps) {
       } else {
         const prevStatus = ticket.status;
         ticket.status = 'in_progress';
+        ticket.scheduled_start = null; // a started ticket has consumed its not-before time
         logSchedulerEvent('ticket.status_changed', 'info', `Ticket ${run.ticketId} status: ${prevStatus} → in_progress`, { ticketId: run.ticketId, runId: run.runId, agentName: run.agentName, details: { from: prevStatus, to: 'in_progress' } });
       }
       // Record who is working the ticket, but never downgrade an explicit

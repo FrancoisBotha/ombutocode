@@ -75,6 +75,7 @@ Ombuto Code is a desktop workbench that bridges the gap between **requirements e
 ### Build Mode
 - **Workspace** with Git status, commit graph, and integrated terminal (right-click in terminal to paste)
 - **Kanban Board** for ticket workflow (backlog, todo, in-progress, review, done)
+- **Scheduled start** &mdash; the clock button on a TODO card sets a not-before time (defaults to tomorrow 01:01, handy when an agent's usage window resets overnight); the scheduler holds the ticket until then and picks it up automatically with no further action. The card shows a "Scheduled · Tue 01:01" badge until the time passes, and Start still works immediately if you change your mind
 - **Ticket Doctor** &mdash; stethoscope icon on tickets that exceeded the retry threshold; opens an AI session using the Fix Ticket skill to diagnose, repair, and emit a `TICKET_DOCTOR_RESULT: SUCCESS` marker that unlocks "Move to Review"
 - **Test-Driven Development workflow** baked into agent prompts &mdash; impl phase writes failing tests first, then implementation; test phase reads `docs/Test Strategy/test-strategy.md` for the project's exact test commands (stack-agnostic)
 - **Epic-level dependencies** &mdash; epics can declare `Depends On: epic_NN_...` and the scheduler holds downstream tickets until prerequisite epics reach `DONE`

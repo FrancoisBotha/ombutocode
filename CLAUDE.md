@@ -50,6 +50,7 @@ Project automation workflow instructions are in `.ombutocode/OMBUTOCODE_ENGINEER
 
 ### Ticket Lifecycle
 - Agents pick up ONLY tickets with `status: todo` and no unmet dependencies (a dependency in `review` is considered met)
+- A `todo` ticket with a future `scheduled_start` is not eligible until that time
 - Re-read the backlog before marking a ticket `in_progress` to confirm it's still `todo`
 - When the scheduler launches agents, it handles status transitions automatically — agents in that context should NOT modify status fields directly
 - STOP after completing one ticket — do not automatically start another

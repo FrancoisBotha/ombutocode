@@ -155,7 +155,7 @@ Afterwards, review and commit:
 ```bash
 git status
 git add -A .ombutocode docs
-git commit -m "Upgrade Ombuto Code to 0.2.15"
+git commit -m "Upgrade Ombuto Code to 0.2.16"
 ```
 
 The backup zip is left in the project root, untracked. Delete it once you
@@ -211,10 +211,10 @@ cd /tmp    # or anywhere you like
 npx create-ombutocode@latest ombutocode-upgrade-scratch
 
 # Option 2: clone the release tag
-git clone --depth 1 --branch v0.2.15 https://github.com/FrancoisBotha/ombutocode.git ombutocode-upgrade-scratch
+git clone --depth 1 --branch v0.2.16 https://github.com/FrancoisBotha/ombutocode.git ombutocode-upgrade-scratch
 ```
 
-Replace `v0.2.15` with the tag you're upgrading to. Check the available
+Replace `v0.2.16` with the tag you're upgrading to. Check the available
 tags at https://github.com/FrancoisBotha/ombutocode/tags.
 
 Then, from your real project root:

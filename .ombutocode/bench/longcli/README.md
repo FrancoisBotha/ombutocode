@@ -19,7 +19,7 @@ added to `AgentFactory` in `terminal_bench/agents/agent_factory.py`.
 | `ombuto-run.sh` | The pipeline driver. Maps the CLI model id to the `codingagents.yml` id (and pins the yml to that single model), makes `/app` a committed git repo on `main`, runs the four CLI stages, copies `run-manifest.json`, `run-output/`, `logs/` and per-stage JSON/stderr to `/agent-logs/ombuto/`, writes `stages.json`, always exits 0. |
 | `fake-claude.js` | Model-free stand-in for `claude --print` used when `OMBUTO_FAKE_AGENT=1`: satisfies the epic/tickets/impl/test/eval/merge-resolve output contracts so the pipeline can be exercised at zero API cost. |
 
-Agent kwargs: `--agent-kwarg version=v0.2.14` (Ombuto tag; the installer npm
+Agent kwargs: `--agent-kwarg version=v0.2.15` (Ombuto tag; the installer npm
 version is the tag without `v`), `--agent-kwarg claude_version=latest`,
 `--agent-kwarg max_seconds=7000` (or env `OMBUTO_MAX_SECONDS`),
 `--agent-kwarg closeout=eval` (or env `OMBUTO_CLOSEOUT`; `all|eval|none`, default

@@ -65,6 +65,13 @@
             <span class="detail-label">Last Updated:</span>
             <span class="detail-value">{{ formatDate(selectedTask.last_updated) }}</span>
           </div>
+          <div class="detail-row" v-if="selectedTask.scheduled_start">
+            <span class="detail-label">Scheduled Start:</span>
+            <span class="detail-value">
+              {{ formatDate(selectedTask.scheduled_start) }}
+              <span v-if="!isScheduledAhead(selectedTask)" class="schedule-passed-note">(passed)</span>
+            </span>
+          </div>
           <div class="detail-row" v-if="selectedTask.agent?.run_id">
             <span class="detail-label">Agent Run ID:</span>
             <span class="detail-value">{{ selectedTask.agent.run_id }}</span>
@@ -218,6 +225,47 @@
       </div>
     </div>
 
+    <!-- Schedule Ticket Modal: sets a not-before time the scheduler waits for -->
+    <div v-if="showScheduleModal" class="modal-overlay" @click.self="closeScheduleModal">
+      <div class="modal-content reject-modal">
+        <div class="modal-header">
+          <h2>Schedule Ticket</h2>
+        </div>
+        <div class="modal-body">
+          <p class="reject-help-text">
+            The scheduler will not start <strong>{{ scheduleTargetId }}</strong> before this time,
+            then picks it up automatically (Auto must be on). Handy when your agent's usage window resets overnight.
+          </p>
+          <input
+            v-model="scheduleInput"
+            type="datetime-local"
+            class="schedule-datetime-input"
+            step="60"
+          />
+          <p class="schedule-resolved-note">{{ scheduleResolvedNote }}</p>
+          <p v-if="scheduleError" class="reject-error">{{ scheduleError }}</p>
+        </div>
+        <div class="modal-footer reject-footer">
+          <button class="btn btn-secondary" :disabled="savingScheduleId !== null" @click="closeScheduleModal">Cancel</button>
+          <button
+            v-if="scheduleTargetHasSchedule"
+            class="btn btn-secondary"
+            :disabled="savingScheduleId !== null"
+            @click="clearSchedule"
+          >
+            Clear
+          </button>
+          <button
+            class="btn btn-primary"
+            :disabled="savingScheduleId !== null || !scheduleInput"
+            @click="saveSchedule"
+          >
+            {{ savingScheduleId ? 'Saving...' : 'Save' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Console Dialog Modal -->
     <div v-if="showConsoleDialog" class="modal-overlay" @click.self="closeConsoleDialog">
       <div class="modal-content console-modal">
@@ -360,6 +408,16 @@
             Remove
           </button>
           <button
+            v-if="columnId === 'todo'"
+            class="schedule-btn"
+            :class="{ 'is-scheduled': isScheduledAhead(task) }"
+            :disabled="isAgentBusy(task)"
+            @click.stop="openScheduleDialog(task)"
+            :title="isScheduledAhead(task) ? `Scheduled to start ${formatDate(task.scheduled_start)} — click to change` : 'Schedule — set a time before which the scheduler must not start this ticket'"
+          >
+            <span class="mdi mdi-clock-outline"></span>
+          </button>
+          <button
             v-if="columnId === 'todo' && needsDoctor(task)"
             class="doctor-btn"
             @click.stop="openDoctor(task)"
@@ -481,6 +539,11 @@
             <span class="mdi mdi-alert-circle"></span>
             <span>Test failed</span>
           </div>
+          <!-- Not-before time set from the Schedule button; disappears once it has passed -->
+          <div v-if="columnId === 'todo' && isScheduledAhead(task)" class="task-scheduled-badge" :title="formatDate(task.scheduled_start)">
+            <span class="mdi mdi-clock-outline"></span>
+            <span>Scheduled · {{ formatScheduledShort(task.scheduled_start) }}</span>
+          </div>
         </div>
         <!-- AD_HOC-032: Dependency error message display -->
         <div v-if="startErrorTicketId === task.id && startErrorMessage" class="start-error-message">
@@ -576,6 +639,15 @@ export default {
     const rejectTargetId = ref(null);
     const rejectComment = ref('');
     const rejectError = ref('');
+    // Schedule dialog state (todo column). `clockTick` re-evaluates the
+    // "scheduled" badge/tooltip so they drop off once the time has passed.
+    const showScheduleModal = ref(false);
+    const scheduleTargetId = ref(null);
+    const scheduleTargetHasSchedule = ref(false);
+    const scheduleInput = ref('');
+    const scheduleError = ref('');
+    const savingScheduleId = ref(null);
+    const clockTick = ref(Date.now());
     const showConsoleDialog = ref(false);
     const consoleTicket = ref(null);
     const consoleRefreshInterval = ref(null);
@@ -1069,9 +1141,107 @@ export default {
       if (unmet.length > 0) {
         return `Blocked: waiting for ${unmet.join(', ')} to be completed`;
       }
+      if (isScheduledAhead(task)) {
+        return `Starts automatically at ${formatDate(task.scheduled_start)} — click to start now instead`;
+      }
 
       return 'Start ticket with assigned agent';
     };
+
+    // --- Scheduled start -------------------------------------------------
+    const pad2 = (n) => String(n).padStart(2, '0');
+
+    const isScheduledAhead = (task) => {
+      const ms = Date.parse(task?.scheduled_start || '');
+      return Number.isFinite(ms) && ms > clockTick.value;
+    };
+
+    const formatScheduledShort = (value) => {
+      const date = new Date(value);
+      if (!Number.isFinite(date.getTime())) return '';
+      const withinWeek = date.getTime() - clockTick.value < 6 * 24 * 60 * 60 * 1000;
+      return date.toLocaleString(undefined, withinWeek
+        ? { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }
+        : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+    };
+
+    // `datetime-local` wants "YYYY-MM-DDTHH:MM" in local time.
+    const toDatetimeLocalValue = (date) => (
+      `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+    );
+
+    // Persist with the local UTC offset so the stored value is unambiguous
+    // and still reads as the wall-clock time the user chose.
+    const toIsoWithOffset = (localValue) => {
+      const date = new Date(localValue);
+      if (!Number.isFinite(date.getTime())) return null;
+      const offsetMinutes = -date.getTimezoneOffset();
+      const sign = offsetMinutes >= 0 ? '+' : '-';
+      const abs = Math.abs(offsetMinutes);
+      return `${toDatetimeLocalValue(date)}:00${sign}${pad2(Math.floor(abs / 60))}:${pad2(abs % 60)}`;
+    };
+
+    const defaultScheduleValue = () => {
+      // Tomorrow 01:01 — just after a typical overnight usage-window reset.
+      const date = new Date();
+      date.setDate(date.getDate() + 1);
+      date.setHours(1, 1, 0, 0);
+      return toDatetimeLocalValue(date);
+    };
+
+    const scheduleResolvedNote = computed(() => {
+      const date = new Date(scheduleInput.value);
+      if (!scheduleInput.value || !Number.isFinite(date.getTime())) return 'Pick a date and time.';
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local time';
+      const past = date.getTime() <= Date.now() ? ' — already passed, the ticket will start right away' : '';
+      return `Starts ${date.toLocaleString()} (${zone})${past}`;
+    });
+
+    const openScheduleDialog = (task) => {
+      if (!task) return;
+      scheduleTargetId.value = task.id;
+      scheduleTargetHasSchedule.value = !!task.scheduled_start;
+      scheduleInput.value = isScheduledAhead(task)
+        ? toDatetimeLocalValue(new Date(task.scheduled_start))
+        : defaultScheduleValue();
+      scheduleError.value = '';
+      showScheduleModal.value = true;
+    };
+
+    const closeScheduleModal = () => {
+      if (savingScheduleId.value) return;
+      showScheduleModal.value = false;
+      scheduleTargetId.value = null;
+      scheduleInput.value = '';
+      scheduleError.value = '';
+    };
+
+    const persistSchedule = async (value) => {
+      if (savingScheduleId.value || !scheduleTargetId.value) return;
+      savingScheduleId.value = scheduleTargetId.value;
+      scheduleError.value = '';
+      try {
+        await backlogStore.updateTicketFields(scheduleTargetId.value, { scheduled_start: value });
+        savingScheduleId.value = null;
+        closeScheduleModal();
+      } catch (e) {
+        scheduleError.value = e?.message || 'Failed to save schedule.';
+        console.error('Failed to save ticket schedule:', e);
+      } finally {
+        savingScheduleId.value = null;
+      }
+    };
+
+    const saveSchedule = async () => {
+      const iso = toIsoWithOffset(scheduleInput.value);
+      if (!iso) {
+        scheduleError.value = 'Enter a valid date and time.';
+        return;
+      }
+      await persistSchedule(iso);
+    };
+
+    const clearSchedule = async () => persistSchedule(null);
 
     const getStartButtonLabel = (task) => {
       if (pickingUpId.value === task?.id) return '...';
@@ -1365,10 +1535,15 @@ export default {
     };
 
     let staleCheckInterval = null;
+    let clockTickInterval = null;
 
     onMounted(() => {
       // Load coding agents from codingagents.yml for the dropdown
       agentToolsStore.loadAgents();
+
+      if (props.columnId === 'todo') {
+        clockTickInterval = setInterval(() => { clockTick.value = Date.now(); }, 30000);
+      }
 
       // Check for stale processes on mount and periodically
       checkStaleProcesses();
@@ -1382,6 +1557,9 @@ export default {
       stopConsoleRefresh();
       if (staleCheckInterval) {
         clearInterval(staleCheckInterval);
+      }
+      if (clockTickInterval) {
+        clearInterval(clockTickInterval);
       }
     });
 
@@ -1397,6 +1575,20 @@ export default {
       showRejectModal,
       rejectComment,
       rejectError,
+      showScheduleModal,
+      scheduleTargetId,
+      scheduleTargetHasSchedule,
+      scheduleInput,
+      scheduleError,
+      savingScheduleId,
+      scheduleResolvedNote,
+      isAgentBusy,
+      isScheduledAhead,
+      formatScheduledShort,
+      openScheduleDialog,
+      closeScheduleModal,
+      saveSchedule,
+      clearSchedule,
       startErrorTicketId,
       startErrorMessage,
       showConsoleDialog,
@@ -1687,6 +1879,26 @@ export default {
   color: #a5adba;
   cursor: not-allowed;
 }
+
+/* Schedule clock button — sets a not-before time on todo tickets */
+.schedule-btn {
+  border: none;
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+  background-color: #dfe1e6;
+  color: #44546f;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color 0.15s ease;
+}
+.schedule-btn .mdi { font-size: 0.95rem; }
+.schedule-btn:hover { background-color: #c1c7d0; }
+.schedule-btn:disabled { background-color: #ebecf0; color: #a5adba; cursor: not-allowed; }
+.schedule-btn.is-scheduled { background-color: #e0f2fe; color: #0369a1; }
+.schedule-btn.is-scheduled:hover { background-color: #bae6fd; }
+[data-theme="dark"] .schedule-btn.is-scheduled { background-color: rgba(56, 189, 248, 0.18); color: #7dd3fc; }
+[data-theme="dark"] .schedule-btn.is-scheduled:hover { background-color: rgba(56, 189, 248, 0.32); }
 
 /* Ticket Doctor stethoscope button — appears on stuck todo tickets */
 .doctor-btn {
@@ -2355,6 +2567,33 @@ export default {
   justify-content: flex-end;
 }
 
+.schedule-datetime-input {
+  width: 100%;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.875rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.schedule-datetime-input:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+}
+
+.schedule-resolved-note {
+  margin: 0.55rem 0 0;
+  color: #44546f;
+  font-size: 0.82rem;
+}
+
+.schedule-passed-note {
+  color: #6b778c;
+  font-size: 0.8rem;
+  margin-left: 0.35rem;
+}
+
 /* Console Dialog Styles */
 .console-modal {
   max-width: 700px;
@@ -2651,6 +2890,29 @@ export default {
 
 .task-eval-failed-badge .mdi {
   font-size: 0.8rem;
+}
+
+.task-scheduled-badge {
+  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  background-color: #e0f2fe;
+  color: #0c4a6e;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.task-scheduled-badge .mdi {
+  font-size: 0.8rem;
+}
+
+[data-theme="dark"] .task-scheduled-badge {
+  background-color: rgba(56, 189, 248, 0.18);
+  color: #7dd3fc;
 }
 
 .eval-summary-row {

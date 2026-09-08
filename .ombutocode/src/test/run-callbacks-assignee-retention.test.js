@@ -82,3 +82,29 @@ test('onRunFinished keeps transcripts of a successful run when retain_run_output
   assert.deepEqual(removed, []);
   assert.equal(ticket.agent.stdout_log_file, 'run-output/run-1.stdout.log');
 });
+
+// Merge-resolve failures have their own budget: a merge conflict is caused by
+// other tickets landing on main, not by this ticket's code, so it must not
+// consume the test/eval retry allowance.
+function mergeFailedRun(n) {
+  return startedRun({ runId: `mr-${n}`, state: 'failed', exitCode: 1, finishedAt: new Date().toISOString(), durationMs: 5, stdout: '', stderr: '', workingDirectory: null });
+}
+
+test('a failed merge-resolve does not touch fail_count and halts only on its own cap', () => {
+  const ticket = { id: 'T-1', status: 'merging', assignee: { tool: 'claude', model: 'm' }, fail_count: 2, agent: {} };
+  const { callbacks } = makeHarness({ ticket });
+  callbacks.onRunFinished(mergeFailedRun(1));
+  assert.equal(ticket.fail_count, 2, 'eval/test budget untouched');
+  assert.equal(ticket.merge_fail_count, 1);
+  assert.equal(ticket.status, 'todo');
+  assert.deepEqual(ticket.assignee, { tool: 'claude', model: 'm' }, 'not halted after one merge failure');
+
+  ticket.status = 'merging';
+  callbacks.onRunFinished(mergeFailedRun(2));
+  ticket.status = 'merging';
+  callbacks.onRunFinished(mergeFailedRun(3));
+  assert.equal(ticket.merge_fail_count, 3);
+  assert.equal(ticket.assignee, 'NONE', 'halted at the merge cap (default 3)');
+  assert.equal(ticket.fail_count, 2, 'still untouched');
+});
+

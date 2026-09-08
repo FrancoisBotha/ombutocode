@@ -29,6 +29,7 @@ const { recordMergeCommitOnTicket } = require('./gitDiffService');
  * @param {Function} deps.readMaxEvalRetries - () => number
  * @param {string}   deps.projectRoot
  * @param {Function} [deps.onTitleBrandingUpdate] - optional Electron-only callback
+ * @param {Function} [deps.readMaxMergeRetries] - () => number; how many failed merge-resolves a ticket may accumulate before it is halted (separate from the test/eval retry budget)
  * @param {Function} [deps.isRunSummaryEnabled] - () => boolean; gates log retention and the manifest
  * @param {Function} [deps.isRunOutputRetained] - () => boolean; keep every run's stdout/stderr on disk even when the run succeeded and no summary will read them (headless benchmarks need the transcripts for token/cost accounting)
  * @param {Function} [deps.startRunSummary] - (ticket) => void; fired after a successful squash merge
@@ -50,6 +51,8 @@ function createRuntimeCallbacks(deps) {
     summarizeSquashMergeFailure,
     summarizeTrialMergeFailure,
     readMaxEvalRetries,
+    // Separate cap for merge-resolve failures (see the merging branch below).
+    readMaxMergeRetries = () => Math.max(3, Number(readMaxEvalRetries()) || 0),
     projectRoot,
     onTitleBrandingUpdate,
     isRunSummaryEnabled = () => false,
@@ -497,23 +500,28 @@ function createRuntimeCallbacks(deps) {
           logSchedulerEvent('merge_resolve.failed', 'warn', `Merge resolve failed for ${ticket.id}`, { ticketId: ticket.id, runId: run.runId });
         }
 
-        // Failed merge resolves: increment fail_count and enforce maxRetries
+        // Failed merge resolves are counted separately from test/eval
+        // failures. A merge conflict is a consequence of other tickets landing
+        // on main while this one was in flight — it says nothing about whether
+        // this ticket's code is right — so it must not spend the retry budget
+        // that guards correctness. It still gets its own cap so a ticket that
+        // can never be reconciled does not loop forever.
         if (!mergeResolved) {
           ticket.status = 'todo';
           logSchedulerEvent('ticket.status_changed', 'info', `Ticket ${ticket.id} status: merging → todo`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { from: 'merging', to: 'todo', trigger: 'merge_resolve_failed' } });
-          if (typeof ticket.fail_count !== 'number') {
-            ticket.fail_count = 0;
+          if (typeof ticket.merge_fail_count !== 'number') {
+            ticket.merge_fail_count = 0;
           }
-          ticket.fail_count += 1;
-          logSchedulerEvent('ticket.fail_count_incremented', 'warn', `Ticket ${ticket.id} merge failure count: ${ticket.fail_count}`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { failCount: ticket.fail_count } });
-          const maxRetries = readMaxEvalRetries();
-          if (ticket.fail_count >= maxRetries) {
+          ticket.merge_fail_count += 1;
+          logSchedulerEvent('ticket.merge_fail_count_incremented', 'warn', `Ticket ${ticket.id} merge failure count: ${ticket.merge_fail_count}`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { mergeFailCount: ticket.merge_fail_count } });
+          const maxMergeRetries = readMaxMergeRetries();
+          if (ticket.merge_fail_count >= maxMergeRetries) {
             ticket.assignee = 'NONE';
-            console.log(`[Backlog] Ticket ${ticket.id} has failed ${ticket.fail_count} times (max: ${maxRetries}). Setting assignee to NONE to prevent automation pickup.`);
-            logSchedulerEvent('ticket.max_retries_reached', 'error', `Ticket ${ticket.id} reached max retries (${ticket.fail_count}/${maxRetries}). Assignee set to NONE.`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { failCount: ticket.fail_count, maxRetries } });
-            appendTicketNote(ticket, `Ticket halted: failed ${ticket.fail_count} times (max: ${maxRetries}). Requires manual intervention.`);
+            console.log(`[Backlog] Ticket ${ticket.id} failed to merge ${ticket.merge_fail_count} times (max: ${maxMergeRetries}). Setting assignee to NONE to prevent automation pickup.`);
+            logSchedulerEvent('ticket.max_merge_retries_reached', 'error', `Ticket ${ticket.id} reached max merge retries (${ticket.merge_fail_count}/${maxMergeRetries}). Assignee set to NONE.`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { mergeFailCount: ticket.merge_fail_count, maxMergeRetries } });
+            appendTicketNote(ticket, `Ticket halted: failed to merge ${ticket.merge_fail_count} times (max: ${maxMergeRetries}). Requires manual intervention.`);
           } else {
-            console.log(`[Backlog] Ticket ${ticket.id} merge failure count: ${ticket.fail_count}/${maxRetries}`);
+            console.log(`[Backlog] Ticket ${ticket.id} merge failure count: ${ticket.merge_fail_count}/${maxMergeRetries}`);
           }
         }
         return;
@@ -622,6 +630,9 @@ function createRuntimeCallbacks(deps) {
         if (typeof ticket.fail_count === 'number' && ticket.fail_count > 0) {
           console.log(`[Backlog] Ticket ${ticket.id} eval passed. Resetting fail_count from ${ticket.fail_count} to 0.`);
           ticket.fail_count = 0;
+        }
+        if (typeof ticket.merge_fail_count === 'number' && ticket.merge_fail_count > 0) {
+          ticket.merge_fail_count = 0;
         }
         if (typeof ticket.eval_fail_count === 'number' && ticket.eval_fail_count > 0) {
           ticket.eval_fail_count = 0;

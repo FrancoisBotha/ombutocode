@@ -996,6 +996,16 @@ const AUTO_RESOLVE_PATTERNS = [
   '.ombutocode/codingagent-state.json'
 ];
 
+// Never auto-committed from a ticket worktree, whatever the repository's
+// .gitignore says (git pathspec globs, matched against the whole path).
+const BUILD_PRODUCT_EXCLUDES = [
+  '**/*.o', '**/*.obj', '**/*.a', '**/*.so', '**/*.dylib', '**/*.dll', '**/*.exe',
+  '**/*.d', '**/*.asm', '**/*.sym', '**/*.elf', '**/*.bin', '**/*.img',
+  '**/*.pyc', '**/__pycache__/**', '**/*.class',
+  '**/node_modules/**', '**/.venv/**', '**/venv/**',
+  '**/build/**', '**/dist/**', '**/target/**', '**/.tbench-testing/**'
+];
+
 /**
  * After a squash merge with conflicts, check if ALL unmerged files are in the
  * auto-resolvable set. If so, resolve them by keeping main's version and stage.
@@ -1113,16 +1123,21 @@ function commitWorktreeChangesSync(ticketId, options = {}) {
   const cwd = worktreePath || paths.worktreePath;
   const message = commitMessage || `${paths.ticketId}: Implementation changes`;
 
-  // Stage all changes
+  // Stage all changes except build products. Agents routinely compile in the
+  // worktree to verify their work; in a repository with no .gitignore that
+  // would commit object files and binaries, and two tickets that both built
+  // then conflict on every .o at merge time. The repository's own .gitignore
+  // still applies on top of this list.
   runGitSync({
     cwd,
-    args: ['add', '-A']
+    args: ['add', '-A', '--', '.', ...BUILD_PRODUCT_EXCLUDES.map((glob) => `:(exclude,glob)${glob}`)]
   });
 
-  // Check if there are any changes to commit
+  // Check if there are any changes to commit (staged only — untracked build
+  // products left behind by the exclude list must not count).
   const statusResult = runGitSync({
     cwd,
-    args: ['status', '--porcelain'],
+    args: ['diff', '--cached', '--name-only'],
     allowFailure: true
   });
 
@@ -1318,6 +1333,7 @@ function squashMergeTicketBranchSync(ticketId, options = {}) {
 }
 
 module.exports = {
+  BUILD_PRODUCT_EXCLUDES,
   WorktreeManagerError,
   resolveTicketPaths,
   createWorktree,

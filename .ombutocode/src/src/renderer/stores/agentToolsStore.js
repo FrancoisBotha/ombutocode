@@ -13,11 +13,27 @@ const DEFAULT_TOOLS = [
     budgetLimit: 50.0,
     models: [
       {
-        id: 'opus-4.7',
-        name: 'Opus 4.7',
-        modelId: 'claude-opus-4-7',
+        id: 'fable-5.1',
+        name: 'Fable 5.1',
+        modelId: 'claude-fable-5-1',
         ratePerHour: 2,
         costPerRun: 0.5,
+        enabled: true
+      },
+      {
+        id: 'opus-5',
+        name: 'Opus 5',
+        modelId: 'claude-opus-5',
+        ratePerHour: 2,
+        costPerRun: 0.5,
+        enabled: true
+      },
+      {
+        id: 'sonnet-5',
+        name: 'Sonnet 5',
+        modelId: 'claude-sonnet-5',
+        ratePerHour: 2,
+        costPerRun: 0.2,
         enabled: true
       },
       {
@@ -41,9 +57,33 @@ const DEFAULT_TOOLS = [
     budgetLimit: 50.0,
     models: [
       {
-        id: 'gpt-5',
-        name: 'GPT-5',
-        modelId: 'gpt-5',
+        id: 'gpt-6-astra',
+        name: 'GPT-6 Astra',
+        modelId: 'gpt-6-astra',
+        ratePerHour: 2,
+        costPerRun: 0.2,
+        enabled: true
+      },
+      {
+        id: 'gpt-5.6-sol',
+        name: 'GPT-5.6 Sol',
+        modelId: 'gpt-5.6-sol',
+        ratePerHour: 2,
+        costPerRun: 0.2,
+        enabled: true
+      },
+      {
+        id: 'gpt-5.6-terra',
+        name: 'GPT-5.6 Terra',
+        modelId: 'gpt-5.6-terra',
+        ratePerHour: 2,
+        costPerRun: 0.2,
+        enabled: true
+      },
+      {
+        id: 'gpt-5.6-luna',
+        name: 'GPT-5.6 Luna',
+        modelId: 'gpt-5.6-luna',
         ratePerHour: 2,
         costPerRun: 0.2,
         enabled: true
@@ -61,9 +101,33 @@ const DEFAULT_TOOLS = [
     budgetLimit: 50.0,
     models: [
       {
-        id: 'k2',
-        name: 'K2',
-        modelId: 'kimi-k2',
+        id: 'k3',
+        name: 'K3',
+        modelId: 'k3',
+        ratePerHour: 1,
+        costPerRun: 0.08,
+        enabled: true
+      },
+      {
+        id: 'k3-256k',
+        name: 'K3 256K',
+        modelId: 'k3-256k',
+        ratePerHour: 1,
+        costPerRun: 0.08,
+        enabled: true
+      },
+      {
+        id: 'k2.8-preview',
+        name: 'K2.8 Preview',
+        modelId: 'kimi-for-coding',
+        ratePerHour: 1,
+        costPerRun: 0.08,
+        enabled: true
+      },
+      {
+        id: 'k2.7-highspeed',
+        name: 'K2.7 HighSpeed',
+        modelId: 'kimi-for-coding-highspeed',
         ratePerHour: 1,
         costPerRun: 0.08,
         enabled: true

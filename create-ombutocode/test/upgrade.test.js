@@ -19,6 +19,8 @@ const {
   seedMissingSkills,
   findRunningWorkbench,
   compareVersions,
+  makeLaunchersExecutable,
+  makePtySpawnHelperExecutable,
   UPGRADE_REPLACE_DIRS,
   UPGRADE_REPLACE_FILES,
 } = installer;
@@ -52,6 +54,40 @@ function listFiles(root) {
   walk(root, '');
   return out;
 }
+
+test('installed Unix launchers can be run directly', { skip: process.platform === 'win32' }, (t) => {
+  const ombutoDir = tmpDir(t);
+  writeTree(ombutoDir, { buildandrun: '#!/bin/sh\n', 'buildandrun.sh': '#!/bin/sh\n' });
+  for (const name of ['buildandrun', 'buildandrun.sh']) {
+    fs.chmodSync(path.join(ombutoDir, name), 0o644);
+  }
+
+  makeLaunchersExecutable(ombutoDir);
+
+  for (const name of ['buildandrun', 'buildandrun.sh']) {
+    assert.equal(fs.statSync(path.join(ombutoDir, name)).mode & 0o111, 0o111);
+  }
+});
+
+test('installed node-pty spawn helpers can be executed', { skip: process.platform === 'win32' }, (t) => {
+  const srcDir = tmpDir(t);
+  const ptyDir = path.join(srcDir, 'node_modules', 'node-pty');
+  const helpers = [
+    path.join(ptyDir, 'build', 'Release', 'spawn-helper'),
+    path.join(ptyDir, 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'),
+  ];
+  for (const helper of helpers) {
+    fs.mkdirSync(path.dirname(helper), { recursive: true });
+    fs.writeFileSync(helper, 'helper');
+    fs.chmodSync(helper, 0o644);
+  }
+
+  makePtySpawnHelperExecutable(srcDir);
+
+  for (const helper of helpers) {
+    assert.equal(fs.statSync(helper).mode & 0o111, 0o111);
+  }
+});
 
 // ── ZIP writer ──
 

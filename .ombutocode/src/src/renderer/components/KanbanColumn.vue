@@ -408,16 +408,6 @@
             Remove
           </button>
           <button
-            v-if="columnId === 'todo'"
-            class="schedule-btn"
-            :class="{ 'is-scheduled': isScheduledAhead(task) }"
-            :disabled="isAgentBusy(task)"
-            @click.stop="openScheduleDialog(task)"
-            :title="isScheduledAhead(task) ? `Scheduled to start ${formatDate(task.scheduled_start)} — click to change` : 'Schedule — set a time before which the scheduler must not start this ticket'"
-          >
-            <span class="mdi mdi-clock-outline"></span>
-          </button>
-          <button
             v-if="columnId === 'todo' && needsDoctor(task)"
             class="doctor-btn"
             @click.stop="openDoctor(task)"
@@ -552,7 +542,17 @@
         </div>
         <!-- Footer actions. Changes and run summary live here rather than in
              the approve/reject row so that row stays a decision, not a menu. -->
-        <div class="task-footer-actions">
+        <div class="task-footer-actions" :class="{ 'task-footer-actions--todo': columnId === 'todo' }">
+          <button
+            v-if="columnId === 'todo'"
+            class="schedule-btn"
+            :class="{ 'is-scheduled': isScheduledAhead(task) }"
+            :disabled="isAgentBusy(task)"
+            @click.stop="openScheduleDialog(task)"
+            :title="isScheduledAhead(task) ? `Scheduled to start ${formatDate(task.scheduled_start)} — click to change` : 'Schedule — set a time before which the scheduler must not start this ticket'"
+          >
+            <span class="mdi mdi-clock-outline"></span>
+          </button>
           <button
             v-if="columnId === 'review' || columnId === 'done'"
             class="footer-icon-btn changes-btn"
@@ -1940,6 +1940,11 @@ export default {
   display: flex;
   align-items: center;
   gap: 0.3rem;
+}
+
+.task-footer-actions--todo {
+  align-self: stretch;
+  justify-content: space-between;
 }
 
 .footer-icon-btn {

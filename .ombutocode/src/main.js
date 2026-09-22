@@ -1965,17 +1965,16 @@ ipcMain.handle('app:getProjectRoot', () => {
 });
 
 ipcMain.handle('app:getBuildInfo', () => {
+  const version = require('./package.json').version;
+  let hash = '?';
   try {
     const { execFileSync } = require('child_process');
-    const ombutocodeSrc = path.join(PROJECT_ROOT, '.ombutocode', 'src');
-    const hash = execFileSync('git', ['log', '-1', '--format=%h', '--', ombutocodeSrc], {
+    const commit = execFileSync('git', ['log', '-1', '--format=%h', '--', '.ombutocode/src'], {
       cwd: PROJECT_ROOT, encoding: 'utf-8', timeout: 5000
     }).trim();
-    const version = require('./package.json').version;
-    return { version, hash: hash || '?' };
-  } catch {
-    return { version: '?', hash: '?' };
-  }
+    if (commit) hash = commit;
+  } catch { /* A new or adopted project may have no commit for this path yet. */ }
+  return { version, hash };
 });
 
 // ---------------------------------------------------------------------------

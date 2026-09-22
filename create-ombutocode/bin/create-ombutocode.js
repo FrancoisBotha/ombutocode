@@ -163,6 +163,33 @@ function moveDirSync(src, dest) {
   }
 }
 
+// Git checkouts of older releases may leave these launchers without the
+// executable bit. Set it on the installed copy so ./buildandrun works on macOS
+// and Linux, including after an upgrade.
+function makeLaunchersExecutable(ombutoDir) {
+  if (process.platform === 'win32') return;
+  for (const name of ['buildandrun', 'buildandrun.sh']) {
+    const launcher = path.join(ombutoDir, name);
+    if (fs.existsSync(launcher)) {
+      fs.chmodSync(launcher, fs.statSync(launcher).mode | 0o111);
+    }
+  }
+}
+
+// node-pty executes spawn-helper when opening an interactive CLI agent PTY.
+// Some macOS installs leave that binary without its executable bit. Its
+// location depends on whether node-pty used a prebuild or compiled locally.
+function makePtySpawnHelperExecutable(srcDir) {
+  if (process.platform === 'win32') return;
+  const ptyDir = path.join(srcDir, 'node_modules', 'node-pty');
+  for (const dir of ['build/Release', 'build/Debug', `prebuilds/${process.platform}-${process.arch}`]) {
+    const helper = path.join(ptyDir, dir, 'spawn-helper');
+    if (fs.existsSync(helper)) {
+      fs.chmodSync(helper, fs.statSync(helper).mode | 0o111);
+    }
+  }
+}
+
 // Copy every file under srcDir into destDir that does not already exist
 // there, recursing into sub-directories. Existing files are never touched.
 // Returns the relative paths that were added.
@@ -908,6 +935,7 @@ ${backup ? `    unzip -o "${path.basename(backup.zipPath)}"   # or Expand-Archiv
     let summary;
     try {
       summary = replaceWorkbench(ombutoDir, clonedOmbutocode);
+      makeLaunchersExecutable(ombutoDir);
       seedMissingSkills(projectDir, ombutoDir);
     } catch (err) {
       fatal(`Replacing the workbench failed: ${err.message}`);
@@ -918,6 +946,7 @@ ${backup ? `    unzip -o "${path.basename(backup.zipPath)}"   # or Expand-Archiv
 
     heading('Installing dependencies');
     run(npmInstallCmd, { cwd: path.join(ombutoDir, 'src') });
+    makePtySpawnHelperExecutable(path.join(ombutoDir, 'src'));
     noteOmitDev();
     replacing = false;
 
@@ -991,6 +1020,7 @@ ${omitDev ? `
 
     const { clonedOmbutocode, cleanupTemp } = cloneWorkbench();
     moveDirSync(clonedOmbutocode, path.join(targetDir, '.ombutocode'));
+    makeLaunchersExecutable(path.join(targetDir, '.ombutocode'));
     log('Added .ombutocode/');
     cleanupTemp();
 
@@ -1001,6 +1031,7 @@ ${omitDev ? `
 
     heading('Installing dependencies');
     run(npmInstallCmd, { cwd: path.join(targetDir, '.ombutocode', 'src') });
+    makePtySpawnHelperExecutable(path.join(targetDir, '.ombutocode', 'src'));
     noteOmitDev();
 
     // ── Step 3: Initialise project data ──
@@ -1074,6 +1105,7 @@ ${omitDev ? `
   run(`git clone --depth 1 --branch ${CLONE_REF} ${REPO_URL} "${projectName}"`);
 
   const projectDir = path.resolve(projectName);
+  makeLaunchersExecutable(path.join(projectDir, '.ombutocode'));
 
   // Remove the .git directory so the user starts fresh
   const gitDir = path.join(projectDir, '.git');
@@ -1106,6 +1138,7 @@ ${omitDev ? `
   const srcDir = path.join(projectDir, '.ombutocode', 'src');
   if (fs.existsSync(path.join(srcDir, 'package.json'))) {
     run(npmInstallCmd, { cwd: srcDir });
+    makePtySpawnHelperExecutable(srcDir);
     noteOmitDev();
   } else {
     fatal('.ombutocode/src/package.json not found — repository may be corrupted.');
@@ -1164,6 +1197,8 @@ module.exports = {
   findRunningWorkbench,
   compareVersions,
   copyMissingFiles,
+  makeLaunchersExecutable,
+  makePtySpawnHelperExecutable,
 };
 
 if (require.main === module) {

@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-overlay" @click.self="onCloseRequest">
+  <div class="modal-overlay">
     <div class="modal-content doctor-modal">
       <div class="modal-header doctor-header">
         <div class="doctor-title-group">

@@ -810,9 +810,35 @@ export default {
       await settingsStore.setEvalDefaultAgent(agentId);
     }
 
+    // Keep current provider models first even when a user added them later to
+    // an existing codingagents.yml. Leave custom models in their saved order.
+    const MODEL_ID_ORDER = {
+      claude: [
+        'claude-fable-5-1', 'claude-opus-5', 'claude-sonnet-5',
+        'claude-opus-4-8', 'claude-opus-4-7', 'claude-sonnet-4-6',
+        'claude-haiku-4-5-20251001',
+      ],
+      codex: [
+        'gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna',
+        'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex',
+      ],
+      kimi: ['k3', 'k3-256k', 'kimi-for-coding', 'kimi-for-coding-highspeed'],
+    };
+
+    function orderedModels(tool) {
+      const order = MODEL_ID_ORDER[tool?.id];
+      const models = [...(tool?.models || [])];
+      if (!order) return models;
+      return models.sort((a, b) => {
+        const aIndex = order.indexOf(a.modelId);
+        const bIndex = order.indexOf(b.modelId);
+        return (aIndex < 0 ? order.length : aIndex) - (bIndex < 0 ? order.length : bIndex);
+      });
+    }
+
     function getAgentModels(agentId) {
       const tool = agentToolsStore.tools.find(t => t.id === agentId);
-      return tool ? tool.models.filter(m => m.enabled) : [];
+      return orderedModels(tool).filter(m => m.enabled);
     }
 
     function getSelectedModel(agentId) {
@@ -821,7 +847,7 @@ export default {
       if (!tool) return '';
       const settingsModel = settingsStore.settings.eval_default_model;
       if (settingsModel && tool.models.some(m => m.id === settingsModel)) return settingsModel;
-      const first = tool.models.find(m => m.enabled);
+      const first = orderedModels(tool).find(m => m.enabled);
       return first ? first.id : '';
     }
 
@@ -834,7 +860,10 @@ export default {
     // ── Models tab ──
     // Edits go straight through the agent tools store, which persists the whole
     // tool list back to codingagents.yml on every mutation.
-    const modelTools = computed(() => agentToolsStore.tools);
+    const modelTools = computed(() => agentToolsStore.tools.map(tool => ({
+      ...tool,
+      models: orderedModels(tool),
+    })));
     const modelError = ref('');
     const newModelDrafts = reactive({});
 
@@ -1030,7 +1059,7 @@ export default {
     const evalAgentModels = computed(() => {
       if (!selectedAgent.value) return [];
       const agent = availableAgents.value.find(a => a.id === selectedAgent.value);
-      return agent?.models?.filter(m => m.enabled) || [];
+      return orderedModels(agent).filter(m => m.enabled);
     });
 
     // Effective ad-hoc agent (falls back to eval agent)
@@ -1042,7 +1071,7 @@ export default {
     const adHocAgentModels = computed(() => {
       if (!effectiveAdHocAgent.value) return [];
       const agent = availableAgents.value.find(a => a.id === effectiveAdHocAgent.value);
-      return agent?.models?.filter(m => m.enabled) || [];
+      return orderedModels(agent).filter(m => m.enabled);
     });
 
     // Effective run-summary agent (falls back to eval agent)
@@ -1054,7 +1083,7 @@ export default {
     const runSummaryAgentModels = computed(() => {
       if (!effectiveRunSummaryAgent.value) return [];
       const agent = availableAgents.value.find(a => a.id === effectiveRunSummaryAgent.value);
-      return agent?.models?.filter(m => m.enabled) || [];
+      return orderedModels(agent).filter(m => m.enabled);
     });
 
     // Sync theme with store value when it loads

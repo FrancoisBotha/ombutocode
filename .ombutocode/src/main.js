@@ -1,6 +1,7 @@
 ﻿const { app, BrowserWindow, ipcMain, protocol, Menu } = require('electron');
 const TITLE_BRANDING_KEY = 'ombutocode:titleBranding';
 const path = require('path');
+const { STAGE_DEFAULTS, readStageAssignee } = require('./src/main/stageSettings');
 const fs = require('fs');
 const yaml = require('js-yaml');
 const Store = require('electron-store');
@@ -155,6 +156,7 @@ const DEFAULT_RUN_LOG_TAIL_CHARS = 12000;
 const settingsStore = new Store({
   name: 'app-settings',
   schema: {
+    ...Object.fromEntries(Object.entries(STAGE_DEFAULTS).map(([key, value]) => [key, { type: ['string', 'null'], default: value }])),
     project_name: {
       type: 'string',
       default: ''
@@ -1278,6 +1280,7 @@ const scheduler = createScheduler({
   readBacklogData,
   writeBacklogData,
   readAgentsConfig,
+  readStageAssignee: status => readStageAssignee(settingsStore, status),
   readEvalDefaultAgent: () => {
     const agent = settingsStore.get('eval_default_agent', null);
     if (!agent) return null;
@@ -2411,7 +2414,7 @@ ipcMain.handle('agent:startKimiForTicket', async (_, payload) => {
       title: payload?.title || ticket?.title || ticketId,
       epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
       repoRoot: PROJECT_ROOT,
-      modelId: resolveModelId('kimi', payload?.modelId),
+      modelId: resolveModelId('kimi', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'kimi' ? settingsStore.get('implementation_default_model', null) : null)),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
       retryContext: buildRetryContext(ticket || {})
     };
@@ -2466,7 +2469,7 @@ ipcMain.handle('agent:startCodexForTicket', async (_, payload) => {
       title: payload?.title || ticket?.title || ticketId,
       epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
       repoRoot: PROJECT_ROOT,
-      modelId: resolveModelId('codex', payload?.modelId),
+      modelId: resolveModelId('codex', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'codex' ? settingsStore.get('implementation_default_model', null) : null)),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
       retryContext: buildRetryContext(ticket || {})
     };
@@ -2521,7 +2524,7 @@ ipcMain.handle('agent:startClaudeForTicket', async (_, payload) => {
       title: payload?.title || ticket?.title || ticketId,
       epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
       repoRoot: PROJECT_ROOT,
-      modelId: resolveModelId('claude', payload?.modelId),
+      modelId: resolveModelId('claude', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'claude' ? settingsStore.get('implementation_default_model', null) : null)),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
       retryContext: buildRetryContext(ticket || {})
     };
@@ -3343,6 +3346,7 @@ ipcMain.handle('agents:state', async () => {
 ipcMain.handle('settings:read', async () => {
   try {
     const settings = {
+      ...Object.fromEntries(Object.keys(STAGE_DEFAULTS).map(key => [key, settingsStore.get(key, null)])),
       project_name: settingsStore.get('project_name', ''),
       eval_default_agent: settingsStore.get('eval_default_agent', null),
       eval_default_model: settingsStore.get('eval_default_model', null),
@@ -3385,6 +3389,16 @@ ipcMain.handle('settings:write', async (_, payload) => {
 
     const updates = {};
     const errors = [];
+
+    for (const key of Object.keys(STAGE_DEFAULTS)) {
+      if (!(key in payload)) continue;
+      const value = payload[key];
+      if (value !== null && (typeof value !== 'string' || !value.trim())) {
+        errors.push(key + ' must be a non-empty string or null');
+      } else {
+        updates[key] = value === null ? null : value.trim();
+      }
+    }
 
     // Validate project_name
     if ('project_name' in payload) {
@@ -3561,6 +3575,7 @@ ipcMain.handle('settings:write', async (_, payload) => {
 
     // Return updated settings
     const updatedSettings = {
+      ...Object.fromEntries(Object.keys(STAGE_DEFAULTS).map(key => [key, settingsStore.get(key, null)])),
       project_name: settingsStore.get('project_name'),
       eval_default_agent: settingsStore.get('eval_default_agent'),
       eval_default_model: settingsStore.get('eval_default_model'),

@@ -16,6 +16,7 @@ const path = require('path');
  */
 
 const DEFAULTS = {
+  ...require('./stageSettings').STAGE_DEFAULTS,
   project_name: '',
   eval_default_agent: null,
   eval_default_model: null,

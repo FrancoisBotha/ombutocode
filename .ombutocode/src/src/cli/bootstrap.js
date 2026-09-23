@@ -314,7 +314,9 @@ async function bootProject(options = {}) {
 
   // Scheduler
   const { createScheduler } = require('../main/scheduler');
+  const { readStageAssignee } = require('../main/stageSettings');
   const schedulerDeps = {
+    readStageAssignee: status => readStageAssignee(settingsStore, status),
     readBacklogData: utils.readBacklogData,
     writeBacklogData: utils.writeBacklogData,
     readAgentsConfig: utils.readAgentsConfig,

@@ -134,6 +134,19 @@ function normalizeTemplateVariant(value) {
   return variant || null;
 }
 
+// Apply at load time as upgrades preserve locally configured templates.
+function withModelSelection(template, agentName) {
+  if (!['claude', 'codex'].includes(agentName)) return template;
+  const args = [...template.args];
+  const end = args.indexOf('--');
+  const flags = end < 0 ? args : args.slice(0, end);
+  const index = flags.findIndex(arg => arg === '--model' || arg === '-m' || arg.startsWith('--model='));
+  if (index < 0) {
+    args.splice(agentName === 'codex' && args[0] === 'exec' ? 1 : 0, 0, '--model', '{{modelId}}');
+  }
+  return { ...template, args };
+}
+
 function resolveAgentTemplateConfig(projectRoot, agentName, options = {}) {
   const normalizedAgent = normalizeAgentName(agentName);
   if (!normalizedAgent) {
@@ -148,7 +161,7 @@ function resolveAgentTemplateConfig(projectRoot, agentName, options = {}) {
   const envTemplate = process.env[envVarName];
   if (envTemplate) {
     try {
-      return parseTemplate(JSON.parse(envTemplate));
+      return withModelSelection(parseTemplate(JSON.parse(envTemplate)), normalizedAgent);
     } catch (error) {
       if (error instanceof AgentInvocationError) throw error;
       throw new AgentInvocationError('INVALID_CONFIG', `${envVarName} must be valid JSON`);
@@ -185,7 +198,7 @@ function resolveAgentTemplateConfig(projectRoot, agentName, options = {}) {
     );
   }
 
-  return parseTemplate(selectedTemplate);
+  return withModelSelection(parseTemplate(selectedTemplate), normalizedAgent);
 }
 
 function resolveKimiTemplateConfig(projectRoot) {
@@ -193,9 +206,22 @@ function resolveKimiTemplateConfig(projectRoot) {
 }
 
 function renderCommand(template, payload, runId, workingDir) {
+  const args = template.args.map((arg) => replaceTemplateTokens(arg, payload, runId, workingDir));
+  if (payload.modelId) {
+    for (let i = 0; i < args.length && args[i] !== '--'; i++) {
+      if (args[i] === '--model' || args[i] === '-m') args[++i] = payload.modelId;
+      else if (args[i].startsWith('--model=')) args[i] = '--model=' + payload.modelId;
+    }
+  }
+  // Empty model selections must not become --model "".
+  const cleaned = args.filter((arg, index) => {
+    if ((arg === '--model' || arg === '-m') && args[index + 1] === '') return false;
+    if (arg === '' && (args[index - 1] === '--model' || args[index - 1] === '-m')) return false;
+    return arg !== '--model=';
+  });
   return {
     command: replaceTemplateTokens(template.command, payload, runId, workingDir),
-    args: template.args.map((arg) => replaceTemplateTokens(arg, payload, runId, workingDir)),
+    args: cleaned,
     stdin: template.stdin ? replaceTemplateTokens(template.stdin, payload, runId, workingDir) : null
   };
 }

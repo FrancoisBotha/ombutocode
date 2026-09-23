@@ -502,6 +502,7 @@ function createScheduler(deps) {
     writeBacklogData = null,
     readAgentsConfig,
     readEvalDefaultAgent = null,
+    readStageAssignee = () => null,
     readRefreshInterval = null,
     agentRuntime,
     projectRoot,
@@ -608,7 +609,7 @@ function createScheduler(deps) {
    *   or queued for building in the current batch (includes tickets not yet dispatched).
    */
   function hasAssigneeCapacity(ticket, enabledCombos, ticketStatusById, buildingCountByTool = null) {
-    const candidates = getAssigneeCandidates(ticket?.assignee, enabledCombos);
+    const candidates = getCandidatesForTicket(ticket, enabledCombos);
     if (candidates.length === 0) return false;
 
     for (const { tool, model } of candidates) {
@@ -636,7 +637,7 @@ function createScheduler(deps) {
     const counts = new Map();
     for (const ticket of tickets) {
       if (ticket?.status !== 'building') continue;
-      const candidates = getAssigneeCandidates(ticket?.assignee, enabledCombos);
+      const candidates = getCandidatesForTicket(ticket, enabledCombos);
       for (const { tool } of candidates) {
         counts.set(tool.id, (counts.get(tool.id) || 0) + 1);
         break; // Count once per ticket
@@ -761,7 +762,7 @@ function createScheduler(deps) {
       changed = true;
 
       // Track this transition so subsequent tickets respect capacity
-      const candidates = getAssigneeCandidates(ticket.assignee, enabledCombos);
+      const candidates = getCandidatesForTicket(ticket, enabledCombos);
       for (const { tool } of candidates) {
         buildingCountByTool.set(tool.id, (buildingCountByTool.get(tool.id) || 0) + 1);
         break; // Count once per ticket (first matching tool)
@@ -1263,7 +1264,7 @@ function createScheduler(deps) {
         transitionChanged = true;
 
         // Track this transition so subsequent tickets respect capacity
-        const candidates = getAssigneeCandidates(ticket.assignee, enabledCombos);
+        const candidates = getCandidatesForTicket(ticket, enabledCombos);
         for (const { tool } of candidates) {
           buildingCountByTool.set(tool.id, (buildingCountByTool.get(tool.id) || 0) + 1);
           break;
@@ -1549,7 +1550,8 @@ function createScheduler(deps) {
   }
 
   function hasExplicitAssignee(ticket) {
-    const assignee = ticket?.assignee;
+    if (String(ticket?.assignee || '').trim().toLowerCase() === 'human') return false;
+    const assignee = readStageAssignee(ticket?.status) || ticket?.assignee;
 
     if (assignee && typeof assignee === 'object') {
       return String(assignee.tool || '').trim().length > 0;
@@ -1619,6 +1621,9 @@ function createScheduler(deps) {
    * - `eval`: uses configured default EVAL agent, falling back to ticket assignee.
    */
   function getCandidatesForTicket(ticket, enabledCombos) {
+    if (String(ticket?.assignee || '').trim().toLowerCase() === 'human') return [];
+    const stageAssignee = readStageAssignee(ticket?.status);
+    if (stageAssignee) return getAssigneeCandidates(stageAssignee, enabledCombos);
     if (ticket?.status === 'eval') {
       return getAssigneeCandidates(resolveEvalQueueAssignee(ticket), enabledCombos);
     }
@@ -1627,9 +1632,9 @@ function createScheduler(deps) {
       // Merging tickets may have assignee='NONE' from a prior merge failure.
       // Fall back to the eval default agent so they can be dispatched.
       const assignee = ticket?.assignee;
-      const hasValid = assignee && typeof assignee === 'string'
+      const hasValid = (assignee && typeof assignee === 'object' && assignee.tool) || (assignee && typeof assignee === 'string'
         && assignee.trim().toLowerCase() !== 'none'
-        && assignee.trim().toLowerCase() !== 'null';
+        && assignee.trim().toLowerCase() !== 'null');
       return getAssigneeCandidates(
         hasValid ? assignee : (resolveEvalAssignee() || assignee),
         enabledCombos
@@ -1892,11 +1897,12 @@ function createScheduler(deps) {
     const queueBaseMs = Date.now();
     const nextTickets = queuedTickets
       .filter((ticket) => !activeTicketIds.has(ticket.id))
+      .filter((ticket) => String(ticket.assignee || '').trim().toLowerCase() !== 'human')
       .map((ticket) => ({
         ...ticket,
-        queueAssignee: ticket.status === 'eval'
+        queueAssignee: readStageAssignee(ticket.status) || (ticket.status === 'eval'
           ? resolveEvalQueueAssignee(ticket)
-          : ticket.assignee
+          : ticket.assignee)
       }))
       .filter((ticket) => hasResolvedDependencies(ticket, ticketStatusById))
       .filter((ticket) => getScheduledStartDelayMs(ticket, queueBaseMs) <= 0)

@@ -3,6 +3,12 @@ import { computed, ref } from 'vue';
 
 function createDefaultSettings() {
   return {
+    implementation_default_agent: null,
+    implementation_default_model: null,
+    testing_default_agent: null,
+    testing_default_model: null,
+    merging_default_agent: null,
+    merging_default_model: null,
     project_name: '',
     eval_default_agent: null,
     eval_default_model: null,
@@ -57,6 +63,12 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     return {
+      implementation_default_agent: typeof payload.implementation_default_agent === 'string' ? payload.implementation_default_agent : null,
+      implementation_default_model: typeof payload.implementation_default_model === 'string' ? payload.implementation_default_model : null,
+      testing_default_agent: typeof payload.testing_default_agent === 'string' ? payload.testing_default_agent : null,
+      testing_default_model: typeof payload.testing_default_model === 'string' ? payload.testing_default_model : null,
+      merging_default_agent: typeof payload.merging_default_agent === 'string' ? payload.merging_default_agent : null,
+      merging_default_model: typeof payload.merging_default_model === 'string' ? payload.merging_default_model : null,
       project_name: typeof payload.project_name === 'string' ? payload.project_name : '',
       eval_default_agent: payload.eval_default_agent === null || typeof payload.eval_default_agent === 'string'
         ? payload.eval_default_agent

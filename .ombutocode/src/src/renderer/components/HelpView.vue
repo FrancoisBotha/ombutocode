@@ -891,7 +891,7 @@
           <strong>Settings > Models</strong> maintains the model list for each agent. Add, rename,
           re-identify, enable/disable or delete models; each edit is written straight to
           <code>.ombutocode/codingagents/codingagents.yml</code>. The <em>Identifier</em> is the
-          string passed to the CLI (e.g. <code>claude-opus-5</code>). Rate and cost limits stay in
+          string passed to the CLI (e.g. <code>claude-opus-5-5</code>). Rate and cost limits stay in
           that YAML file and are edited under <strong>Build > Coding Agents</strong>.
         </p>
         <p>

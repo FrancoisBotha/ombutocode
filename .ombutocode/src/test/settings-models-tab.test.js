@@ -33,14 +33,14 @@ test('models tab maintains models through the agent tools store', () => {
   );
 });
 
-test('models tab warns that model selection is Claude-only today', () => {
+test('models tab identifies Claude and Codex model selection', () => {
   assert.ok(
-    /Codex and Kimi/.test(settingsView),
+    /Kimi currently uses its CLI default/.test(settingsView),
     'Models tab should name the agents without model selection'
   );
   assert.ok(
-    settingsView.includes("MODEL_SELECTION_AGENTS = ['claude']"),
-    'only Claude should be flagged as supporting model selection'
+    settingsView.includes("MODEL_SELECTION_AGENTS = ['claude', 'codex']"),
+    'Claude and Codex should support model selection'
   );
   assert.ok(
     settingsView.includes('agentSupportsModelSelection'),

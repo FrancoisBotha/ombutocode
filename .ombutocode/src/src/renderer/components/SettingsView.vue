@@ -280,64 +280,40 @@
         <div class="section-header">
           <span class="section-icon mdi mdi-robot-outline"></span>
           <div class="section-title-group">
-            <h2>Evaluation</h2>
-            <p class="section-description">Configure default EVAL agent selection</p>
+            <h2>Stage agents and models</h2>
+            <p class="section-description">Choose an agent and model independently for each stage. Changes apply to new runs.</p>
           </div>
         </div>
         <div class="section-content">
-          <div class="setting-item">
-            <div class="setting-label">
-              <span class="setting-name">EVAL Agent</span>
-              <span class="setting-hint">Select the default coding agent for EVAL-stage work</span>
-            </div>
-            <div class="setting-control">
-              <div class="agent-selector" :class="{ 'is-loading': loading || agentsLoading }">
-                <select
-                  v-model="selectedAgent"
-                  @change="updateEvalAgent"
-                  :disabled="loading || agentsLoading || availableAgents.length === 0"
-                  class="agent-select"
-                >
-                  <option value="">-- No agent selected --</option>
-                  <option
-                    v-for="agent in availableAgents"
-                    :key="agent.id"
-                    :value="agent.id"
-                  >
-                    {{ agent.name }}
-                  </option>
-                </select>
-                <span v-if="agentsLoading" class="mdi mdi-loading mdi-spin"></span>
-              </div>
-            </div>
+          <div class="stage-table-scroll">
+            <table class="models-table stage-table">
+              <thead><tr><th scope="col">Stage</th><th scope="col">Agent</th><th scope="col">Model</th></tr></thead>
+              <tbody>
+                <tr v-for="stage in stages" :key="stage.id">
+                  <th scope="row">{{ stage.label }}</th>
+                  <td>
+                    <select class="agent-select" :aria-label="stage.label + ' agent'"
+                      :value="stageAgent(stage.id)" :disabled="loading || agentsLoading"
+                      @change="saveStageAgent(stage.id, $event.target.value)">
+                      <option value="">{{ stage.fallback }}</option>
+                      <option v-if="stageAgent(stage.id) && !availableAgents.some(agent => agent.id === stageAgent(stage.id))" :value="stageAgent(stage.id)" disabled>{{ stageAgent(stage.id) }} (unavailable)</option>
+                      <option v-for="agent in availableAgents" :key="agent.id" :value="agent.id">{{ agent.name }}</option>
+                    </select>
+                  </td>
+                  <td>
+                    <select class="agent-select" :aria-label="stage.label + ' model'"
+                      :value="stageModel(stage.id)" :disabled="loading || agentsLoading || !stageAgent(stage.id) || !agentSupportsModelSelection(stageAgent(stage.id))"
+                      @change="saveStageModel(stage.id, $event.target.value)">
+                      <option value="">{{ stageAgent(stage.id) ? 'Any enabled model' : 'Use inherited model' }}</option>
+                      <option v-if="stageModel(stage.id) && !getAgentModels(stageAgent(stage.id)).some(model => model.id === stageModel(stage.id))" :value="stageModel(stage.id)" disabled>{{ stageModel(stage.id) }} (unavailable)</option>
+                      <option v-for="model in getAgentModels(stageAgent(stage.id))" :key="model.id" :value="model.id">{{ model.name }}</option>
+                    </select>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-
-          <!-- EVAL Model Selector -->
-          <div class="setting-item" v-if="selectedAgent">
-            <div class="setting-label">
-              <span class="setting-name">EVAL Model</span>
-              <span class="setting-hint">Select the model to use for evaluations (or let the scheduler pick any enabled model)</span>
-            </div>
-            <div class="setting-control">
-              <div class="agent-selector" :class="{ 'is-loading': loading || agentsLoading }">
-                <select
-                  v-model="selectedEvalModel"
-                  @change="updateEvalModel"
-                  :disabled="loading || agentsLoading || evalAgentModels.length === 0"
-                  class="agent-select"
-                >
-                  <option value="">-- Any model --</option>
-                  <option
-                    v-for="model in evalAgentModels"
-                    :key="model.id"
-                    :value="model.id"
-                  >
-                    {{ model.name }}
-                  </option>
-                </select>
-              </div>
-            </div>
-          </div>
+          <p class="setting-hint stage-hint">A stage selection overrides the ticket assignment for scheduled runs. Human tickets stay manual. Unavailable selections hold the stage until you choose an enabled model. Claude and Codex use the selected model; Kimi uses its CLI default. MERGING applies to agent-assisted conflict resolution.</p>
 
           <!-- Ad Hoc Ticket Agent Selector -->
           <div class="setting-item">
@@ -664,9 +640,7 @@
           <p class="models-note">
             <span class="mdi mdi-information-outline"></span>
             <span>
-              Model selection is fully implemented for <strong>Claude</strong> only. Codex and Kimi
-              currently run their own CLI default model — models listed here for those agents are
-              still used for scheduling, but the identifier is not yet passed to the CLI.
+              Model selection is supported for <strong>Claude and Codex</strong>. Kimi currently uses its CLI default model.
             </span>
           </p>
 
@@ -747,13 +721,13 @@
               <input
                 type="text"
                 class="models-input"
-                placeholder="Opus 5"
+                placeholder="Opus 5.5"
                 v-model="getModelDraft(tool.id).name"
               />
               <input
                 type="text"
                 class="models-input models-input-mono"
-                placeholder="claude-opus-5"
+                placeholder="claude-opus-5-5"
                 v-model="getModelDraft(tool.id).modelId"
               />
               <button type="submit" class="models-add-btn">
@@ -814,12 +788,12 @@ export default {
     // an existing codingagents.yml. Leave custom models in their saved order.
     const MODEL_ID_ORDER = {
       claude: [
-        'claude-fable-5-1', 'claude-opus-5', 'claude-sonnet-5',
+        'claude-fable-5-1', 'claude-opus-5-5', 'claude-opus-5', 'claude-sonnet-5',
         'claude-opus-4-8', 'claude-opus-4-7', 'claude-sonnet-4-6',
         'claude-haiku-4-5-20251001',
       ],
       codex: [
-        'gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna',
+        'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna',
         'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex',
       ],
       kimi: ['k3', 'k3-256k', 'kimi-for-coding', 'kimi-for-coding-highspeed'],
@@ -839,6 +813,25 @@ export default {
     function getAgentModels(agentId) {
       const tool = agentToolsStore.tools.find(t => t.id === agentId);
       return orderedModels(tool).filter(m => m.enabled);
+    }
+
+    const stages = [
+      { id: 'implementation', label: 'IN PROGRESS', fallback: 'Use ticket assignment' },
+      { id: 'testing', label: 'TESTING', fallback: 'Use ticket assignment' },
+      { id: 'eval', label: 'EVAL', fallback: 'Use ticket assignment' },
+      { id: 'merging', label: 'MERGING', fallback: 'Use ticket / EVAL assignment' },
+    ];
+    const stageAgent = stage => settingsStore.settings[stage + '_default_agent'] || '';
+    const stageModel = stage => settingsStore.settings[stage + '_default_model'] || '';
+    async function saveStageAgent(stage, value) {
+      try {
+        await settingsStore.saveSettings({ [stage + '_default_agent']: value || null, [stage + '_default_model']: null });
+      } catch (err) { console.error('[Settings] Stage agent save failed:', err); }
+    }
+    async function saveStageModel(stage, value) {
+      try {
+        await settingsStore.saveSettings({ [stage + '_default_model']: value || null });
+      } catch (err) { console.error('[Settings] Stage model save failed:', err); }
     }
 
     function getSelectedModel(agentId) {
@@ -867,9 +860,8 @@ export default {
     const modelError = ref('');
     const newModelDrafts = reactive({});
 
-    // Only Claude's command template carries --model {{modelId}}; the others
-    // run their CLI default. Surfaced in the UI so the list isn't misleading.
-    const MODEL_SELECTION_AGENTS = ['claude'];
+    // Claude and Codex receive the selected model in their CLI arguments.
+    const MODEL_SELECTION_AGENTS = ['claude', 'codex'];
     function agentSupportsModelSelection(toolId) {
       return MODEL_SELECTION_AGENTS.includes(toolId);
     }
@@ -1598,6 +1590,7 @@ export default {
     }
 
     return {
+      stages, stageAgent, stageModel, saveStageAgent, saveStageModel,
       currentTheme,
       updateTheme,
       currentTitlebarColor,
@@ -2628,6 +2621,12 @@ export default {
   color: #b87f0e;
   border: 1px solid #f0dcb0;
 }
+
+.stage-table-scroll { overflow-x: auto; }
+.stage-table { min-width: 580px; }
+.stage-table .agent-select { width: 100%; }
+.stage-table td { padding: 10px; }
+.stage-hint { margin: 12px 0 24px; }
 
 .models-table {
   width: 100%;

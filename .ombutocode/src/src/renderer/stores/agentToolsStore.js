@@ -21,9 +21,9 @@ const DEFAULT_TOOLS = [
         enabled: true
       },
       {
-        id: 'opus-5',
-        name: 'Opus 5',
-        modelId: 'claude-opus-5',
+        id: 'opus-5.5',
+        name: 'Opus 5.5',
+        modelId: 'claude-opus-5-5',
         ratePerHour: 2,
         costPerRun: 0.5,
         enabled: true
@@ -65,25 +65,17 @@ const DEFAULT_TOOLS = [
         enabled: true
       },
       {
-        id: 'gpt-5.6-sol',
-        name: 'GPT-5.6 Sol',
-        modelId: 'gpt-5.6-sol',
+        id: 'gpt-6-sol',
+        name: 'GPT-6 Sol',
+        modelId: 'gpt-6-sol',
         ratePerHour: 2,
         costPerRun: 0.2,
         enabled: true
       },
       {
-        id: 'gpt-5.6-terra',
-        name: 'GPT-5.6 Terra',
-        modelId: 'gpt-5.6-terra',
-        ratePerHour: 2,
-        costPerRun: 0.2,
-        enabled: true
-      },
-      {
-        id: 'gpt-5.6-luna',
-        name: 'GPT-5.6 Luna',
-        modelId: 'gpt-5.6-luna',
+        id: 'gpt-6-luna',
+        name: 'GPT-6 Luna',
+        modelId: 'gpt-6-luna',
         ratePerHour: 2,
         costPerRun: 0.2,
         enabled: true

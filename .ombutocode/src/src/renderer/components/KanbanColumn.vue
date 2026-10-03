@@ -1843,6 +1843,8 @@ export default {
   font-weight: 600;
   border-radius: 999px;
   padding: 0.125rem 0.5rem;
+  /* Sits at the left edge; the action buttons stay right-aligned. */
+  margin-right: auto;
 }
 
 .start-btn {
@@ -1901,7 +1903,7 @@ export default {
 .schedule-btn {
   border: none;
   border-radius: 4px;
-  padding: 0.2rem 0.4rem;
+  padding: 0.3rem 0.5rem;
   background-color: #dfe1e6;
   color: #44546f;
   cursor: pointer;
@@ -1962,6 +1964,7 @@ export default {
 .task-footer-actions--todo {
   align-self: stretch;
   justify-content: space-between;
+  margin-top: 0.05rem;
 }
 
 .footer-icon-btn {

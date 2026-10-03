@@ -73,57 +73,7 @@
       <div class="bdd-list-section">
         <h2>Existing BDD User Stories</h2>
         <div class="bdd-split">
-          <table class="bdd-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th class="col-actions"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="!bddUseCases.length" class="bdd-row-empty">
-                <td colspan="3">No BDD User Stories yet. Use the card above to create one.</td>
-              </tr>
-              <tr
-                v-for="uc in bddUseCases"
-                :key="uc.path"
-                class="bdd-row"
-                :class="{ selected: selectedBdd && selectedBdd.path === uc.path }"
-                @click="selectBdd(uc)"
-              >
-                <td class="col-name">{{ uc.displayName }}</td>
-                <td class="col-status">
-                  <select
-                    class="bdd-status-select"
-                    :class="'status-' + (uc.status || 'NEW').toLowerCase()"
-                    :value="uc.status || 'NEW'"
-                    @click.stop
-                    @change="changeStatus(uc, $event.target.value)"
-                  >
-                    <option v-for="s in STATUS_OPTIONS" :key="s" :value="s">{{ s }}</option>
-                  </select>
-                </td>
-                <td class="col-actions">
-                  <button
-                    class="bdd-ticket-btn"
-                    :disabled="!defaultAgent"
-                    :title="defaultAgent ? 'Generate tickets from this BDD User Story' : 'No default agent configured'"
-                    @click.stop="startTicketSession(uc)"
-                  >
-                    <span class="mdi mdi-robot-outline"></span> Create Ticket
-                  </button>
-                  <button
-                    class="bdd-delete-btn"
-                    title="Delete BDD User Story"
-                    @click.stop="deleteBdd(uc)"
-                  >
-                    <span class="mdi mdi-delete-outline"></span>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div ref="bddTableEl" class="bdd-tabulator"></div>
 
           <aside v-if="selectedBdd" class="bdd-detail markdown-body">
             <h3 class="bdd-detail-title">{{ selectedBdd.displayName }}</h3>
@@ -190,6 +140,8 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { marked } from 'marked';
 import { collectSkillFiles, filterSkillsByCategory, groupSkillFiles } from '@/utils/skills';
 import { enableTerminalPaste } from '@/utils/terminalPaste';
+import { TabulatorFull as Tabulator } from 'tabulator-tables';
+import 'tabulator-tables/dist/css/tabulator.min.css';
 
 let termInstance = null;
 let fitAddon = null;
@@ -197,6 +149,7 @@ let resizeObserver = null;
 let shellCleanup = null;
 let exitCleanup = null;
 let sessionCounter = 0;
+let bddTable = null;
 
 export default {
   name: 'PlanBddUseCasesView',
@@ -214,6 +167,7 @@ export default {
     const sessionPrompt = ref('');
     const panelWidth = ref(320);
 
+    const bddTableEl = ref(null);
     const bddUseCases = ref([]);
     const selectedBdd = ref(null);
     const currentBdd = ref(null);   // the UC the active session is operating on (ticket mode)
@@ -315,9 +269,104 @@ export default {
 
     // ── List actions ──
 
-    function selectBdd(uc) { selectedBdd.value = uc; }
+    function selectBdd(uc) {
+      selectedBdd.value = uc;
+      highlightSelectedRow();
+    }
 
     const STATUS_OPTIONS = ['NEW', 'TICKETS', 'BUILDING', 'DONE'];
+
+    // ── Table ──
+
+    // Row data is a copy; actions resolve back to the reactive list entry.
+    const findBdd = (path) => bddUseCases.value.find(u => u.path === path);
+    const toRow = (uc) => ({ path: uc.path, displayName: uc.displayName, status: uc.status || 'NEW' });
+
+    function initTable() {
+      if (!bddTableEl.value || bddTable) return;
+      bddTable = new Tabulator(bddTableEl.value, {
+        data: bddUseCases.value.map(toRow),
+        index: 'path',
+        layout: 'fitColumns',
+        maxHeight: '70vh',
+        selectable: false,
+        placeholder: 'No BDD User Stories yet. Use the card above to create one.',
+        initialSort: [{ column: 'displayName', dir: 'asc' }],
+        columns: [
+          { title: 'Name', field: 'displayName', headerSort: true, cssClass: 'col-name' },
+          {
+            title: 'Status',
+            field: 'status',
+            width: 130,
+            headerSort: true,
+            cssClass: 'col-status',
+            formatter(cell) {
+              const status = cell.getValue() || 'NEW';
+              const select = document.createElement('select');
+              select.className = 'bdd-status-select status-' + status.toLowerCase();
+              for (const option of STATUS_OPTIONS) select.add(new Option(option, option, false, option === status));
+              select.addEventListener('click', e => e.stopPropagation());
+              select.addEventListener('change', () => changeStatus(findBdd(cell.getRow().getIndex()), select.value));
+              return select;
+            },
+          },
+          {
+            title: '',
+            field: 'path',
+            width: 170,
+            headerSort: false,
+            hozAlign: 'right',
+            cssClass: 'col-actions',
+            formatter(cell) {
+              const path = cell.getValue();
+              const wrap = document.createElement('div');
+              wrap.className = 'bdd-actions';
+              const ticketBtn = document.createElement('button');
+              ticketBtn.type = 'button';
+              ticketBtn.className = 'bdd-ticket-btn';
+              ticketBtn.disabled = !defaultAgent.value;
+              ticketBtn.title = defaultAgent.value ? 'Generate tickets from this BDD User Story' : 'No default agent configured';
+              ticketBtn.innerHTML = '<span class="mdi mdi-robot-outline"></span> Create Ticket';
+              ticketBtn.addEventListener('click', e => { e.stopPropagation(); startTicketSession(findBdd(path)); });
+              const deleteBtn = document.createElement('button');
+              deleteBtn.type = 'button';
+              deleteBtn.className = 'bdd-delete-btn';
+              deleteBtn.title = 'Delete BDD User Story';
+              deleteBtn.innerHTML = '<span class="mdi mdi-delete-outline"></span>';
+              deleteBtn.addEventListener('click', e => { e.stopPropagation(); deleteBdd(findBdd(path)); });
+              wrap.append(ticketBtn, deleteBtn);
+              return wrap;
+            },
+          },
+        ],
+      });
+      bddTable.on('rowClick', (e, row) => {
+        const uc = findBdd(row.getIndex());
+        if (uc) selectBdd(uc);
+      });
+      bddTable.on('tableBuilt', highlightSelectedRow);
+      bddTable.on('dataProcessed', highlightSelectedRow);
+    }
+
+    function destroyTable() {
+      if (bddTable) { bddTable.destroy(); bddTable = null; }
+    }
+
+    function highlightSelectedRow() {
+      if (!bddTable || !bddTable.initialized) return;
+      for (const row of bddTable.getRows()) {
+        row.getElement().classList.toggle('selected-row', !!selectedBdd.value && row.getIndex() === selectedBdd.value.path);
+      }
+    }
+
+    watch(bddUseCases, (list) => {
+      if (bddTable && bddTable.initialized) bddTable.replaceData(list.map(toRow));
+    });
+
+    // The Create Ticket button's enabled state depends on the agent.
+    watch(defaultAgent, () => {
+      if (bddTable && bddTable.initialized) bddTable.redraw(true);
+    });
 
     async function changeStatus(uc, newStatus) {
       if (!uc || !newStatus || newStatus === uc.status) return;
@@ -337,6 +386,7 @@ export default {
         await window.electron.ipcRenderer.invoke('filetree:writeFile', uc.path, content);
         uc.content = content;
         uc.status = newStatus;
+        if (bddTable && bddTable.initialized) bddTable.updateData([{ path: uc.path, status: newStatus }]);
       } catch (e) {
         uc.status = prev;
         console.error('Failed to update BDD status:', e);
@@ -344,6 +394,7 @@ export default {
     }
 
     async function deleteBdd(uc) {
+      if (!uc) return;
       if (!confirm(`Delete "${uc.displayName}"? This removes the BDD user story file only — generated tickets stay in the backlog.`)) return;
       try {
         await window.electron.ipcRenderer.invoke('filetree:deleteFile', uc.path);
@@ -371,6 +422,8 @@ export default {
     }
 
     async function openSession() {
+      // The list (and the table's element) is unmounted while a session runs.
+      destroyTable();
       sessionActive.value = true;
       await nextTick();
 
@@ -450,6 +503,7 @@ ${instruction}`;
       if (currentShellId.value) window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
       cleanup();
       sessionActive.value = false;
+      nextTick(initTable);
       // The agent likely wrote a new BDD UC (create mode) or flipped Status to TICKETS
       // (ticket mode); refresh the list so the UI reflects on-disk state.
       loadBddUseCases();
@@ -477,6 +531,7 @@ ${instruction}`;
     }
 
     onMounted(() => {
+      initTable();
       loadBddUseCases();
       loadDefaultAgent();
       loadSkills();
@@ -485,6 +540,7 @@ ${instruction}`;
     // v-show: refit + refresh list on revisit.
     watch(() => props.visible, (isVisible) => {
       if (!isVisible) return;
+      if (bddTable && bddTable.initialized) requestAnimationFrame(() => bddTable && bddTable.redraw());
       if (fitAddon) requestAnimationFrame(() => { try { fitAddon.fit(); } catch (_) {} });
       loadBddUseCases();
     });
@@ -492,10 +548,11 @@ ${instruction}`;
     onBeforeUnmount(() => {
       if (currentShellId.value) window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
       cleanup();
+      destroyTable();
     });
 
     return {
-      sessionActive, sessionMode, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
+      bddTableEl, sessionActive, sessionMode, terminalContainer, defaultAgent, sessionPrompt, panelWidth,
       bddUseCases, selectedBdd, currentBdd, selectedBddRenderedHtml,
       skillFiles, skillGroups, selectedCreateSkill, createSkillContent, showCreateSkillPreview,
       STATUS_OPTIONS, changeStatus,
@@ -565,19 +622,27 @@ ${instruction}`;
 
 /* List + detail split */
 .bdd-list-section h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0 0 0.5rem; }
-.bdd-split { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr); gap: 1rem; }
-.bdd-table { width: 100%; border-collapse: collapse; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
-.bdd-table th { text-align: left; padding: 0.5rem 0.75rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border-color); }
-.bdd-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-color); }
-.bdd-row { cursor: pointer; transition: background 0.1s; }
-.bdd-row:hover { background: var(--secondary-color); }
-.bdd-row.selected { background: var(--secondary-color); }
-.col-name { font-size: 0.88rem; color: var(--text-color); font-weight: 400; }
-.col-status { width: 110px; }
-.col-actions { width: 200px; text-align: right; white-space: nowrap; }
+/* align-items: start keeps rows at their natural height instead of stretching to the preview pane. */
+.bdd-split { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.4fr); gap: 1rem; align-items: start; }
+
+/* Tabulator builds its cells outside Vue, so styles for them need :deep. */
+.bdd-tabulator { border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; background: var(--card-bg); }
+.bdd-tabulator.tabulator { border: none; background: var(--card-bg); font-size: 0.88rem; }
+.bdd-tabulator :deep(.tabulator-header),
+.bdd-tabulator :deep(.tabulator-header .tabulator-col) { background: var(--card-bg); border-color: var(--border-color); }
+.bdd-tabulator :deep(.tabulator-header) { border-bottom: 1px solid var(--border-color); }
+.bdd-tabulator :deep(.tabulator-col-title) { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
+.bdd-tabulator :deep(.tabulator-row) { cursor: pointer; background: var(--card-bg); border-bottom: 1px solid var(--border-color); }
+.bdd-tabulator :deep(.tabulator-row:hover),
+.bdd-tabulator :deep(.tabulator-row.selected-row) { background: var(--secondary-color) !important; }
+.bdd-tabulator :deep(.tabulator-row.selected-row) { box-shadow: inset 3px 0 0 #6dd4a0; }
+.bdd-tabulator :deep(.tabulator-cell) { padding: 0.5rem 0.75rem; border-right: none; color: var(--text-color); }
+.bdd-tabulator :deep(.tabulator-placeholder-contents) { color: var(--text-muted); font-size: 0.85rem; font-weight: 400; padding: 1.5rem 0.75rem; }
+.bdd-tabulator :deep(.bdd-actions) { display: inline-flex; align-items: center; white-space: nowrap; }
 
 .bdd-status-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; }
-.bdd-status-select {
+.bdd-status-select,
+.bdd-tabulator :deep(.bdd-status-select) {
   padding: 0.18rem 1.4rem 0.18rem 0.5rem; border-radius: 10px;
   font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
   border: 1px solid transparent; cursor: pointer; outline: none;
@@ -585,25 +650,25 @@ ${instruction}`;
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 0.35rem center; background-size: 0.7rem;
 }
-.bdd-status-select:focus { border-color: currentColor; }
-.status-new { background: rgba(91,155,213,0.18); color: #4a90e2; }
-.status-tickets { background: rgba(229,168,48,0.18); color: #b87f0e; }
-.status-building { background: rgba(109,212,160,0.2); color: #2aa05f; }
-.status-done { background: rgba(60,199,122,0.18); color: #2aa05f; }
-[data-theme="dark"] .status-building { background: rgba(109,212,160,0.15); color: #6dd4a0; }
-.bdd-status-select option { background: var(--card-bg); color: var(--text-color); text-transform: none; }
+.bdd-status-select:focus, :deep(.bdd-status-select:focus) { border-color: currentColor; }
+.status-new, :deep(.status-new) { background: rgba(91,155,213,0.18); color: #4a90e2; }
+.status-tickets, :deep(.status-tickets) { background: rgba(229,168,48,0.18); color: #b87f0e; }
+.status-building, :deep(.status-building) { background: rgba(109,212,160,0.2); color: #2aa05f; }
+.status-done, :deep(.status-done) { background: rgba(60,199,122,0.18); color: #2aa05f; }
+[data-theme="dark"] .status-building, [data-theme="dark"] :deep(.status-building) { background: rgba(109,212,160,0.15); color: #6dd4a0; }
+.bdd-status-select option, :deep(.bdd-status-select option) { background: var(--card-bg); color: var(--text-color); text-transform: none; }
 
-.bdd-ticket-btn {
+:deep(.bdd-ticket-btn) {
   display: inline-flex; align-items: center; gap: 0.3rem;
   background: transparent; border: 1px solid var(--border-color); color: var(--text-muted);
   cursor: pointer; padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.78rem;
   margin-right: 0.4rem; transition: all 0.15s;
 }
-.bdd-ticket-btn:hover:not(:disabled) { color: #6dd4a0; border-color: #6dd4a0; background: rgba(109,212,160,0.08); }
-.bdd-ticket-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.bdd-delete-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; border-radius: 4px; opacity: 0.6; transition: all 0.15s; }
-.bdd-row:hover .bdd-delete-btn { opacity: 1; }
-.bdd-delete-btn:hover { color: #e06060; background: rgba(224,96,96,0.1); }
+:deep(.bdd-ticket-btn:hover:not(:disabled)) { color: #6dd4a0; border-color: #6dd4a0; background: rgba(109,212,160,0.08); }
+:deep(.bdd-ticket-btn:disabled) { opacity: 0.4; cursor: not-allowed; }
+:deep(.bdd-delete-btn) { background: transparent; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; border-radius: 4px; opacity: 0.6; transition: all 0.15s; }
+:deep(.tabulator-row:hover .bdd-delete-btn) { opacity: 1; }
+:deep(.bdd-delete-btn:hover) { color: #e06060; background: rgba(224,96,96,0.1); }
 
 /* Detail preview pane */
 .bdd-detail {
@@ -622,7 +687,6 @@ ${instruction}`;
 .bdd-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; color: var(--text-muted); text-align: center; }
 .bdd-detail-empty .mdi { font-size: 1.8rem; opacity: 0.4; }
 
-.bdd-row-empty td { padding: 1.5rem 0.75rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; border-bottom: none; }
 
 /* Session */
 .bdd-session-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; }

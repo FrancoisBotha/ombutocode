@@ -523,11 +523,6 @@
             <p class="about-modal-tagline">Agentic Software Engineering Workbench</p>
             <p class="about-modal-version" v-if="aboutBuildVersion">
               Version {{ aboutBuildVersion }}
-              <span class="about-modal-beta">BETA</span>
-            </p>
-            <p class="about-modal-beta-notice">
-              This is a pre-release build. APIs, data formats, and features may change
-              without notice until the 1.0.0 release.
             </p>
           </div>
           <div class="about-modal-body">
@@ -2682,26 +2677,6 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-}
-
-.about-modal-beta {
-  font-family: inherit;
-  font-size: 0.58rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #ffffff;
-  background: #6a737d;
-  padding: 0.08rem 0.35rem;
-  border-radius: 3px;
-}
-
-.about-modal-beta-notice {
-  margin: 0.6rem auto 0;
-  max-width: 360px;
-  font-size: 0.68rem;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.5);
-  font-weight: 300;
 }
 
 .about-modal-body {

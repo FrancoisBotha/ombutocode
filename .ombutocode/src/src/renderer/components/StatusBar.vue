@@ -12,7 +12,6 @@
     </span>
     <span class="status-bar-project-name">{{ projectName }}</span>
     <span class="status-bar-build" :title="buildTooltip">{{ buildLabel }}</span>
-    <span class="status-bar-beta" title="Pre-release build — APIs and features may change without notice">BETA</span>
     <span
       v-if="updateAvailable"
       class="status-bar-update"
@@ -235,20 +234,6 @@ export default {
   color: #959da5;
   white-space: nowrap;
   cursor: default;
-}
-
-.status-bar-beta {
-  margin-left: 0.4rem;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 0.6rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #ffffff;
-  background: #6a737d;
-  padding: 0 0.35rem;
-  border-radius: 3px;
-  cursor: help;
-  flex-shrink: 0;
 }
 
 .status-bar-update {

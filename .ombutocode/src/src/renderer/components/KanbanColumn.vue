@@ -403,9 +403,10 @@
             class="remove-btn"
             :disabled="isTodoRemoveDisabled(task)"
             @click.stop="removeTodoToBacklog(task.id)"
-            title="Remove — move back to Backlog"
+            title="Remove ticket"
+            aria-label="Remove ticket"
           >
-            Remove
+            <span class="mdi mdi-close-circle-outline"></span>
           </button>
           <button
             v-if="columnId === 'todo' && needsDoctor(task)"
@@ -495,13 +496,32 @@
               >{{ tool.name }}</option>
             </select>
           </div>
-          <div v-if="task.agent?.state" class="task-agent-state">
-            <span
-              class="agent-state-badge"
-              :class="getAgentStateBadgeClass(task)"
-              @click.stop="task.agent.state === 'running' ? openConsoleDialog(task) : null"
-            >{{ getAgentStateLabel(task) }}</span>
-          </div>
+          <!-- Agent state and todo badges share one wrapping line. -->
+          <div class="task-badge-row">
+            <div v-if="task.agent?.state" class="task-agent-state">
+              <span
+                class="agent-state-badge"
+                :class="getAgentStateBadgeClass(task)"
+                @click.stop="task.agent.state === 'running' ? openConsoleDialog(task) : null"
+              >{{ getAgentStateLabel(task) }}</span>
+            </div>
+            <!-- Failed evaluation badge for tickets returned to todo -->
+            <div v-if="columnId === 'todo' && isEvalFailure(task)" class="task-eval-failed-badge">
+              <span class="mdi mdi-alert-circle"></span>
+              <span>Eval failed</span>
+            </div>
+            <!-- Same treatment for a failed test phase — it also bounces the
+                 ticket back to todo, and previously said so nowhere on the card. -->
+            <div v-if="columnId === 'todo' && isTestFailure(task)" class="task-eval-failed-badge">
+              <span class="mdi mdi-alert-circle"></span>
+              <span>Test failed</span>
+            </div>
+            <!-- Not-before time set from the Schedule button; disappears once it has passed -->
+            <div v-if="columnId === 'todo' && isScheduledAhead(task)" class="task-scheduled-badge" :title="formatDate(task.scheduled_start)">
+              <span class="mdi mdi-clock-outline"></span>
+              <span>Scheduled · {{ formatScheduledShort(task.scheduled_start) }}</span>
+            </div>
+            </div>
           <!-- Evaluator ownership display in EVAL column -->
           <div v-if="columnId === 'eval' && shouldShowEvaluator(task)" class="task-evaluator">
             <span class="task-evaluator-label">Evaluator:</span>
@@ -517,22 +537,6 @@
           </div>
           <div v-else-if="columnId === 'merging'" class="task-evaluator task-evaluator--pending">
             <span class="task-evaluator-value">Awaiting merge resolve</span>
-          </div>
-          <!-- Failed evaluation badge for tickets returned to todo -->
-          <div v-if="columnId === 'todo' && isEvalFailure(task)" class="task-eval-failed-badge">
-            <span class="mdi mdi-alert-circle"></span>
-            <span>Eval failed</span>
-          </div>
-          <!-- Same treatment for a failed test phase — it also bounces the
-               ticket back to todo, and previously said so nowhere on the card. -->
-          <div v-if="columnId === 'todo' && isTestFailure(task)" class="task-eval-failed-badge">
-            <span class="mdi mdi-alert-circle"></span>
-            <span>Test failed</span>
-          </div>
-          <!-- Not-before time set from the Schedule button; disappears once it has passed -->
-          <div v-if="columnId === 'todo' && isScheduledAhead(task)" class="task-scheduled-badge" :title="formatDate(task.scheduled_start)">
-            <span class="mdi mdi-clock-outline"></span>
-            <span>Scheduled · {{ formatScheduledShort(task.scheduled_start) }}</span>
           </div>
         </div>
         <!-- AD_HOC-032: Dependency error message display -->
@@ -1783,8 +1787,20 @@ export default {
   font-weight: 500;
 }
 
-.task-agent-state {
+.task-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
   margin-top: 0.35rem;
+}
+
+.task-badge-row:empty {
+  display: none;
+}
+
+.task-badge-row > * {
+  margin-top: 0;
 }
 
 .todo-agent-row {
@@ -1861,14 +1877,15 @@ export default {
 .remove-btn {
   border: none;
   border-radius: 4px;
-  padding: 0.2rem 0.45rem;
+  padding: 0.2rem 0.4rem;
   background-color: #dfe1e6;
-  color: #172b4d;
-  font-size: 0.72rem;
-  font-weight: 600;
+  color: #44546f;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   transition: background-color 0.15s ease;
 }
+.remove-btn .mdi { font-size: 0.95rem; }
 
 .remove-btn:hover {
   background-color: #c1c7d0;

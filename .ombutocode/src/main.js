@@ -1281,6 +1281,7 @@ const scheduler = createScheduler({
   writeBacklogData,
   readAgentsConfig,
   readStageAssignee: status => readStageAssignee(settingsStore, status),
+  readMaxEvalRetries: () => settingsStore.get('max_eval_retries', 2),
   readEvalDefaultAgent: () => {
     const agent = settingsStore.get('eval_default_agent', null);
     if (!agent) return null;

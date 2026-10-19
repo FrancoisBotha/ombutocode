@@ -38,6 +38,7 @@ const EVENT_TYPES = {
   TICKET_FAIL_COUNT_INCREMENTED: 'ticket.fail_count_incremented',
   TICKET_EVAL_FAIL_COUNT_INCREMENTED: 'ticket.eval_fail_count_incremented',
   TICKET_MAX_RETRIES_REACHED: 'ticket.max_retries_reached',
+  TICKET_RETRY_LIMIT_SKIPPED: 'ticket.retry_limit_skipped',
 
   // Agent lifecycle
   AGENT_PAUSE_DETECTED: 'agent.pause_detected',

@@ -317,6 +317,7 @@ async function bootProject(options = {}) {
   const { readStageAssignee } = require('../main/stageSettings');
   const schedulerDeps = {
     readStageAssignee: status => readStageAssignee(settingsStore, status),
+    readMaxEvalRetries: () => settingsStore.get('max_eval_retries', 2),
     readBacklogData: utils.readBacklogData,
     writeBacklogData: utils.writeBacklogData,
     readAgentsConfig: utils.readAgentsConfig,

@@ -503,6 +503,10 @@ function createScheduler(deps) {
     readAgentsConfig,
     readEvalDefaultAgent = null,
     readStageAssignee = () => null,
+    // () => number — the configured max_eval_retries. When provided, tickets
+    // whose fail_count (or eval_fail_count) has reached it are never dispatched
+    // again, in any column, until a human resets the count or re-assigns.
+    readMaxEvalRetries = null,
     readRefreshInterval = null,
     agentRuntime,
     projectRoot,
@@ -752,6 +756,7 @@ function createScheduler(deps) {
       if (ticket?.status !== 'todo') continue;
       if (ticket.agent?.state === 'merge_failed' || ticket.agent?.state === 'merge_aborted') continue; // These go to merging, not building
       if (!hasExplicitAssignee(ticket)) continue;
+      if (isHaltedByRetryLimit(ticket)) continue;
       if (!hasResolvedDependencies(ticket, ticketStatusById)) continue;
       if (isWaitingForScheduledStart(ticket)) continue; // not-before time still ahead
       if (!epicGate.isTicketAllowed(ticket)) continue; // parent epic still blocked by an unfinished prerequisite epic
@@ -1246,14 +1251,7 @@ function createScheduler(deps) {
         if (ticket?.status !== 'todo') continue;
         if (ticket.agent?.state === 'merge_failed' || ticket.agent?.state === 'merge_aborted') continue; // These go to merging, not building
         if (!hasExplicitAssignee(ticket)) continue;
-        // Safety valve: refuse to re-dispatch tickets that have failed too many times,
-        // even if assignee wasn't properly cleared by onRunFinished.
-        const MAX_FAIL_HARD_CAP = 10;
-        if (typeof ticket.fail_count === 'number' && ticket.fail_count >= MAX_FAIL_HARD_CAP) {
-          console.log(`[Scheduler] Hard cap: ${ticket.id} has ${ticket.fail_count} failures — skipping`);
-          logEvent('ticket.hard_cap', 'error', `Ticket ${ticket.id} hit hard failure cap (${ticket.fail_count}/${MAX_FAIL_HARD_CAP})`, { ticketId: ticket.id });
-          continue;
-        }
+        if (isHaltedByRetryLimit(ticket)) continue;
         if (!hasResolvedDependencies(ticket, ticketStatusByIdForTransition)) continue;
         if (isWaitingForScheduledStart(ticket)) continue; // not-before time still ahead
         if (!epicGate.isTicketAllowed(ticket)) continue; // parent epic still blocked
@@ -1334,6 +1332,18 @@ function createScheduler(deps) {
         logEvent('ticket.skipped_locked', 'debug', `Skipping ${ticket.id}: ${lockReason} (coordination lock)`, { ticketId: ticket.id });
         continue;
       }
+
+      // Retry budget applies to every column. The run-finished callbacks set
+      // assignee=NONE and bump fail_count when a test/eval/merge run fails, but
+      // test/eval/merging tickets are dispatched via stage default agents that
+      // never looked at the ticket's own assignee, so a halted ticket was
+      // picked straight back up. Check the counts here, before any dispatch.
+      if (isHaltedByRetryLimit(ticket)) continue;
+
+      // todo/building tickets are dispatched directly from this loop too, so
+      // apply the same assignee gate as the todo-to-building transition
+      // (ticket assignee, or the implementation stage default when one is set).
+      if ((ticketCurrentStatus === 'todo' || ticketCurrentStatus === 'building') && !hasExplicitAssignee(ticket)) continue;
 
       // Merge-failed tickets: transition to 'merging' status and re-dispatch
       if (ticketCurrentStatus === 'todo' && (ticketAgent?.state === 'merge_failed' || ticketAgent?.state === 'merge_aborted')) {
@@ -1547,6 +1557,61 @@ function createScheduler(deps) {
         }
       }
     }
+  }
+
+  // Safety valve so a runaway ticket can never be re-dispatched forever even
+  // when max_eval_retries is misconfigured or the callbacks failed to halt it.
+  const MAX_FAIL_HARD_CAP = 10;
+  // Remember what we already logged per ticket so a halted ticket produces one
+  // log line per distinct state instead of one per poll.
+  const retryHaltLogged = new Map();
+
+  function readConfiguredMaxRetries() {
+    if (typeof readMaxEvalRetries !== 'function') return null;
+    try {
+      const value = Number(readMaxEvalRetries());
+      return Number.isFinite(value) && value >= 0 ? value : null;
+    } catch (error) {
+      console.error('[Scheduler] Failed to read max_eval_retries:', error?.message || error);
+      return null;
+    }
+  }
+
+  /**
+   * True when the ticket has exhausted its retry budget and must not be
+   * dispatched in any column. Mirrors the halt rule in the run-finished
+   * callbacks: fail_count (test, eval, trial-merge and crash failures) or
+   * eval_fail_count reaching max_eval_retries, or fail_count reaching the
+   * hard cap. A ticket that has never failed is never halted, even when the
+   * configured limit is 0.
+   */
+  function isHaltedByRetryLimit(ticket) {
+    if (!ticket || !ticket.id) return false;
+    const failCount = Number(ticket.fail_count) || 0;
+    const evalFailCount = Number(ticket.eval_fail_count) || 0;
+    const maxRetries = readConfiguredMaxRetries();
+
+    let reason = null;
+    if (failCount >= MAX_FAIL_HARD_CAP) {
+      reason = `hit hard failure cap (${failCount}/${MAX_FAIL_HARD_CAP})`;
+    } else if (maxRetries !== null && failCount > 0 && failCount >= maxRetries) {
+      reason = `reached max retries (${failCount}/${maxRetries})`;
+    } else if (maxRetries !== null && evalFailCount > 0 && evalFailCount >= maxRetries) {
+      reason = `reached max eval retries (${evalFailCount}/${maxRetries})`;
+    }
+
+    if (!reason) {
+      retryHaltLogged.delete(ticket.id);
+      return false;
+    }
+
+    const logKey = `${ticket.status}|${reason}`;
+    if (retryHaltLogged.get(ticket.id) !== logKey) {
+      retryHaltLogged.set(ticket.id, logKey);
+      console.log(`[Scheduler] Retry limit: ${ticket.id} ${reason} — not dispatching (status: ${ticket.status})`);
+      logEvent('ticket.retry_limit_skipped', 'error', `Ticket ${ticket.id} ${reason}; skipping dispatch while in '${ticket.status}'`, { ticketId: ticket.id, details: { failCount, evalFailCount, maxRetries, status: ticket.status } });
+    }
+    return true;
   }
 
   function hasExplicitAssignee(ticket) {

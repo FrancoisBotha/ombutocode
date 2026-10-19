@@ -327,7 +327,7 @@ export default {
         const results = await window.electron.ipcRenderer.invoke('agent:getStartupResults');
         const settings = await window.electron.ipcRenderer.invoke('settings:read');
         let agentCmd = settings?.eval_default_agent;
-        if (!agentCmd || !results?.[agentCmd]?.status === 'pass') {
+        if (!agentCmd || results?.[agentCmd]?.status !== 'pass') {
           agentCmd = Object.keys(results || {}).find(id => results[id].status === 'pass');
         }
 
@@ -538,7 +538,7 @@ ${postProcessHexCodes(body)}
       const results = await window.electron.ipcRenderer.invoke('agent:getStartupResults');
       const settings = await window.electron.ipcRenderer.invoke('settings:read');
       let agentCmd = settings?.eval_default_agent;
-      if (!agentCmd || !results?.[agentCmd]?.status === 'pass') {
+      if (!agentCmd || results?.[agentCmd]?.status !== 'pass') {
         agentCmd = Object.keys(results || {}).find(id => results[id].status === 'pass');
       }
       if (!agentCmd) {

@@ -1653,6 +1653,53 @@ app.whenReady().then(async () => {
     }
   }
 
+  // ── Startup agent connectivity check ──
+  // Registered before the window opens, and the handler waits for the checks:
+  // views read this once on mount to pick the default agent, and a call that
+  // arrived early (no handler yet, or results still empty) left their agent
+  // buttons disabled until the view was reopened.
+  const agentConnectivityResults = {};
+  const AGENTS_TO_TEST = [
+    { id: 'claude', name: 'Claude', command: 'claude' },
+    { id: 'codex', name: 'Codex', command: 'codex' },
+    { id: 'kimi', name: 'Kimi', command: 'kimi' },
+  ];
+
+  const agentConnectivityCheck = (async () => {
+    const { exec } = require('child_process');
+    await Promise.all(AGENTS_TO_TEST.map(async (agent) => {
+      try {
+        const output = await new Promise((resolve, reject) => {
+          exec(`"${agent.command}" --version`, { timeout: 10000 }, (err, stdout, stderr) => {
+            if (err) reject(err); else resolve((stdout || stderr || '').trim());
+          });
+        });
+        agentConnectivityResults[agent.id] = { status: 'pass', detail: output, enabled: true };
+        console.log(`[Agent Check] ${agent.name}: connected (${output})`);
+      } catch (e) {
+        agentConnectivityResults[agent.id] = {
+          status: 'fail',
+          detail: e.code === 'ENOENT' ? `"${agent.command}" not found on PATH` : (e.message || 'Not available'),
+          enabled: false
+        };
+        console.log(`[Agent Check] ${agent.name}: not available`);
+      }
+    }));
+
+    const anyConnected = Object.values(agentConnectivityResults).some(r => r.status === 'pass');
+    if (!anyConnected && mainWindow && !mainWindow.isDestroyed()) {
+      // The checks can now finish before the renderer has its listener up.
+      const notify = () => mainWindow.webContents.send('app:noAgentsConnected');
+      if (mainWindow.webContents.isLoading()) mainWindow.webContents.once('did-finish-load', notify);
+      else notify();
+    }
+  })();
+
+  ipcMain.handle('agent:getStartupResults', async () => {
+    await agentConnectivityCheck;
+    return agentConnectivityResults;
+  });
+
   createWindow();
   trimAgentLog();
 
@@ -1803,46 +1850,6 @@ app.whenReady().then(async () => {
       console.error('[Database] Reload from disk failed:', err.message);
     }
   }, refreshSeconds * 1000);
-
-  // ── Startup agent connectivity check ──
-  const agentConnectivityResults = {};
-  const AGENTS_TO_TEST = [
-    { id: 'claude', name: 'Claude', command: 'claude' },
-    { id: 'codex', name: 'Codex', command: 'codex' },
-    { id: 'kimi', name: 'Kimi', command: 'kimi' },
-  ];
-
-  (async () => {
-    const { exec } = require('child_process');
-    let anyConnected = false;
-    for (const agent of AGENTS_TO_TEST) {
-      try {
-        const output = await new Promise((resolve, reject) => {
-          exec(`"${agent.command}" --version`, { timeout: 10000 }, (err, stdout, stderr) => {
-            if (err) reject(err); else resolve((stdout || stderr || '').trim());
-          });
-        });
-        agentConnectivityResults[agent.id] = { status: 'pass', detail: output, enabled: true };
-        anyConnected = true;
-        console.log(`[Agent Check] ${agent.name}: connected (${output})`);
-      } catch (e) {
-        agentConnectivityResults[agent.id] = {
-          status: 'fail',
-          detail: e.code === 'ENOENT' ? `"${agent.command}" not found on PATH` : (e.message || 'Not available'),
-          enabled: false
-        };
-        console.log(`[Agent Check] ${agent.name}: not available`);
-      }
-    }
-
-    if (!anyConnected && mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('app:noAgentsConnected');
-    }
-  })();
-
-  ipcMain.handle('agent:getStartupResults', () => {
-    return agentConnectivityResults;
-  });
 
   // Restore scheduler state from last session (default: running)
   const savedState = scheduler.windowTracker.loadState();

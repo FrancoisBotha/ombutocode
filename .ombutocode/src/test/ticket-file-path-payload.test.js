@@ -57,3 +57,26 @@ test('ticket files exist for the statuses an agent runs in', () => {
     assert.ok(match[1].includes(`'${status}'`), `${status} should keep a ticket file on disk`);
   }
 });
+
+test('normalizeStartPayload keeps ticketFilePath so the prompt token is not blank', () => {
+  const { normalizeStartPayload } = require('../src/main/codingAgentRuntime');
+  const ticketFilePath = path.join(path.sep, 'repo', '.ombutocode', 'data', 'tickets', 'T-1.json');
+  const normalized = normalizeStartPayload({
+    ticketId: 'T-1',
+    epicRef: 'docs/Epics/epic_T.md',
+    title: 'Title',
+    repoRoot: path.sep + 'repo',
+    ticketFilePath
+  });
+  assert.equal(normalized.ticketFilePath, ticketFilePath);
+});
+
+test('manual start handlers pass the ticket file path too', () => {
+  const mainSrc = fs.readFileSync(path.join(__dirname, '../main.js'), 'utf-8');
+  for (const agent of ['Kimi', 'Codex', 'Claude']) {
+    const start = mainSrc.indexOf(`'agent:start${agent}ForTicket'`);
+    assert.ok(start !== -1, `${agent} manual start handler should exist`);
+    const body = mainSrc.slice(start, mainSrc.indexOf('ipcMain.handle(', start + 10));
+    assert.ok(body.includes('ticketFilePath:'), `${agent} manual start should set ticketFilePath`);
+  }
+});

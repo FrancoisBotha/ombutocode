@@ -39,7 +39,10 @@ function normalizeStartPayload(payload) {
     repoRoot: path.resolve(payload.repoRoot.trim()),
     acceptanceCriteria: typeof payload.acceptanceCriteria === 'string' ? payload.acceptanceCriteria : '',
     modelId: typeof payload.modelId === 'string' ? payload.modelId : '',
-    retryContext: typeof payload.retryContext === 'string' ? payload.retryContext : ''
+    retryContext: typeof payload.retryContext === 'string' ? payload.retryContext : '',
+    // Must be carried through: the prompt templates' {{ticketFilePath}} token
+    // otherwise renders blank and agents run without the full ticket record.
+    ticketFilePath: typeof payload.ticketFilePath === 'string' ? payload.ticketFilePath.trim() : ''
   };
 }
 

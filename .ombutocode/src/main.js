@@ -2424,7 +2424,8 @@ ipcMain.handle('agent:startKimiForTicket', async (_, payload) => {
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('kimi', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'kimi' ? settingsStore.get('implementation_default_model', null) : null)),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
-      retryContext: buildRetryContext(ticket || {})
+      retryContext: buildRetryContext(ticket || {}),
+      ticketFilePath: path.join(PROJECT_ROOT, '.ombutocode', 'data', 'tickets', `${ticketId}.json`)
     };
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: kimi on ${ticketId}`, { ticketId, agentName: 'kimi', details: { modelId: enrichedPayload.modelId } });
@@ -2479,7 +2480,8 @@ ipcMain.handle('agent:startCodexForTicket', async (_, payload) => {
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('codex', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'codex' ? settingsStore.get('implementation_default_model', null) : null)),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
-      retryContext: buildRetryContext(ticket || {})
+      retryContext: buildRetryContext(ticket || {}),
+      ticketFilePath: path.join(PROJECT_ROOT, '.ombutocode', 'data', 'tickets', `${ticketId}.json`)
     };
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: codex on ${ticketId}`, { ticketId, agentName: 'codex', details: { modelId: enrichedPayload.modelId } });
@@ -2534,7 +2536,8 @@ ipcMain.handle('agent:startClaudeForTicket', async (_, payload) => {
       repoRoot: PROJECT_ROOT,
       modelId: resolveModelId('claude', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'claude' ? settingsStore.get('implementation_default_model', null) : null)),
       acceptanceCriteria: formatAcceptanceCriteria(ticket),
-      retryContext: buildRetryContext(ticket || {})
+      retryContext: buildRetryContext(ticket || {}),
+      ticketFilePath: path.join(PROJECT_ROOT, '.ombutocode', 'data', 'tickets', `${ticketId}.json`)
     };
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: claude on ${ticketId}`, { ticketId, agentName: 'claude', details: { modelId: enrichedPayload.modelId } });

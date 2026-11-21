@@ -298,7 +298,6 @@ async function runSchedulerUntilDrained(ctx, options, deps = {}) {
       decision = evaluateRunState({
         tickets,
         activeRuns: status.activeRuns || [],
-        agentPauses: status.agentPauses || [],
         trackedIds: tracker.trackedIds,
         mergeLanded,
         nowMs,
@@ -325,7 +324,7 @@ async function runSchedulerUntilDrained(ctx, options, deps = {}) {
       if (decision.outcome !== 'continue') break;
 
       // The scheduler is event-driven; nudge it when idle so an expired
-      // provider pause or a freshly unblocked dependency gets picked up.
+      // freshly unblocked dependency or scheduled start gets picked up.
       if ((status.activeRuns || []).length === 0 && nowMs - lastNudgeAt >= DISPATCH_NUDGE_MS) {
         lastNudgeAt = nowMs;
         try { scheduler.dispatch({ reason: 'cli-poll' }); } catch (error) { logger.warn(`[run] dispatch nudge failed: ${error.message}`); }

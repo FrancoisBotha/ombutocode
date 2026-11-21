@@ -117,13 +117,6 @@
               <p>Configure AI coding agents with models, providers, and tool settings.</p>
             </div>
           </div>
-          <div class="help-feature">
-            <span class="mdi mdi-lightning-bolt-outline"></span>
-            <div>
-              <strong>Automation</strong>
-              <p>Monitor the scheduler, active agent runs, and evaluation queue.</p>
-            </div>
-          </div>
         </div>
         <div class="help-tip">
           <span class="mdi mdi-lightbulb-outline"></span>

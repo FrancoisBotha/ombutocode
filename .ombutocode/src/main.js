@@ -1269,7 +1269,7 @@ ${run.stderr || ''}`);
       console.log(`[FeatureEval] Evaluation complete: ${featureEvalInfo.fileName} → ${verdict}`);
     }
 
-    // Notify scheduler of run completion for cooldown tracking
+    // Notify scheduler of run completion (cost recording, re-dispatch)
     scheduler.onRunFinished(run);
   }
 });
@@ -1328,9 +1328,9 @@ const scheduler = createScheduler({
 });
 
 function persistSchedulerRunningState(isRunning) {
-  const state = scheduler.windowTracker.loadState();
+  const state = scheduler.agentState.loadState();
   state.scheduler_running = !!isRunning;
-  scheduler.windowTracker.saveState(state);
+  scheduler.agentState.saveState(state);
 }
 
 function isDevServerAvailable(devServerUrl, timeoutMs = 800) {
@@ -1852,7 +1852,7 @@ app.whenReady().then(async () => {
   }, refreshSeconds * 1000);
 
   // Restore scheduler state from last session (default: running)
-  const savedState = scheduler.windowTracker.loadState();
+  const savedState = scheduler.agentState.loadState();
   const shouldAutoStart = savedState.scheduler_running !== false;
   if (shouldAutoStart) {
     scheduler.start();
@@ -2667,36 +2667,6 @@ ipcMain.handle('agent:cancelRunningTicket', async (_, { ticketId }) => {
   return { success: true };
 });
 
-function parseAutomationPayload(payload) {
-  if (payload === undefined || payload === null) {
-    return { ok: true, value: {} };
-  }
-
-  if (typeof payload !== 'object' || Array.isArray(payload)) {
-    return {
-      ok: false,
-      error: {
-        code: 'INVALID_PAYLOAD',
-        message: 'payload must be an object'
-      },
-      value: {}
-    };
-  }
-
-  return { ok: true, value: payload };
-}
-
-function safeAutomationError(defaultData, validation) {
-  return {
-    ...defaultData,
-    success: false,
-    error: validation?.error || {
-      code: 'AUTOMATION_STATE_ERROR',
-      message: 'Unable to read automation state'
-    }
-  };
-}
-
 // Scheduler IPC handlers
 ipcMain.handle('scheduler:start', async () => {
   scheduler.start();
@@ -2712,138 +2682,6 @@ ipcMain.handle('scheduler:stop', async () => {
 
 ipcMain.handle('scheduler:status', async () => {
   return scheduler.getStatus();
-});
-
-ipcMain.handle('automation:active-runs', async (_, payload) => {
-  const parsed = parseAutomationPayload(payload);
-  const fallback = { runs: [], total: 0 };
-  if (!parsed.ok) {
-    return safeAutomationError(fallback, parsed);
-  }
-
-  const includeQueued = parsed.value.includeQueued;
-  if (includeQueued !== undefined && typeof includeQueued !== 'boolean') {
-    return safeAutomationError(fallback, {
-      error: {
-        code: 'INVALID_PAYLOAD',
-        message: 'includeQueued must be a boolean when provided'
-      }
-    });
-  }
-
-  try {
-    const runs = scheduler.getAutomationActiveRuns({ includeQueued });
-    return {
-      success: true,
-      runs: Array.isArray(runs) ? runs : [],
-      total: Array.isArray(runs) ? runs.length : 0
-    };
-  } catch (error) {
-    return safeAutomationError(fallback);
-  }
-});
-
-ipcMain.handle('automation:eval-queue', async (_, payload) => {
-  const parsed = parseAutomationPayload(payload);
-  const fallback = {
-    totalTickets: 0,
-    activeCount: 0,
-    readyCount: 0,
-    tickets: [],
-    activeTicketIds: []
-  };
-  if (!parsed.ok) {
-    return safeAutomationError(fallback, parsed);
-  }
-
-  const limit = parsed.value.limit;
-  if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0 || limit > 200)) {
-    return safeAutomationError(fallback, {
-      error: {
-        code: 'INVALID_PAYLOAD',
-        message: 'limit must be an integer between 1 and 200 when provided'
-      }
-    });
-  }
-
-  try {
-    const snapshot = scheduler.getAutomationEvalQueue({ limit });
-    return {
-      success: true,
-      ...fallback,
-      ...(snapshot && typeof snapshot === 'object' ? snapshot : {})
-    };
-  } catch (error) {
-    return safeAutomationError(fallback);
-  }
-});
-
-ipcMain.handle('automation:agent-status', async (_, payload) => {
-  const parsed = parseAutomationPayload(payload);
-  const fallback = { agents: [] };
-  if (!parsed.ok) {
-    return safeAutomationError(fallback, parsed);
-  }
-
-  const includeDisabled = parsed.value.includeDisabled;
-  if (includeDisabled !== undefined && typeof includeDisabled !== 'boolean') {
-    return safeAutomationError(fallback, {
-      error: {
-        code: 'INVALID_PAYLOAD',
-        message: 'includeDisabled must be a boolean when provided'
-      }
-    });
-  }
-
-  try {
-    const agents = scheduler.getAutomationAgentStatus({ includeDisabled });
-    return {
-      success: true,
-      agents: Array.isArray(agents) ? agents : []
-    };
-  } catch (error) {
-    return safeAutomationError(fallback);
-  }
-});
-
-ipcMain.handle('automation:unpause-agent', async (_, payload) => {
-  const parsed = parseAutomationPayload(payload);
-  if (!parsed.ok) {
-    return {
-      success: false,
-      error: parsed.error || {
-        code: 'INVALID_PAYLOAD',
-        message: 'Invalid payload'
-      }
-    };
-  }
-
-  const { toolId } = parsed.value;
-  if (!toolId || typeof toolId !== 'string') {
-    return {
-      success: false,
-      error: {
-        code: 'INVALID_TOOL_ID',
-        message: 'toolId is required and must be a string'
-      }
-    };
-  }
-
-  try {
-    scheduler.windowTracker.resumeToolWindowPickup(toolId);
-    console.log(`[Scheduler] Manually unpaused agent: ${toolId}`);
-    return { success: true, toolId };
-  } catch (error) {
-    console.error(`[Scheduler] Failed to unpause agent ${toolId}:`, error?.message || error);
-    return {
-      success: false,
-      toolId,
-      error: {
-        code: 'UNPAUSE_FAILED',
-        message: error?.message || 'Failed to unpause agent'
-      }
-    };
-  }
 });
 
 ipcMain.handle('scheduler:deleteQueueTicket', async (_, payload = {}) => {
@@ -3343,7 +3181,7 @@ ipcMain.handle('agents:write', async (_, data) => {
 });
 
 ipcMain.handle('agents:state', async () => {
-  const persistedState = scheduler.windowTracker.loadState();
+  const persistedState = scheduler.agentState.loadState();
   const schedulerStatus = scheduler.getStatus();
 
   return {

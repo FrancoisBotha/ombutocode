@@ -3,9 +3,7 @@ tools:
   - id: claude
     name: Claude
     command: claude
-    rolling_window_hours: 5
     max_concurrent: 2
-    cooldown_minutes: 5
     enabled: true
     budget_limit: 0
     models:
@@ -36,9 +34,7 @@ tools:
   - id: codex
     name: Codex
     command: codex
-    rolling_window_hours: 5
     max_concurrent: 2
-    cooldown_minutes: 5
     enabled: true
     budget_limit: 0
     models:
@@ -63,9 +59,7 @@ tools:
   - id: kimi
     name: Kimi
     command: kimi
-    rolling_window_hours: 5
     max_concurrent: 2
-    cooldown_minutes: 5
     enabled: true
     budget_limit: 0
     models:

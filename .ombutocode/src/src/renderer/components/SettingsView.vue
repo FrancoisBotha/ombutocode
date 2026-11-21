@@ -615,7 +615,7 @@
           <h3>Adding a Custom Agent</h3>
           <p>
             In <strong>Build > Coding Agents</strong>, click <strong>Add Tool</strong> and provide
-            a name, CLI command, max concurrent runs, and cooldown. Then add a template entry in
+            a name, CLI command, and max concurrent runs. Then add a template entry in
             <code>codingagent-templates.json</code> following the existing patterns.
           </p>
         </div>
@@ -926,19 +926,6 @@ export default {
       const tool = agentToolsStore.tools.find(t => t.id === agentId);
       if (tool) {
         tool.maxConcurrentRuns = Math.max(1, parseInt(value) || 1);
-        await agentToolsStore.saveAgents();
-      }
-    }
-
-    function getAgentCooldown(agentId) {
-      const tool = agentToolsStore.tools.find(t => t.id === agentId);
-      return tool ? tool.cooldownMinutes : 5;
-    }
-
-    async function setAgentCooldown(agentId, value) {
-      const tool = agentToolsStore.tools.find(t => t.id === agentId);
-      if (tool) {
-        tool.cooldownMinutes = Math.max(0, parseInt(value) || 0);
         await agentToolsStore.saveAgents();
       }
     }
@@ -1650,8 +1637,6 @@ export default {
       setAgentModel,
       getAgentConcurrent,
       setAgentConcurrent,
-      getAgentCooldown,
-      setAgentCooldown,
       modelTools,
       modelError,
       agentSupportsModelSelection,

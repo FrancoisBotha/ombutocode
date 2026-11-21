@@ -5,7 +5,7 @@
  *
  *   {
  *     "settings":  { ...headless settings keys... },        in-memory overrides, never persisted
- *     "agents":    { "cooldown_minutes": 0, ... },           applied to every codingagents.yml tool
+ *     "agents":    { "max_concurrent": 2, ... },             applied to every codingagents.yml tool
  *     "scheduler": { "eval_post_merge_cooldown_ms": 0 }      module constants the scheduler exposes
  *   }
  *

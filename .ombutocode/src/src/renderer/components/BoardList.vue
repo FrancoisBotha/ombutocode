@@ -354,14 +354,6 @@
         >
           <span class="mdi mdi-format-list-bulleted"></span>
         </div>
-        <div
-          class="collapsed-board"
-          :class="{ 'is-active': activeView === 'automation' }"
-          @click="$emit('change-view', 'automation')"
-          title="Automation"
-        >
-          <span class="mdi mdi-lightning-bolt-outline"></span>
-        </div>
       </template>
 
       <template v-if="sidebarMode === 'review'">
@@ -603,7 +595,6 @@ export default {
       { view: 'kanban', label: 'Board', icon: 'mdi-view-column' },
       { action: 'minor-fix', label: 'Minor Fix', icon: 'mdi-wrench-outline' },
       { view: 'backlog', label: 'Backlog', icon: 'mdi-format-list-bulleted' },
-      { view: 'automation', label: 'Automation', icon: 'mdi-lightning-bolt-outline' },
     ];
 
     const buildNavGroups = [
@@ -616,12 +607,6 @@ export default {
           { view: 'backlog', label: 'Backlog' },
           // Feature Requests hidden for now — the 'requests' view still exists.
           // { view: 'requests', label: 'Feature Requests' },
-        ]
-      },
-      {
-        label: 'Operations',
-        items: [
-          { view: 'automation', label: 'Automation' },
         ]
       },
     ];
@@ -1245,7 +1230,7 @@ export default {
     const loadSchedulerStatus = async () => {
       try {
         const status = await window.electron.ipcRenderer.invoke('scheduler:status');
-        autoRunning.value = status?.status === 'running' || status?.status === 'paused';
+        autoRunning.value = status?.status === 'running';
       } catch (e) {
         console.error('[BoardList] Failed to load scheduler status:', e);
       }
@@ -1255,7 +1240,7 @@ export default {
       try {
         const channel = autoRunning.value ? 'scheduler:stop' : 'scheduler:start';
         const status = await window.electron.ipcRenderer.invoke(channel);
-        autoRunning.value = status?.status === 'running' || status?.status === 'paused';
+        autoRunning.value = status?.status === 'running';
       } catch (e) {
         console.error('[BoardList] Failed to toggle auto mode:', e);
       }

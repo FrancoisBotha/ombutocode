@@ -26,7 +26,6 @@
       <EpicsTable v-else-if="activeView === 'epics'" />
       <PrdView v-else-if="activeView === 'prd'" />
       <AgentsToolsView v-else-if="activeView === 'agents'" />
-      <AutomationView v-else-if="activeView === 'automation'" />
       <LogsTable v-else-if="activeView === 'logs'" />
       <SettingsView v-else-if="activeView === 'settings'" />
       <HelpView v-else-if="activeView === 'help'" />
@@ -157,7 +156,6 @@ import ArchiveTable from '@/components/ArchiveTable.vue';
 import EpicsTable from '@/components/EpicsTable.vue';
 import PrdView from '@/components/PrdView.vue';
 import AgentsToolsView from '@/components/AgentsToolsView.vue';
-import AutomationView from '@/components/AutomationView.vue';
 import LogsTable from '@/components/LogsTable.vue';
 import RequestsTable from '@/components/RequestsTable.vue';
 import SettingsView from '@/components/SettingsView.vue';
@@ -207,7 +205,6 @@ export default {
     PrdView,
     AgentsToolsView,
     RequestsTable,
-    AutomationView,
     LogsTable,
     SettingsView,
     WorkspaceView,

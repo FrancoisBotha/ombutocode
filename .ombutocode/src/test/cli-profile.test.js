@@ -17,26 +17,26 @@ test('normalizeProfile keeps settings, known agent/scheduler keys, ignores _doc 
     scheduler: { eval_post_merge_cooldown_ms: 0, tick_ms: 1 }
   }, 'bench');
   assert.deepEqual(profile.settings, { run_summary_enabled: false, app_refresh_interval: 5 });
-  assert.deepEqual(profile.agents, { cooldown_minutes: 0, max_concurrent: 4 });
+  assert.deepEqual(profile.agents, { max_concurrent: 4 });
   assert.deepEqual(profile.scheduler, { eval_post_merge_cooldown_ms: 0 });
-  assert.deepEqual(profile.ignored, ['agents.colour', 'scheduler.tick_ms']);
+  assert.deepEqual(profile.ignored, ['agents.cooldown_minutes', 'agents.colour', 'scheduler.tick_ms']);
   assert.throws(() => normalizeProfile([]), /must be a JSON object/);
 });
 
 test('loadProfile reads <dir>/<name>.json and reports missing/invalid files', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ombuto-profiles-'));
-  fs.writeFileSync(path.join(dir, 'fast.json'), JSON.stringify({ settings: { max_eval_retries: 1 }, agents: { rate_limit_cooldown_minutes: 0 } }));
+  fs.writeFileSync(path.join(dir, 'fast.json'), JSON.stringify({ settings: { max_eval_retries: 1 }, agents: { max_concurrent: 3 } }));
   fs.writeFileSync(path.join(dir, 'broken.json'), '{ nope');
   const loaded = loadProfile(dir, 'fast');
   assert.equal(loaded.name, 'fast');
   assert.deepEqual(loaded.settings, { max_eval_retries: 1 });
-  assert.deepEqual(loaded.agents, { rate_limit_cooldown_minutes: 0 });
+  assert.deepEqual(loaded.agents, { max_concurrent: 3 });
   assert.equal(loadProfile(dir, 'fast.json').name, 'fast');
   assert.throws(() => loadProfile(dir, 'missing'), /Profile not found/);
   assert.throws(() => loadProfile(dir, 'broken'), /not valid JSON/);
 });
 
-test('the shipped benchmark profile zeroes every cooldown and turns run summaries off', () => {
+test('the shipped benchmark profile zeroes the post-merge eval delay and turns run summaries off', () => {
   const profile = loadProfile(path.resolve(__dirname, '..', '..', 'profiles'), 'benchmark');
   assert.equal(profile.settings.run_summary_enabled, false);
   assert.equal(profile.settings.app_refresh_interval, 5);
@@ -44,7 +44,7 @@ test('the shipped benchmark profile zeroes every cooldown and turns run summarie
   // experiment can set them without editing the profile.
   assert.equal(profile.settings.max_eval_retries, undefined);
   assert.equal(profile.settings.retain_run_output, true);
-  assert.deepEqual(profile.agents, { cooldown_minutes: 0, rolling_window_hours: 0, rate_limit_cooldown_minutes: 0, max_concurrent: 2 });
+  assert.deepEqual(profile.agents, { max_concurrent: 2 });
   assert.equal(profile.scheduler.eval_post_merge_cooldown_ms, 0);
   assert.deepEqual(profile.ignored, []);
   assert.deepEqual(profileToBootOptions(profile), {
@@ -79,20 +79,14 @@ test('agent overrides patch every tool returned by readAgentsConfig', () => {
   const wrapped = applyAgentOverrides(readAgentsConfig, { cooldown_minutes: 0, rolling_window_hours: 0, rate_limit_cooldown_minutes: 0, max_concurrent: 2, colour: 'blue' });
   const config = wrapped();
   for (const tool of config.tools) {
-    assert.equal(tool.cooldown_minutes, 0);
-    assert.equal(tool.rolling_window_hours, 0);
-    assert.equal(tool.rate_limit_cooldown_minutes, 0);
+    // Removed concepts are no longer overridable.
+    assert.equal(tool.cooldown_minutes, 5);
+    assert.equal(tool.rolling_window_hours, 5);
+    assert.equal(tool.rate_limit_cooldown_minutes, undefined);
     assert.equal(tool.max_concurrent, 2);
     assert.equal(tool.colour, undefined);
   }
   assert.equal(applyAgentOverrides(readAgentsConfig, {}), readAgentsConfig);
-});
-
-test('rate_limit_cooldown_minutes 0 stops the scheduler pausing on a rate-limit without reset time', () => {
-  const { parseProviderPauseFromRun } = require('../src/main/scheduler');
-  const run = { state: 'failed', stderr: 'Error: rate limit exceeded, try again later' };
-  assert.ok(parseProviderPauseFromRun(run, {})?.pauseUntil, 'default config pauses for 60 minutes');
-  assert.equal(parseProviderPauseFromRun(run, { rate_limit_cooldown_minutes: 0 }), null);
 });
 
 test('the scheduler takes evalPostMergeCooldownMs from its deps (default 15 s, profile 0)', () => {

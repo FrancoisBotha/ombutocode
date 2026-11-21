@@ -79,7 +79,6 @@ function describeBlocker(ticket, byId) {
  * @param {Object} input
  * @param {Array}  input.tickets           current backlog tickets
  * @param {Array}  input.activeRuns        scheduler.getStatus().activeRuns
- * @param {Array}  [input.agentPauses]     scheduler.getStatus().agentPauses
  * @param {Set|Array} input.trackedIds     ids ever seen in flight during this run
  * @param {Function} [input.mergeLanded]   (ticket) => true | false | null
  * @param {number} input.nowMs
@@ -95,7 +94,6 @@ function evaluateRunState(input = {}) {
   const {
     tickets = [],
     activeRuns = [],
-    agentPauses = [],
     trackedIds = new Set(),
     mergeLanded = () => null,
     nowMs = Date.now(),
@@ -154,7 +152,6 @@ function evaluateRunState(input = {}) {
     return finish('drained', 'no ticket in flight, every tracked ticket is review/done and its merge is on HEAD');
   }
 
-  const paused = (agentPauses || []).filter((p) => p?.isPaused);
   const blockers = [];
   let dispatchable = 0;
   for (const ticket of inFlight) {
@@ -163,17 +160,11 @@ function evaluateRunState(input = {}) {
     else dispatchable += 1;
   }
 
-  if (dispatchable === 0 && blockers.length > 0 && paused.length === 0) {
+  if (dispatchable === 0 && blockers.length > 0) {
     return finish('blocked', `no active run and no dispatchable ticket: ${blockers.map((b) => `${b.id} (${b.reason})`).join('; ')}`, { blockers });
   }
   if (stalled) {
-    return finish('stalled', `no change for ${Math.round((nowMs - lastChangeAtMs) / 60000)} min with no active run`, {
-      blockers,
-      paused: paused.map((p) => p.toolId || p.agentName || null)
-    });
-  }
-  if (paused.length > 0 && dispatchable === 0) {
-    return finish('continue', `provider pause on ${paused.map((p) => p.toolId || p.agentName).join(', ')}`, { paused: paused.map((p) => p.toolId || p.agentName || null) });
+    return finish('stalled', `no change for ${Math.round((nowMs - lastChangeAtMs) / 60000)} min with no active run`, { blockers });
   }
   return finish('continue', `${dispatchable} dispatchable ticket(s) waiting for the scheduler`, { blockers });
 }

@@ -710,7 +710,7 @@ function createRuntimeCallbacks(deps) {
       onTitleBrandingUpdate('Ombuto Code 3');
     }
 
-    // Notify scheduler of run completion for cooldown tracking
+    // Notify scheduler of run completion (cost recording, re-dispatch)
     scheduler.onRunFinished(run);
   }
 

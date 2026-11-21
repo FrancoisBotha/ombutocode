@@ -4,7 +4,6 @@ import { computed, ref } from 'vue';
 function createDefaultSchedulerState() {
   return {
     status: 'stopped',
-    pauseReason: null,
     pollIntervalMs: 30000,
     queue: {
       totalTodo: 0,
@@ -40,7 +39,6 @@ export const useAgentStore = defineStore('agent', () => {
     const queue = payload.queue && typeof payload.queue === 'object' ? payload.queue : {};
     return {
       status: typeof payload.status === 'string' ? payload.status : 'stopped',
-      pauseReason: payload.pauseReason || null,
       pollIntervalMs: Number(payload.pollIntervalMs) || 30000,
       queue: {
         totalTodo: Number(queue.totalTodo) || 0,

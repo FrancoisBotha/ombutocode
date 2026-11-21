@@ -27,10 +27,6 @@
               Max Concurrent
               <input v-model.number="newTool.maxConcurrentRuns" type="number" min="1" required />
             </label>
-            <label>
-              Cool-down (min)
-              <input v-model.number="newTool.cooldownMinutes" type="number" min="0" required />
-            </label>
             <label class="enabled-checkbox">
               <input v-model="newTool.enabled" type="checkbox" />
               Enabled
@@ -61,10 +57,6 @@
               Max Concurrent
               <input v-model.number="editDraft.maxConcurrentRuns" type="number" min="1" required />
             </label>
-            <label>
-              Cool-down (min)
-              <input v-model.number="editDraft.cooldownMinutes" type="number" min="0" required />
-            </label>
             <label class="enabled-checkbox">
               <input v-model="editDraft.enabled" type="checkbox" />
               Enabled
@@ -88,7 +80,6 @@
           </div>
           <dl class="tool-meta">
             <div><dt>Concurrent</dt><dd>{{ tool.maxConcurrentRuns }}</dd></div>
-            <div><dt>Cool-down</dt><dd>{{ tool.cooldownMinutes }}m</dd></div>
             <div><dt>Enabled</dt><dd>{{ tool.enabled ? 'Yes' : 'No' }}</dd></div>
             <div><dt>Models</dt><dd>{{ tool.models?.length || 0 }}</dd></div>
           </dl>
@@ -213,9 +204,7 @@ function createDefaultDraft() {
   return {
     name: '',
     command: '',
-    rollingWindowHours: 5,
     maxConcurrentRuns: 1,
-    cooldownMinutes: 5,
     enabled: true,
     budgetLimit: 0
   };
@@ -296,9 +285,7 @@ export default {
       Object.assign(editDraft, {
         name: tool.name,
         command: tool.command,
-        rollingWindowHours: tool.rollingWindowHours,
         maxConcurrentRuns: tool.maxConcurrentRuns,
-        cooldownMinutes: tool.cooldownMinutes,
         budgetLimit: tool.budgetLimit || 0,
         enabled: tool.enabled
       });

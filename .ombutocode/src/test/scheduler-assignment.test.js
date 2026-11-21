@@ -5,7 +5,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const { createScheduler: createSchedulerBase, parseProviderPauseFromRun } = require('../src/main/scheduler');
+const { createScheduler: createSchedulerBase, detectProviderLimitFromRun } = require('../src/main/scheduler');
 
 function createTempProjectRoot() {
   const projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ombutocode-scheduler-test-'));
@@ -658,7 +658,6 @@ test('scheduler ignores tool cooldown for eval queue handoff', () => {
           name: 'Codex',
           enabled: true,
           max_concurrent: 1,
-          cooldown_minutes: 60,
           models: [{ id: 'gpt-5', enabled: true, rate_per_hour: 5 }]
         }
       ]
@@ -996,7 +995,7 @@ test('scheduler picks explicitly assigned tickets and queue readiness excludes u
   assert.ok(typeof status.queue.nextTickets[0].estimatedPickupAt === 'string');
 });
 
-test('scheduler records model cost on completed run without budget pause gating', () => {
+test('scheduler records model cost on completed run without budget gating', () => {
   const projectRoot = createTempProjectRoot();
   const agentRuntime = buildAgentRuntimeStub({ trackActiveRuns: true });
   const backlog = {
@@ -1034,7 +1033,7 @@ test('scheduler records model cost on completed run without budget pause gating'
     exitCode: 0
   });
 
-  const afterCost = scheduler.windowTracker.loadState();
+  const afterCost = scheduler.agentState.loadState();
   assert.equal(afterCost.windows.claude.total_cost, 0.5);
 
   scheduler.start();
@@ -1147,13 +1146,14 @@ test('scheduler ignores dispatch events while stopped', () => {
   assert.equal(agentRuntime.started.length, 0);
 });
 
-test('scheduler parses provider rate-limit failure and pauses tool until expiry', () => {
+test('scheduler logs a provider rate-limit failure without pausing the tool', () => {
   const projectRoot = createTempProjectRoot();
   const agentRuntime = buildAgentRuntimeStub({ trackActiveRuns: true });
+  const events = [];
   const backlog = {
     tickets: [
-      { id: 'AD_HOC-021-PAUSE-001', status: 'todo', title: 'First', assignee: 'codex' },
-      { id: 'AD_HOC-021-PAUSE-002', status: 'todo', title: 'Second', assignee: 'codex' }
+      { id: 'AD_HOC-021-LIMIT-001', status: 'todo', title: 'First', assignee: 'codex' },
+      { id: 'AD_HOC-021-LIMIT-002', status: 'todo', title: 'Second', assignee: 'codex' }
     ]
   };
 
@@ -1161,6 +1161,7 @@ test('scheduler parses provider rate-limit failure and pauses tool until expiry'
     projectRoot,
     agentRuntime,
     readBacklogData: () => backlog,
+    logEvent: (type, level, message, meta) => events.push({ type, level, message, meta }),
     readAgentsConfig: () => ({
       tools: [
         {
@@ -1176,113 +1177,86 @@ test('scheduler parses provider rate-limit failure and pauses tool until expiry'
 
   scheduler.start();
   assert.equal(agentRuntime.started.length, 1);
-  assert.equal(agentRuntime.started[0].payload.ticketId, 'AD_HOC-021-PAUSE-001');
+  assert.equal(agentRuntime.started[0].payload.ticketId, 'AD_HOC-021-LIMIT-001');
 
   // Mirror runtime status transition while run-1 is in flight.
   backlog.tickets[0].status = 'in_progress';
   agentRuntime.finishRun('run-1', 'failed');
 
-  const pauseUntil = new Date(Date.now() + 5 * 60000).toISOString();
+  const limitUntil = new Date(Date.now() + 5 * 60000).toISOString();
   scheduler.onRunFinished({
     runId: 'run-1',
     agentName: 'codex',
-    ticketId: 'AD_HOC-021-PAUSE-001',
+    ticketId: 'AD_HOC-021-LIMIT-001',
     state: 'failed',
     exitCode: 1,
-    error: `HTTP 429 rate limit exceeded reset_at=${pauseUntil}`,
-    stderr: `Provider response: {"error":{"type":"rate_limit","reset_at":"${pauseUntil}"}}`
+    error: `HTTP 429 rate limit exceeded reset_at=${limitUntil}`,
+    stderr: `Provider response: {"error":{"type":"rate_limit","reset_at":"${limitUntil}"}}`
   });
 
-  // Still paused, so second ticket should not start.
-  assert.equal(agentRuntime.started.length, 1);
+  // Nothing is paused, so the second ticket starts straight away.
+  assert.equal(agentRuntime.started.length, 2);
+  assert.equal(agentRuntime.started[1].payload.ticketId, 'AD_HOC-021-LIMIT-002');
 
-  const windowState = scheduler.windowTracker.loadState();
-  assert.equal(windowState.windows.codex.paused, true);
-  assert.equal(windowState.windows.codex.pause_until, pauseUntil);
-  assert.match(windowState.windows.codex.pause_reason || '', /Provider rate limit/i);
+  const windowState = scheduler.agentState.loadState();
+  assert.equal('paused' in (windowState.windows?.codex || {}), false);
 
   const status = scheduler.getStatus();
-  assert.equal(status.status, 'paused');
-  assert.ok(Array.isArray(status.agentPauses));
-  assert.equal(status.agentPauses.length, 1);
-  assert.equal(status.agentPauses[0].toolId, 'codex');
-  assert.equal(status.agentPauses[0].pauseUntil, pauseUntil);
-  assert.ok(Number(status.agentPauses[0].pauseRemainingMs) > 0);
+  assert.equal(status.status, 'running');
+  assert.equal('agentPauses' in status, false);
+  assert.equal('pauseReason' in status, false);
+
+  const detected = events.find(e => e.type === 'agent.rate_limit_detected');
+  assert.ok(detected, 'rate limit is still logged');
+  assert.equal(detected.meta.details.limitUntil, limitUntil);
 
   scheduler.stop();
 });
 
-test('scheduler auto-resumes paused tool after provider expiry and picks next ticket', () => {
+test('scheduler ignores and strips pause/rolling-window fields left on disk by an older build', () => {
   const projectRoot = createTempProjectRoot();
   const agentRuntime = buildAgentRuntimeStub({ trackActiveRuns: true });
-  const backlog = {
-    tickets: [
-      { id: 'AD_HOC-021-RESUME-001', status: 'todo', title: 'First', assignee: 'codex' },
-      { id: 'AD_HOC-021-RESUME-002', status: 'todo', title: 'Second', assignee: 'codex' }
-    ]
-  };
-
+  const backlog = { tickets: [{ id: 'AD_HOC-021-STALE-001', status: 'todo', title: 'First', assignee: 'codex' }] };
   const scheduler = createScheduler({
     projectRoot,
     agentRuntime,
     readBacklogData: () => backlog,
     readAgentsConfig: () => ({
-      tools: [
-        {
-          id: 'codex',
-          name: 'Codex',
-          enabled: true,
-          max_concurrent: 1,
-          models: [{ id: 'gpt-5', enabled: true, rate_per_hour: 5 }]
-        }
-      ]
+      tools: [{ id: 'codex', name: 'Codex', enabled: true, max_concurrent: 1, models: [{ id: 'gpt-5', enabled: true, rate_per_hour: 5 }] }]
     })
+  });
+  scheduler.agentState.saveState({
+    scheduler_running: true,
+    windows: {
+      codex: {
+        window_start: new Date().toISOString(),
+        runs_in_window: 3,
+        total_cost: 0,
+        paused: true,
+        pause_reason: 'Paused for maintenance',
+        pause_until: '2099-01-01T00:00:00.000Z'
+      }
+    },
+    run_history: []
   });
 
   scheduler.start();
   assert.equal(agentRuntime.started.length, 1);
-
-  backlog.tickets[0].status = 'in_progress';
-  agentRuntime.finishRun('run-1', 'failed');
-
-  const futurePauseUntil = new Date(Date.now() + 10 * 60000).toISOString();
-  scheduler.onRunFinished({
-    runId: 'run-1',
-    agentName: 'codex',
-    ticketId: 'AD_HOC-021-RESUME-001',
-    state: 'failed',
-    exitCode: 1,
-    stderr: `rate limit hit; retry_after=600; reset_at=${futurePauseUntil}`
-  });
-
-  assert.equal(agentRuntime.started.length, 1);
-
-  // Force expiry in persisted state and dispatch again.
-  const state = scheduler.windowTracker.loadState();
-  state.windows.codex.pause_until = '2000-01-01T00:00:00.000Z';
-  scheduler.windowTracker.saveState(state);
-
-  const dispatchResult = scheduler.dispatch({ reason: 'manual-after-expiry' });
-  assert.equal(dispatchResult.accepted, true);
-  assert.equal(agentRuntime.started.length, 2);
-  assert.equal(agentRuntime.started[1].payload.ticketId, 'AD_HOC-021-RESUME-002');
-
-  const refreshedState = scheduler.windowTracker.loadState();
-  assert.equal(refreshedState.windows.codex.paused, false);
-  assert.equal(refreshedState.windows.codex.pause_until, null);
-  assert.equal(refreshedState.windows.codex.pause_reason, null);
-
+  const codex = scheduler.agentState.loadState().windows.codex;
+  for (const key of ['window_start', 'runs_in_window', 'paused', 'pause_reason', 'pause_until']) {
+    assert.equal(key in codex, false, `${key} should be stripped`);
+  }
   scheduler.stop();
 });
 
-test('parseProviderPauseFromRun reads limit expiry from stderr/stdout/error structures', () => {
-  const pauseA = parseProviderPauseFromRun({
+test('detectProviderLimitFromRun reads limit expiry from stderr/stdout/error structures', () => {
+  const limitA = detectProviderLimitFromRun({
     error: 'HTTP 429 Too many requests. reset_at=2099-01-01T00:00:00Z'
   });
-  assert.ok(pauseA);
-  assert.equal(pauseA.pauseUntil, '2099-01-01T00:00:00.000Z');
+  assert.ok(limitA);
+  assert.equal(limitA.limitUntil, '2099-01-01T00:00:00.000Z');
 
-  const pauseB = parseProviderPauseFromRun({
+  const limitB = detectProviderLimitFromRun({
     stderr: JSON.stringify({
       error: {
         type: 'session_limit',
@@ -1290,78 +1264,61 @@ test('parseProviderPauseFromRun reads limit expiry from stderr/stdout/error stru
       }
     })
   });
-  assert.ok(pauseB);
-  assert.equal(pauseB.pauseUntil, '2099-01-01T01:00:00.000Z');
+  assert.ok(limitB);
+  assert.equal(limitB.limitUntil, '2099-01-01T01:00:00.000Z');
 
-  const pauseC = parseProviderPauseFromRun({
+  const limitC = detectProviderLimitFromRun({
     stdout: 'rate limit reached, retry after 120 seconds'
   });
-  assert.ok(pauseC);
-  assert.match(pauseC.reason, /Provider rate limit until/);
+  assert.ok(limitC);
+  assert.match(limitC.reason, /Provider rate limit until/);
 
-  const noPause = parseProviderPauseFromRun({
+  const noLimit = detectProviderLimitFromRun({
     stderr: 'Provider failed for unrelated validation error'
   });
-  assert.equal(noPause, null);
+  assert.equal(noLimit, null);
 });
 
-test('parseProviderPauseFromRun matches human-readable rate-limit phrases', () => {
-  const pauseCodex = parseProviderPauseFromRun({
+test('detectProviderLimitFromRun matches human-readable rate-limit phrases', () => {
+  const limitCodex = detectProviderLimitFromRun({
     error: "You're out of Codex messages. Your rate limit resets on 10:11 PM."
   });
-  assert.ok(pauseCodex);
-  assert.match(pauseCodex.reason, /rate limit until/i);
+  assert.ok(limitCodex);
+  assert.match(limitCodex.reason, /rate limit until/i);
 
-  const pauseClaude = parseProviderPauseFromRun({
+  const limitClaude = detectProviderLimitFromRun({
     stderr: "You've hit your limit · resets 10pm"
   });
-  assert.ok(pauseClaude);
-  assert.match(pauseClaude.reason, /rate limit until/i);
+  assert.ok(limitClaude);
+  assert.match(limitClaude.reason, /rate limit until/i);
 
-  const pauseUsage = parseProviderPauseFromRun({
+  const limitUsage = detectProviderLimitFromRun({
     stdout: 'usage limit exceeded'
   });
-  assert.ok(pauseUsage);
-  assert.match(pauseUsage.reason, /rate limit detected/i);
+  assert.ok(limitUsage);
+  assert.match(limitUsage.reason, /rate limit detected/i);
 
-  const pauseMessageLimit = parseProviderPauseFromRun({
+  const limitMessageLimit = detectProviderLimitFromRun({
     error: 'message limit reached'
   });
-  assert.ok(pauseMessageLimit);
-  assert.match(pauseMessageLimit.reason, /rate limit detected/i);
+  assert.ok(limitMessageLimit);
+  assert.match(limitMessageLimit.reason, /rate limit detected/i);
 });
 
-test('parseProviderPauseFromRun applies fallback cooldown when no reset time found', () => {
-  const pauseNoTime = parseProviderPauseFromRun({
-    error: "You've hit your limit"
-  }, {
-    rate_limit_cooldown_minutes: 90
-  });
-  assert.ok(pauseNoTime);
-  assert.match(pauseNoTime.reason, /no reset time found, cooling down for 90 minutes/);
-
-  const pauseDefault = parseProviderPauseFromRun({
-    error: "Usage limit exceeded"
-  }, {});
-  assert.ok(pauseDefault);
-  assert.match(pauseDefault.reason, /cooling down for 60 minutes/);
-
-  const pauseZeroCooldown = parseProviderPauseFromRun({
-    error: "hit limit"
-  }, {
-    rate_limit_cooldown_minutes: 0
-  });
-  assert.equal(pauseZeroCooldown, null);
+test('detectProviderLimitFromRun reports a null limitUntil when no reset time is found', () => {
+  const limit = detectProviderLimitFromRun({ error: "You've hit your limit" });
+  assert.ok(limit);
+  assert.equal(limit.limitUntil, null);
+  assert.match(limit.reason, /no reset time found/);
 });
 
-test('parseProviderPauseFromRun parses "resets on 10:11 PM" in local timezone', () => {
+test('detectProviderLimitFromRun parses "resets on 10:11 PM" in local timezone', () => {
   const nowMs = new Date(2026, 1, 17, 20, 0, 0, 0).getTime();
-  const pause = withMockedNow(nowMs, () => parseProviderPauseFromRun(
-    { error: "You're out of Codex messages. Your rate limit resets on 10:11 PM." },
-    { rate_limit_cooldown_minutes: 0 }
+  const limit = withMockedNow(nowMs, () => detectProviderLimitFromRun(
+    { error: "You're out of Codex messages. Your rate limit resets on 10:11 PM." }
   ));
 
-  assert.ok(pause);
+  assert.ok(limit);
   const now = new Date(nowMs);
   const expected = new Date(
     now.getFullYear(),
@@ -1372,18 +1329,17 @@ test('parseProviderPauseFromRun parses "resets on 10:11 PM" in local timezone', 
     0,
     0
   );
-  assert.equal(pause.pauseUntil, expected.toISOString());
+  assert.equal(limit.limitUntil, expected.toISOString());
 });
 
-test('parseProviderPauseFromRun parses "resets 10pm (Australia/Sydney)" using provided timezone', () => {
+test('detectProviderLimitFromRun parses "resets 10pm (Australia/Sydney)" using provided timezone', () => {
   const nowMs = Date.UTC(2026, 1, 17, 8, 0, 0, 0);
   const timeZone = 'Australia/Sydney';
-  const pause = withMockedNow(nowMs, () => parseProviderPauseFromRun(
-    { stderr: "You've hit your limit · resets 10pm (Australia/Sydney)" },
-    { rate_limit_cooldown_minutes: 0 }
+  const limit = withMockedNow(nowMs, () => detectProviderLimitFromRun(
+    { stderr: "You've hit your limit · resets 10pm (Australia/Sydney)" }
   ));
 
-  assert.ok(pause);
+  assert.ok(limit);
   const nowParts = getZonedParts(nowMs, timeZone);
   let targetYmd = { year: nowParts.year, month: nowParts.month, day: nowParts.day };
   const todayAtTenPm = findUtcForZonedDateTime({ ...targetYmd, hour: 22, minute: 0 }, timeZone);
@@ -1391,17 +1347,16 @@ test('parseProviderPauseFromRun parses "resets 10pm (Australia/Sydney)" using pr
     targetYmd = addDaysToYmd(targetYmd.year, targetYmd.month, targetYmd.day, 1);
   }
   const expected = findUtcForZonedDateTime({ ...targetYmd, hour: 22, minute: 0 }, timeZone);
-  assert.equal(pause.pauseUntil, expected.toISOString());
+  assert.equal(limit.limitUntil, expected.toISOString());
 });
 
-test('parseProviderPauseFromRun rolls "resets 10pm" to tomorrow when local time is already past 10pm', () => {
+test('detectProviderLimitFromRun rolls "resets 10pm" to tomorrow when local time is already past 10pm', () => {
   const nowMs = new Date(2026, 1, 17, 23, 0, 0, 0).getTime();
-  const pause = withMockedNow(nowMs, () => parseProviderPauseFromRun(
-    { stderr: "You've hit your limit · resets 10pm" },
-    { rate_limit_cooldown_minutes: 0 }
+  const limit = withMockedNow(nowMs, () => detectProviderLimitFromRun(
+    { stderr: "You've hit your limit · resets 10pm" }
   ));
 
-  assert.ok(pause);
+  assert.ok(limit);
   const now = new Date(nowMs);
   const expected = new Date(
     now.getFullYear(),
@@ -1412,17 +1367,16 @@ test('parseProviderPauseFromRun rolls "resets 10pm" to tomorrow when local time 
     0,
     0
   );
-  assert.equal(pause.pauseUntil, expected.toISOString());
+  assert.equal(limit.limitUntil, expected.toISOString());
 });
 
-test('parseProviderPauseFromRun parses 24h reset times like "resets 22:11"', () => {
+test('detectProviderLimitFromRun parses 24h reset times like "resets 22:11"', () => {
   const nowMs = new Date(2026, 1, 17, 20, 0, 0, 0).getTime();
-  const pause = withMockedNow(nowMs, () => parseProviderPauseFromRun(
-    { stderr: 'rate limit hit; resets 22:11' },
-    { rate_limit_cooldown_minutes: 0 }
+  const limit = withMockedNow(nowMs, () => detectProviderLimitFromRun(
+    { stderr: 'rate limit hit; resets 22:11' }
   ));
 
-  assert.ok(pause);
+  assert.ok(limit);
   const now = new Date(nowMs);
   const expected = new Date(
     now.getFullYear(),
@@ -1433,17 +1387,16 @@ test('parseProviderPauseFromRun parses 24h reset times like "resets 22:11"', () 
     0,
     0
   );
-  assert.equal(pause.pauseUntil, expected.toISOString());
+  assert.equal(limit.limitUntil, expected.toISOString());
 });
 
-test('parseProviderPauseFromRun falls back to local timezone when reset timezone is invalid', () => {
+test('detectProviderLimitFromRun falls back to local timezone when reset timezone is invalid', () => {
   const nowMs = new Date(2026, 1, 17, 20, 0, 0, 0).getTime();
-  const pause = withMockedNow(nowMs, () => parseProviderPauseFromRun(
-    { stderr: "You've hit your limit · resets 10pm (Not/A_Real_Zone)" },
-    { rate_limit_cooldown_minutes: 0 }
+  const limit = withMockedNow(nowMs, () => detectProviderLimitFromRun(
+    { stderr: "You've hit your limit · resets 10pm (Not/A_Real_Zone)" }
   ));
 
-  assert.ok(pause);
+  assert.ok(limit);
   const now = new Date(nowMs);
   const expected = new Date(
     now.getFullYear(),
@@ -1454,16 +1407,15 @@ test('parseProviderPauseFromRun falls back to local timezone when reset timezone
     0,
     0
   );
-  assert.equal(pause.pauseUntil, expected.toISOString());
+  assert.equal(limit.limitUntil, expected.toISOString());
 });
 
-test('exhausted API credit is treated as a provider pause, not a ticket failure', () => {
-  const pause = parseProviderPauseFromRun(
-    { stdout: '{"type":"result","result":"Credit balance is too low"}', stderr: '' },
-    { rate_limit_cooldown_minutes: 15 }
+test('exhausted API credit is detected as a provider limit', () => {
+  const limit = detectProviderLimitFromRun(
+    { stdout: '{"type":"result","result":"Credit balance is too low"}', stderr: '' }
   );
-  assert.ok(pause, 'credit exhaustion should pause the tool');
-  assert.match(pause.reason, /rate limit|cooling down/i);
-  assert.equal(parseProviderPauseFromRun({ stdout: 'credit where credit is due; all tests pass', stderr: '' }, {}), null);
+  assert.ok(limit, 'credit exhaustion should be detected');
+  assert.match(limit.reason, /rate limit/i);
+  assert.equal(detectProviderLimitFromRun({ stdout: 'credit where credit is due; all tests pass', stderr: '' }), null);
 });
 

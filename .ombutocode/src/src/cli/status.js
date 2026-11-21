@@ -33,7 +33,7 @@ function collectStatus(ctx, { now = () => new Date() } = {}) {
   const { paths, utils, scheduler } = ctx;
   const tickets = ctx.dbReady ? utils.readBacklogData().tickets : [];
   const schedulerStatus = scheduler.getStatus();
-  const state = scheduler.windowTracker.loadState();
+  const state = scheduler.agentState.loadState();
   const lastStage = lastManifestStage(paths.MANIFEST_PATH);
 
   return {
@@ -55,8 +55,6 @@ function collectStatus(ctx, { now = () => new Date() } = {}) {
     activeTicketFiles: listActiveTicketFiles(paths.TICKETS_DIR),
     scheduler: {
       status: schedulerStatus.status,
-      pauseReason: schedulerStatus.pauseReason || null,
-      agentPauses: schedulerStatus.agentPauses || [],
       persistedRunning: state.scheduler_running === true
     },
     lastManifestStage: lastStage

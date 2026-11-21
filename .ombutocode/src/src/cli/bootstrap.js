@@ -20,9 +20,6 @@ const APP_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 
 // codingagents.yml per-tool fields a benchmark profile may override in memory.
 const AGENT_OVERRIDE_KEYS = [
-  'cooldown_minutes',
-  'rolling_window_hours',
-  'rate_limit_cooldown_minutes',
   'max_concurrent',
   'budget_limit',
   'enabled'
@@ -100,7 +97,7 @@ function applySettingsOverrides(store, overrides) {
 
 /**
  * Wrap `readAgentsConfig` so every tool carries the profile's overrides
- * (cooldowns, concurrency, ...). Only known per-tool keys are applied.
+ * (concurrency, enabled, ...). Only known per-tool keys are applied.
  */
 function applyAgentOverrides(readAgentsConfig, overrides) {
   if (!overrides || typeof overrides !== 'object' || Object.keys(overrides).length === 0) {
@@ -388,9 +385,9 @@ async function bootProject(options = {}) {
  * `run` subcommand both flip it on start and off on every exit path.
  */
 function persistSchedulerRunning(scheduler, running) {
-  const state = scheduler.windowTracker.loadState();
+  const state = scheduler.agentState.loadState();
   state.scheduler_running = Boolean(running);
-  scheduler.windowTracker.saveState(state);
+  scheduler.agentState.saveState(state);
 }
 
 module.exports = {

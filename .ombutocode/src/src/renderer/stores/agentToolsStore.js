@@ -6,9 +6,7 @@ const DEFAULT_TOOLS = [
     id: 'claude',
     name: 'Claude',
     command: '/usr/local/bin/claude',
-    rollingWindowHours: 5,
     maxConcurrentRuns: 1,
-    cooldownMinutes: 5,
     enabled: true,
     budgetLimit: 50.0,
     models: [
@@ -50,9 +48,7 @@ const DEFAULT_TOOLS = [
     id: 'codex',
     name: 'Codex',
     command: '/usr/local/bin/codex',
-    rollingWindowHours: 5,
     maxConcurrentRuns: 1,
-    cooldownMinutes: 5,
     enabled: true,
     budgetLimit: 50.0,
     models: [
@@ -86,9 +82,7 @@ const DEFAULT_TOOLS = [
     id: 'kimi',
     name: 'Kimi',
     command: '/usr/local/bin/kimi',
-    rollingWindowHours: 5,
     maxConcurrentRuns: 1,
-    cooldownMinutes: 5,
     enabled: false,
     budgetLimit: 50.0,
     models: [
@@ -140,9 +134,7 @@ function fromYaml(tool) {
     id: String(tool.id || ''),
     name: String(tool.name || '').trim(),
     command: String(tool.command || '').trim(),
-    rollingWindowHours: normalizeNumber(tool.rolling_window_hours, 1),
     maxConcurrentRuns: normalizeNumber(tool.max_concurrent, 1),
-    cooldownMinutes: normalizeNumber(tool.cooldown_minutes, 0),
     enabled: tool.enabled !== false,
     budgetLimit: normalizeNumber(tool.budget_limit, 0),
     models: Array.isArray(tool.models) ? tool.models.map(fromYamlModel) : []
@@ -166,9 +158,7 @@ function toYaml(tool) {
     id: tool.id,
     name: tool.name,
     command: tool.command,
-    rolling_window_hours: tool.rollingWindowHours,
     max_concurrent: tool.maxConcurrentRuns,
-    cooldown_minutes: tool.cooldownMinutes,
     enabled: tool.enabled,
     budget_limit: tool.budgetLimit,
     models: (tool.models || []).map(toYamlModel)
@@ -253,9 +243,7 @@ export const useAgentToolsStore = defineStore('agent-tools', () => {
       id: createToolId(name),
       name,
       command,
-      rollingWindowHours: Math.max(1, normalizeNumber(toolDraft.rollingWindowHours, 1)),
       maxConcurrentRuns: Math.max(1, normalizeNumber(toolDraft.maxConcurrentRuns, 1)),
-      cooldownMinutes: Math.max(0, normalizeNumber(toolDraft.cooldownMinutes, 0)),
       enabled: !!toolDraft.enabled,
       budgetLimit: Math.max(0, normalizeNumber(toolDraft.budgetLimit, 0)),
       models: []
@@ -275,9 +263,7 @@ export const useAgentToolsStore = defineStore('agent-tools', () => {
       ...current,
       name: String(updates?.name ?? current.name).trim(),
       command: String(updates?.command ?? current.command).trim(),
-      rollingWindowHours: Math.max(1, normalizeNumber(updates?.rollingWindowHours ?? current.rollingWindowHours, 1)),
       maxConcurrentRuns: Math.max(1, normalizeNumber(updates?.maxConcurrentRuns ?? current.maxConcurrentRuns, 1)),
-      cooldownMinutes: Math.max(0, normalizeNumber(updates?.cooldownMinutes ?? current.cooldownMinutes, 0)),
       enabled: updates?.enabled === undefined ? current.enabled : !!updates.enabled,
       budgetLimit: Math.max(0, normalizeNumber(updates?.budgetLimit ?? current.budgetLimit, 0)),
       models: Array.isArray(updates?.models) ? updates.models : current.models

@@ -41,8 +41,7 @@ const EVENT_TYPES = {
   TICKET_RETRY_LIMIT_SKIPPED: 'ticket.retry_limit_skipped',
 
   // Agent lifecycle
-  AGENT_PAUSE_DETECTED: 'agent.pause_detected',
-  AGENT_RESUMED: 'agent.resumed',
+  AGENT_RATE_LIMIT_DETECTED: 'agent.rate_limit_detected',
   AGENT_CANCELLED: 'agent.cancelled',
   AGENT_MANUAL_START: 'agent.manual_start',
 

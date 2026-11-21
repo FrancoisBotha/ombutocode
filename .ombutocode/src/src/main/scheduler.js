@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createWindowTracker } = require('./windowTracker');
+const { createAgentStateStore } = require('./agentState');
 const {
   createWorktreeSync: createWorktree,
   prepareEvalTrialMergeSync: prepareEvalTrialMerge,
@@ -13,9 +13,9 @@ const {
 const { readEpics, createEpicReadinessGate } = require('./epicReader');
 
 const DEFAULT_QUEUE_ESTIMATE_INTERVAL_MS = 30000; // 30 seconds
-// Exhausted API credit ("Credit balance is too low") is a provider-side stop
-// like a rate limit: retrying the ticket only burns its failure budget, so it
-// is treated as a pause on the tool rather than a failure of the ticket.
+// Provider-side stops: rate limits and exhausted API credit ("Credit balance
+// is too low"). Detection is logged only — there is no concept of pausing a
+// tool; the scheduler keeps dispatching and the run fails normally.
 const LIMIT_SIGNAL_PATTERN = /\b(rate[_\s-]?limit(?:ed)?\b|session[_\s-]?limit\b|too many requests|quota exceeded|(?:status|code|error|http)[:\s]*429|429[:\s]*(?:too many|rate|limit)|out of (?:.*\s)?messages|hit (?:.*\s)?limit|usage (?:limit|cap)|message limit|messages remaining:\s*0|credit balance is too low|insufficient credits?|billing (?:hard )?limit)\b/i;
 const EXPIRY_KEY_PATTERN = /\b(reset(?:_at|at|time)?|retry(?:_after|after)?|expires?(?:_at|at)?|resume(?:_at|at)?)\b/i;
 
@@ -207,7 +207,7 @@ function collectRunErrorSegments(run = {}) {
   return segments;
 }
 
-function inferPauseExpiryFromSegments(segments = []) {
+function inferLimitExpiryFromSegments(segments = []) {
   const nowMs = Date.now();
   let bestDate = null;
 
@@ -451,38 +451,29 @@ function inferPauseExpiryFromSegments(segments = []) {
   return bestDate;
 }
 
-function parseProviderPauseFromRun(run = {}, agentConfig = {}) {
+/**
+ * Detect a provider-side limit (rate limit, exhausted credit) in a failed run's
+ * output. Returns { reason, limitUntil } for logging, or null. Never pauses.
+ */
+function detectProviderLimitFromRun(run = {}) {
   const segments = collectRunErrorSegments(run);
   if (segments.length === 0) return null;
 
   const combinedText = segments.join('\n');
   if (!LIMIT_SIGNAL_PATTERN.test(combinedText)) return null;
 
-  // Try to infer pause expiry from segments
-  const pauseUntil = inferPauseExpiryFromSegments(segments);
-
-  // If expiry was inferred, return it
-  if (pauseUntil) {
+  const limitUntil = inferLimitExpiryFromSegments(segments);
+  if (limitUntil) {
     return {
-      reason: `Provider rate limit until ${pauseUntil.toISOString()}`,
-      pauseUntil: pauseUntil.toISOString()
+      reason: `Provider rate limit until ${limitUntil.toISOString()}`,
+      limitUntil: limitUntil.toISOString()
     };
   }
 
-  // If no expiry inferred, check for fallback cooldown
-  const cooldownMinutes = Number.isFinite(agentConfig.rate_limit_cooldown_minutes)
-    ? agentConfig.rate_limit_cooldown_minutes
-    : 60; // default: 60 minute cooldown when no reset time found
-
-  if (cooldownMinutes > 0) {
-    const fallbackPauseUntil = new Date(Date.now() + (cooldownMinutes * 60000));
-    return {
-      reason: `Provider rate limit detected — no reset time found, cooling down for ${cooldownMinutes} minutes`,
-      pauseUntil: fallbackPauseUntil.toISOString()
-    };
-  }
-
-  return null;
+  return {
+    reason: 'Provider rate limit detected — no reset time found',
+    limitUntil: null
+  };
 }
 
 /**
@@ -494,7 +485,7 @@ function parseProviderPauseFromRun(run = {}, agentConfig = {}) {
  * @param {Function} deps.readAgentsConfig — returns { tools: [...] }
  * @param {Object}   deps.agentRuntime     — AgentRuntime instance
  * @param {string}   deps.projectRoot      — repo root path
- * @returns {{ start: Function, stop: Function, isRunning: Function, getStatus: Function, dispatch: Function, onRunFinished: Function, windowTracker: Object }}
+ * @returns {{ start: Function, stop: Function, isRunning: Function, getStatus: Function, dispatch: Function, onRunFinished: Function, agentState: Object }}
  */
 function createScheduler(deps) {
   const {
@@ -534,8 +525,6 @@ function createScheduler(deps) {
   let dispatchQueued = false;
   let currentQueueEstimateIntervalMs = DEFAULT_QUEUE_ESTIMATE_INTERVAL_MS;
 
-  // In-memory tracking for cooldown
-  const lastFinished = {}; // { [toolId]: Date timestamp }
   let lastSquashMergeAt = 0; // timestamp of last squash-merge to main
   const runAssignments = new Map(); // runId -> { toolId, modelId, costPerRun }
 
@@ -546,8 +535,8 @@ function createScheduler(deps) {
   let scheduledStartTimerAt = 0; // epoch ms the armed timer targets
   const scheduledStartReached = new Set(); // ticket ids already logged as released
 
-  // Rolling window tracker for usage counting and auto-pause/resume
-  const windowTracker = createWindowTracker({ projectRoot });
+  // Persisted scheduler state (running flag, per-tool cost)
+  const agentState = createAgentStateStore({ projectRoot });
 
   /**
    * Read the epic markdown files and build a readiness gate. Returns an object
@@ -906,11 +895,8 @@ function createScheduler(deps) {
   }
 
   function getStatus() {
-    windowTracker.refreshExpiredPauses();
     const activeRuns = getActiveRuns();
     const queue = getQueueInfo(activeRuns);
-    const pauseReason = resolvePauseReason();
-    const agentPauses = getAgentPauseStatus();
     const activeRunCounts = {
       implementation: activeRuns.filter((run) => run.queueStatus === 'todo' || run.queueStatus === 'building').length,
       evaluation: activeRuns.filter((run) => run.queueStatus === 'eval').length,
@@ -919,171 +905,12 @@ function createScheduler(deps) {
     };
 
     return {
-      status: running ? (pauseReason ? 'paused' : 'running') : 'stopped',
-      pauseReason,
+      status: running ? 'running' : 'stopped',
       pollIntervalMs: currentQueueEstimateIntervalMs,
       queue,
-      agentPauses,
       activeRunCounts,
       activeRuns
     };
-  }
-
-  function getAutomationActiveRuns(options = {}) {
-    const includeQueued = options?.includeQueued !== false;
-    const runs = getActiveRuns();
-    if (includeQueued) {
-      return runs;
-    }
-    return runs.filter((run) => run.state === 'running');
-  }
-
-  function getAutomationEvalQueue(options = {}) {
-    const limit = Number.isInteger(options?.limit) && options.limit > 0
-      ? options.limit
-      : 25;
-
-    const backlog = readBacklogDataSafe();
-    if (!backlog) {
-      return {
-        totalTickets: 0,
-        activeCount: 0,
-        readyCount: 0,
-        tickets: [],
-        activeTicketIds: [],
-        error: 'Failed to read backlog'
-      };
-    }
-
-    const tickets = Array.isArray(backlog?.tickets) ? backlog.tickets : [];
-    const evalTickets = tickets.filter((ticket) => ticket?.status === 'eval');
-    const activeRuns = getActiveRuns();
-    const activeEvalTicketIds = new Set(
-      activeRuns
-        .filter((run) => run.queueStatus === 'eval')
-        .map((run) => run.ticketId)
-        .filter(Boolean)
-    );
-    const ticketStatusById = createTicketStatusIndex(backlog);
-    const queueBaseMs = Date.now();
-    let readyIndex = 0;
-
-    const queueTickets = evalTickets
-      .filter((ticket) => !activeEvalTicketIds.has(ticket.id))
-      .map((ticket) => {
-        const queueAssignee = resolveEvalQueueAssignee(ticket);
-        const dependencyReady = hasResolvedDependencies(ticket, ticketStatusById);
-        const assigneeReady = hasExplicitAssignee({ assignee: queueAssignee });
-        const ready = dependencyReady && assigneeReady;
-
-        let estimatedPickupAt = null;
-        if (ready) {
-          readyIndex += 1;
-          estimatedPickupAt = new Date(
-            queueBaseMs + (readyIndex * currentQueueEstimateIntervalMs)
-          ).toISOString();
-        }
-
-        return {
-          id: ticket.id,
-          title: ticket.title || ticket.id,
-          assignee: queueAssignee,
-          ready,
-          blockedByDependencies: !dependencyReady,
-          estimatedPickupAt
-        };
-      });
-
-    return {
-      totalTickets: evalTickets.length,
-      activeCount: activeEvalTicketIds.size,
-      readyCount: queueTickets.filter((ticket) => ticket.ready).length,
-      tickets: queueTickets.slice(0, limit),
-      activeTicketIds: Array.from(activeEvalTicketIds)
-    };
-  }
-
-  function getAutomationAgentStatus(options = {}) {
-    windowTracker.refreshExpiredPauses();
-    clearLegacyProgrammaticPauses();
-    const includeDisabled = options?.includeDisabled === true;
-    const agentsConfig = readAgentsConfigSafe();
-    const tools = Array.isArray(agentsConfig?.tools) ? agentsConfig.tools : [];
-    const state = windowTracker.loadState();
-    const windows = state?.windows && typeof state.windows === 'object' ? state.windows : {};
-    const ticketStatusById = createTicketStatusIndex(readBacklogDataSafe());
-    const nowMs = Date.now();
-    const defaultEvalAssignee = resolveEvalAssignee();
-
-    const agentStatus = tools
-      .filter((tool) => includeDisabled || tool?.enabled)
-      .map((tool) => {
-        const toolId = String(tool?.id || '').trim();
-        const toolName = String(tool?.name || toolId || 'Unknown');
-        const maxConcurrent = Number.isInteger(tool?.max_concurrent) && tool.max_concurrent > 0
-          ? tool.max_concurrent
-          : 1;
-        const activeImplementationRuns = countActiveRunsForToolByQueue(
-          toolId,
-          'todo',
-          ticketStatusById
-        ) + countActiveRunsForToolByQueue(
-          toolId,
-          'building',
-          ticketStatusById
-        );
-        const activeTestRuns = countActiveRunsForToolByQueue(
-          toolId,
-          'test',
-          ticketStatusById
-        );
-        const activeEvaluationRuns = countActiveRunsForToolByQueue(
-          toolId,
-          'eval',
-          ticketStatusById
-        );
-        const activeMergingRuns = countActiveRunsForToolByQueue(
-          toolId,
-          'merging',
-          ticketStatusById
-        );
-        const isEvalDefaultAgent = matchesAssignee(tool, defaultEvalAssignee);
-        const testCapacity = 1;
-        const evalCapacity = isEvalDefaultAgent ? 1 : 0;
-        const mergeCapacity = 1;
-        const totalCapacity = maxConcurrent + testCapacity + evalCapacity + mergeCapacity;
-        const windowState = windows[toolId] || {};
-        const pauseUntil = windowState.pause_until || null;
-        const pauseUntilMs = pauseUntil ? Date.parse(pauseUntil) : NaN;
-        const pauseRemainingMs = Number.isFinite(pauseUntilMs)
-          ? Math.max(0, pauseUntilMs - nowMs)
-          : null;
-
-        return {
-          toolId,
-          toolName,
-          enabled: !!tool?.enabled,
-          isEvalDefaultAgent,
-          maxConcurrent,
-          testCapacity,
-          evalCapacity,
-          mergeCapacity,
-          totalCapacity,
-          activeImplementationRuns,
-          activeTestRuns,
-          activeEvaluationRuns,
-          activeMergingRuns,
-          activeTotalRuns: activeImplementationRuns + activeTestRuns + activeEvaluationRuns + activeMergingRuns,
-          availableCapacity: Math.max(0, totalCapacity - activeImplementationRuns - activeTestRuns - activeEvaluationRuns - activeMergingRuns),
-          isPaused: !!windowState.paused,
-          pauseReason: windowState.pause_reason || null,
-          pauseUntil,
-          pauseRemainingMs
-        };
-      });
-
-    agentStatus.sort((left, right) => left.toolName.localeCompare(right.toolName));
-    return agentStatus;
   }
 
   function dispatch(event = {}) {
@@ -1543,10 +1370,6 @@ function createScheduler(deps) {
             });
           }
 
-          // Record run in rolling window tracker
-          const now = Date.now();
-          windowTracker.recordRun(tool.id, { startedAt: new Date(now).toISOString() });
-
           console.log(`[Scheduler] Started ${tool.id}/${model.id} on ${ticket.id}`);
           logEvent('ticket.pickup', 'info', `Started ${tool.id}/${model.id} on ${ticket.id}`, { ticketId: ticket.id, agentName: tool.id, details: { modelId: model.id } });
           break; // This ticket is now handled, move to next ticket
@@ -1740,24 +1563,10 @@ function createScheduler(deps) {
 
   /**
    * Check if a tool+model can pick up another ticket right now.
-   * Enforces: explicit provider pause + split capacity
-   * (max_concurrent for todo/building, one dedicated eval slot, one dedicated merge slot).
+   * Enforces split capacity (max_concurrent for todo/building, one dedicated
+   * eval slot, one dedicated merge slot).
    */
   function canPickUp(tool, model, ticket = null, ticketStatusById = null) {
-    windowTracker.refreshExpiredPauses();
-    const windowStatus = windowTracker.getRemainingCapacity(tool.id, 10, tool.rolling_window_hours || 5);
-    const pauseReason = String(windowStatus.pauseReason || '');
-
-    // Clear legacy programmatic pauses so only provider-reported pauses remain.
-    if (windowStatus.isPaused && (
-      pauseReason === 'Rolling window exhausted' ||
-      pauseReason.startsWith('Budget limit reached')
-    )) {
-      windowTracker.resumeToolWindowPickup(tool.id);
-    } else if (windowStatus.isPaused) {
-      return false;
-    }
-
     const activeImplementationCount = countActiveRunsForToolByQueue(tool.id, 'todo', ticketStatusById)
       + countActiveRunsForToolByQueue(tool.id, 'building', ticketStatusById);
     const activeTestCount = countActiveRunsForToolByQueue(tool.id, 'test', ticketStatusById);
@@ -1826,13 +1635,11 @@ function createScheduler(deps) {
   }
 
   /**
-   * Notify the scheduler that a run finished (for cooldown tracking and cost recording).
+   * Notify the scheduler that a run finished (for cost recording and re-dispatch).
    * Call this from the agentRuntime onRunFinished callback.
    */
   function onRunFinished(run) {
     if (!run || !run.agentName) return;
-
-    lastFinished[run.agentName] = Date.now();
 
     const assignment = run?.runId ? runAssignments.get(run.runId) : null;
     if (run?.runId) {
@@ -1852,7 +1659,7 @@ function createScheduler(deps) {
     if (run.state === 'completed' && run.exitCode === 0) {
       try {
         if (assignment && assignment.costPerRun > 0) {
-          windowTracker.recordCost(assignment.toolId, assignment.costPerRun);
+          agentState.recordCost(assignment.toolId, assignment.costPerRun);
           console.log(
             `[Scheduler] Recorded cost ${assignment.costPerRun} for ${assignment.toolId}/${assignment.modelId}`
           );
@@ -1864,26 +1671,11 @@ function createScheduler(deps) {
     }
     if (run.state === 'failed') {
       try {
-        let agentConfig = {};
-        try {
-          const agents = readAgentsConfig();
-          const tool = (agents?.tools || []).find((t) => t.id === run.agentName);
-          agentConfig = tool || {};
-        } catch (e) {
-          // Fallback to empty config if read fails
-        }
-
-        const providerPause = parseProviderPauseFromRun(run, agentConfig);
-        if (providerPause?.pauseUntil) {
-          windowTracker.pauseToolWindowPickup(
-            run.agentName,
-            providerPause.reason,
-            { pauseUntil: providerPause.pauseUntil }
-          );
-          console.log(
-            `[Scheduler] Provider pause detected for ${run.agentName} until ${providerPause.pauseUntil}`
-          );
-          logEvent('agent.pause_detected', 'warn', `Provider pause detected for ${run.agentName} until ${providerPause.pauseUntil}`, { agentName: run.agentName, ticketId: run.ticketId, details: { pauseUntil: providerPause.pauseUntil, reason: providerPause.reason } });
+        // Log only (see LIMIT_SIGNAL_PATTERN).
+        const providerLimit = detectProviderLimitFromRun(run);
+        if (providerLimit) {
+          console.log(`[Scheduler] Provider limit detected for ${run.agentName} (${providerLimit.reason})`);
+          logEvent('agent.rate_limit_detected', 'warn', `Provider limit detected for ${run.agentName}: ${providerLimit.reason}`, { agentName: run.agentName, ticketId: run.ticketId, details: { limitUntil: providerLimit.limitUntil, reason: providerLimit.reason } });
         }
       } catch (error) {
         console.error('[Scheduler] Error parsing provider limit response:', error?.message || error);
@@ -2029,92 +1821,6 @@ function createScheduler(deps) {
     }
   }
 
-  function readAgentsConfigSafe() {
-    try {
-      return readAgentsConfig();
-    } catch (error) {
-      return { tools: [] };
-    }
-  }
-
-  function matchesAssignee(tool, assignee) {
-    const toolId = String(tool?.id || '').trim().toLowerCase();
-    const toolName = String(tool?.name || '').trim().toLowerCase();
-
-    if (assignee && typeof assignee === 'object') {
-      return String(assignee.tool || '').trim().toLowerCase() === toolId;
-    }
-
-    const normalizedAssignee = String(assignee || '').trim().toLowerCase();
-    if (!normalizedAssignee) return false;
-    return normalizedAssignee === toolId || normalizedAssignee === toolName;
-  }
-
-  function resolvePauseReason() {
-    windowTracker.refreshExpiredPauses();
-    clearLegacyProgrammaticPauses();
-    const state = windowTracker.loadState();
-    const windows = state?.windows && typeof state.windows === 'object' ? state.windows : {};
-    const reasons = Object.values(windows)
-      .map((windowState) => {
-        if (!windowState || !windowState.paused) return null;
-        return typeof windowState.pause_reason === 'string' && windowState.pause_reason.trim()
-          ? windowState.pause_reason.trim()
-          : 'Paused';
-      })
-      .filter(Boolean);
-
-    if (reasons.length === 0) return null;
-    if (reasons.length === 1) return reasons[0];
-    return `${reasons.length} tools paused`;
-  }
-
-  function clearLegacyProgrammaticPauses() {
-    const state = windowTracker.loadState();
-    const windows = state?.windows && typeof state.windows === 'object' ? state.windows : {};
-    let changed = false;
-
-    for (const windowState of Object.values(windows)) {
-      if (!windowState?.paused) continue;
-      const reason = String(windowState.pause_reason || '');
-      if (reason === 'Rolling window exhausted' || reason.startsWith('Budget limit reached')) {
-        windowState.paused = false;
-        windowState.pause_reason = null;
-        windowState.pause_until = null;
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      windowTracker.saveState(state);
-    }
-  }
-
-  function getAgentPauseStatus() {
-    windowTracker.refreshExpiredPauses();
-    const state = windowTracker.loadState();
-    const windows = state?.windows && typeof state.windows === 'object' ? state.windows : {};
-    const nowMs = Date.now();
-
-    return Object.entries(windows)
-      .filter(([, value]) => value && value.paused)
-      .map(([toolId, value]) => {
-        const pauseUntil = value.pause_until || null;
-        const pauseUntilMs = pauseUntil ? Date.parse(pauseUntil) : NaN;
-        const pauseRemainingMs = Number.isFinite(pauseUntilMs)
-          ? Math.max(0, pauseUntilMs - nowMs)
-          : null;
-
-        return {
-          toolId,
-          isPaused: true,
-          pauseReason: value.pause_reason || 'Paused',
-          pauseUntil,
-          pauseRemainingMs
-        };
-      });
-  }
-
   /**
    * Record that a squash-merge to main just completed.
    * Imposes a cooldown before the next eval dispatch so ticket branches
@@ -2133,18 +1839,15 @@ function createScheduler(deps) {
     stop,
     isRunning,
     getStatus,
-    getAutomationActiveRuns,
-    getAutomationEvalQueue,
-    getAutomationAgentStatus,
     setPollInterval,
     dispatch,
     onRunFinished,
     recordSquashMerge,
-    windowTracker
+    agentState
   };
 }
 
 module.exports = { createScheduler };
-module.exports.parseProviderPauseFromRun = parseProviderPauseFromRun;
+module.exports.detectProviderLimitFromRun = detectProviderLimitFromRun;
 module.exports.buildRetryContext = buildRetryContext;
 module.exports.getScheduledStartDelayMs = getScheduledStartDelayMs;

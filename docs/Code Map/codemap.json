@@ -168,11 +168,11 @@
     },
     {
       "id": "scheduler-support",
-      "path": ".ombutocode/src/src/main/windowTracker.js",
-      "role": "Scheduler helpers: rolling usage-window and auto-pause state persistence (windowTracker), scheduler event logging into the logs database (schedulerLogger + schedulerLogEvents), and epic markdown parsing that builds the epic readiness gate (epicReader).",
+      "path": ".ombutocode/src/src/main/agentState.js",
+      "role": "Scheduler helpers: scheduler running flag and per-tool cost persistence (agentState), scheduler event logging into the logs database (schedulerLogger + schedulerLogEvents), and epic markdown parsing that builds the epic readiness gate (epicReader).",
       "type": "service",
       "entrypoints": [
-        "windowTracker.js:256 createWindowTracker({ projectRoot })",
+        "agentState.js createAgentStateStore({ projectRoot })",
         "schedulerLogger.js:43 createSchedulerLogger()",
         "epicReader.js:139 readEpics / parseDependsList / createEpicReadinessGate"
       ],
@@ -181,14 +181,14 @@
         ".ombutocode/src/test/logs-db.test.js"
       ],
       "constraints": [
-        "Grouped files: windowTracker.js, schedulerLogger.js, schedulerLogEvents.js, epicReader.js.",
-        "windowTracker state is a JSON file on disk, not a database row — it survives restarts and carries scheduler_running."
+        "Grouped files: agentState.js, schedulerLogger.js, schedulerLogEvents.js, epicReader.js.",
+        "agentState state is a JSON file on disk, not a database row — it survives restarts and carries scheduler_running."
       ],
       "evidence": [
-        ".ombutocode/src/src/main/scheduler.js:5 require('./windowTracker')",
+        ".ombutocode/src/src/main/scheduler.js:5 require('./agentState')",
         ".ombutocode/src/src/main/scheduler.js:13 require('./epicReader')",
         ".ombutocode/src/src/main/schedulerLogger.js:3 require('./logsDb')",
-        ".ombutocode/src/main.js:1325 scheduler.windowTracker.loadState()"
+        ".ombutocode/src/main.js:1325 scheduler.agentState.loadState()"
       ]
     },
     {
@@ -511,7 +511,7 @@
         ".ombutocode/src/test/kimi-agent-runtime.test.js"
       ],
       "constraints": [
-        "Each tool declares rolling_window_hours, max_concurrent, cooldown_minutes and budget_limit; the scheduler enforces those, the CLI does not.",
+        "Each tool declares max_concurrent and budget_limit; the scheduler enforces max_concurrent, the CLI does not.",
         "Availability is environmental — the binary must be on PATH; the repo only holds the invocation template."
       ],
       "evidence": [
@@ -563,7 +563,7 @@
     { "from": "electron-main", "to": "file-services", "type": "imports", "evidence": ".ombutocode/src/main.js:50 require('./src/main/fileTreeService'); main.js:21-22 require('./src/main/projectMigration'), require('./src/main/projectInit')" },
     { "from": "electron-main", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/main.js:49 require('./src/main/schedulerLogger'); main.js:1274 createSchedulerLogger()" },
     { "from": "scheduler", "to": "worktree-manager", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:12 require('./worktreeManager'); scheduler.js:1333 createTicketWorktree(ticket.id, { projectRoot }); scheduler.js:1276 createEvalTrialMerge(ticket.id, ...)" },
-    { "from": "scheduler", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:5 require('./windowTracker'); scheduler.js:13 require('./epicReader')" },
+    { "from": "scheduler", "to": "scheduler-support", "type": "imports", "evidence": ".ombutocode/src/src/main/scheduler.js:5 require('./agentState'); scheduler.js:13 require('./epicReader')" },
     { "from": "scheduler", "to": "agent-runtime", "type": "calls", "evidence": ".ombutocode/src/src/main/scheduler.js:1402 agentRuntime.startAgent(tool.id, enrichedPayload, ...); scheduler.js:737 agentRuntime.getRunStatus({ ticketId })" },
     { "from": "scheduler", "to": "backlog-operations", "type": "calls", "evidence": ".ombutocode/src/src/main/scheduler.js:468-470 injected readBacklogData / writeBacklogData, supplied from .ombutocode/src/main.js:1276-1277" },
     { "from": "scheduler-support", "to": "persistence-db", "type": "writes", "evidence": ".ombutocode/src/src/main/schedulerLogger.js:3 require('./logsDb') — scheduler events are appended to the scheduler_logs table (logsDb.js:82)" },

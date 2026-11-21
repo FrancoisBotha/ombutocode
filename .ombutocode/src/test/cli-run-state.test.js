@@ -16,7 +16,6 @@ function evalWith(overrides) {
   return evaluateRunState({
     tickets: [],
     activeRuns: [],
-    agentPauses: [],
     trackedIds: new Set(),
     mergeLanded: () => true,
     nowMs: T0,
@@ -105,15 +104,6 @@ test('stalled: dispatchable work but no change for the stall window and no activ
   const stale = evalWith({ tickets, lastChangeAtMs: T0 - 10 * 60 * 1000, nowMs: T0 });
   assert.equal(stale.outcome, 'stalled');
   assert.equal(stale.exitCode, 1);
-});
-
-test('provider pause keeps the run alive until the stall window', () => {
-  const tickets = [ticket('A-1', 'todo', { assignee: 'NONE' })];
-  const paused = evalWith({ tickets, agentPauses: [{ toolId: 'claude', isPaused: true }] });
-  assert.equal(paused.outcome, 'continue');
-  assert.match(paused.reason, /provider pause on claude/);
-  const stale = evalWith({ tickets, agentPauses: [{ toolId: 'claude', isPaused: true }], lastChangeAtMs: T0 - 11 * 60 * 1000 });
-  assert.equal(stale.outcome, 'stalled');
 });
 
 test('merge reverts beyond the limit → exit 1', () => {

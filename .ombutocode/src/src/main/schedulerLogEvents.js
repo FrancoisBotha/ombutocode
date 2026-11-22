@@ -37,6 +37,8 @@ const EVENT_TYPES = {
   // Ticket failure tracking
   TICKET_FAIL_COUNT_INCREMENTED: 'ticket.fail_count_incremented',
   TICKET_EVAL_FAIL_COUNT_INCREMENTED: 'ticket.eval_fail_count_incremented',
+  TICKET_PROVIDER_LIMIT_RESCHEDULED: 'ticket.provider_limit_rescheduled',
+  TICKET_RETRY_BUDGET_RESET: 'ticket.retry_budget_reset',
   TICKET_MAX_RETRIES_REACHED: 'ticket.max_retries_reached',
   TICKET_RETRY_LIMIT_SKIPPED: 'ticket.retry_limit_skipped',
 

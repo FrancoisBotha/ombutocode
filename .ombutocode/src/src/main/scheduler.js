@@ -125,12 +125,13 @@ function toValidDate(candidate) {
 
 /**
  * Milliseconds until a ticket's optional `scheduled_start` (a not-before
- * timestamp set from the Kanban "Schedule" action). Returns 0 when the field
- * is absent, unparsable, already in the past, or the ticket is no longer
- * `todo` — the gate only ever holds a ticket back from its first pickup.
+ * timestamp set from the Kanban "Schedule" action, or after a provider usage
+ * limit to the limit's reset time). Holds the ticket in whichever column it
+ * is in. Returns 0 when the field is absent, unparsable or already in the
+ * past. Starting an implementation run clears the field, so a schedule never
+ * outlives the pickup it was set for.
  */
 function getScheduledStartDelayMs(ticket, nowMs = Date.now()) {
-  if (ticket?.status !== 'todo') return 0;
   const raw = ticket?.scheduled_start;
   if (raw === null || raw === undefined || String(raw).trim() === '') return 0;
   const startMs = Date.parse(String(raw));
@@ -662,7 +663,7 @@ function createScheduler(deps) {
   }
 
   /**
-   * True while a todo ticket's `scheduled_start` is still in the future. Such
+   * True while a ticket's `scheduled_start` is still in the future. Such
    * a ticket is held exactly like one with an unmet dependency; the moment the
    * time passes it becomes eligible with no other change. The first time a
    * ticket is seen past its scheduled time a `ticket.scheduled_start_reached`
@@ -671,7 +672,7 @@ function createScheduler(deps) {
   function isWaitingForScheduledStart(ticket, nowMs = Date.now()) {
     if (getScheduledStartDelayMs(ticket, nowMs) > 0) return true;
     const raw = ticket?.scheduled_start;
-    if (ticket?.status === 'todo' && raw && Number.isFinite(Date.parse(String(raw))) && !scheduledStartReached.has(ticket.id)) {
+    if (raw && Number.isFinite(Date.parse(String(raw))) && !scheduledStartReached.has(ticket.id)) {
       scheduledStartReached.add(ticket.id);
       logEvent('ticket.scheduled_start_reached', 'info', `Scheduled start reached for ${ticket.id} — now eligible for pickup`, { ticketId: ticket.id, details: { scheduledStart: String(raw) } });
     }
@@ -696,7 +697,9 @@ function createScheduler(deps) {
     const nowMs = Date.now();
     let earliestMs = 0;
     for (const ticket of tickets) {
-      if (!hasExplicitAssignee(ticket)) continue;
+      // todo tickets need their own assignee; test/eval/merging tickets are
+      // dispatched by the stage default agents, so they always count.
+      if (ticket?.status === 'todo' && !hasExplicitAssignee(ticket)) continue;
       const delayMs = getScheduledStartDelayMs(ticket, nowMs);
       if (delayMs <= 0) continue;
       const targetMs = nowMs + delayMs;

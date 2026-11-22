@@ -4,6 +4,7 @@ const { resolveEvalOutcomeAfterRun, resolveTestOutcomeAfterRun, formatTestOutcom
 const { squashMergeTicketBranchSync, commitWorktreeChangesSync, branchHasCommitsAheadSync, removeWorktree } = require('./worktreeManager');
 const { agentDisplayName } = require('./codingAgentRuntime');
 const { resolveRunPhase, recordRunLogEntry } = require('./runSummary');
+const { applyProviderLimitOutcome, resetRetryBudgetAfterManualSuccess } = require('./runOutcomePolicy');
 const { recordMergeCommitOnTicket } = require('./gitDiffService');
 
 /**
@@ -57,6 +58,8 @@ function createRuntimeCallbacks(deps) {
     onTitleBrandingUpdate,
     isRunSummaryEnabled = () => false,
     isRunOutputRetained = () => false,
+    // (run) => boolean — true for runs a human started by hand.
+    isManualRun = () => false,
     startRunSummary = () => {}
   } = deps;
 
@@ -301,6 +304,28 @@ function createRuntimeCallbacks(deps) {
           stdoutLogFile: logPaths.stdoutRelative,
           stderrLogFile: logPaths.stderrRelative
         });
+      }
+
+      // Provider usage/rate limits are not ticket failures: reschedule the
+      // ticket instead of counting a failure and retrying straight away.
+      const providerLimitOutcome = applyProviderLimitOutcome(ticket, run, { currentStatus: effectiveStatus });
+      if (providerLimitOutcome) {
+        appendTicketNote(ticket, providerLimitOutcome.note);
+        logSchedulerEvent('ticket.provider_limit_rescheduled', 'warn', `Ticket ${ticket.id} hit a provider limit; ${providerLimitOutcome.action} (not counted as a failure)`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { action: providerLimitOutcome.action, from: previousStatus, to: ticket.status, retryAfter: providerLimitOutcome.limitUntil, reason: providerLimitOutcome.reason } });
+        const existingAgent = ticket.agent && typeof ticket.agent === 'object' ? ticket.agent : {};
+        ticket.agent = {
+          ...existingAgent,
+          name: run.agentName,
+          run_id: run.runId,
+          state: run.state,
+          finished_at: run.finishedAt || null,
+          duration_ms: run.durationMs,
+          exit_code: run.exitCode,
+          stdout_log_file: logPaths?.stdoutRelative || existingAgent.stdout_log_file || null,
+          stderr_log_file: logPaths?.stderrRelative || existingAgent.stderr_log_file || null,
+          error: run.error || null
+        };
+        return;
       }
 
       if (previousStatus === 'test') {
@@ -623,6 +648,11 @@ function createRuntimeCallbacks(deps) {
         } else {
           console.log(`[Backlog] Ticket ${ticket.id} failure count: ${ticket.fail_count}/${maxRetries}`);
         }
+      }
+
+      if (resetRetryBudgetAfterManualSuccess(ticket, run, { isManualRun: isManualRun(run) })) {
+        logSchedulerEvent('ticket.retry_budget_reset', 'info', `Ticket ${ticket.id} retry budget reset after a successful manual run`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName });
+        appendTicketNote(ticket, 'Manual run succeeded; failure counts reset.');
       }
 
       // Reset fail_count only on eval pass (ticket moving to review), not on

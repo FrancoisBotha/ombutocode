@@ -11,6 +11,7 @@ const { createScheduler, buildRetryContext } = require('./src/main/scheduler');
 const { checkGitVersionSupport } = require('./src/main/gitVersionCheck');
 const { cleanupOnDoneTransition } = require('./src/main/statusTransitionCleanup');
 const { cleanupRunOutput } = require('./src/main/runOutputCleanup');
+const { applyProviderLimitOutcome, resetRetryBudgetAfterManualSuccess } = require('./src/main/runOutcomePolicy');
 const {
   resolveRunPhase,
   recordRunLogEntry,
@@ -372,6 +373,9 @@ function trimAgentLog() {
 }
 
 const runOutputFilesByRunId = new Map();
+// Run ids started by hand from the UI (agent:start* handlers). A successful
+// manual run resets the ticket's retry budget — see runOutcomePolicy.js.
+const manualRunIds = new Set();
 
 function sanitizePathSegment(value) {
   return String(value || 'unknown')
@@ -785,6 +789,29 @@ ${run.stderr || ''}`);
         });
       }
 
+      // Provider usage/rate limits are not ticket failures: reschedule the
+      // ticket instead of counting a failure and retrying straight away.
+      // Sibling copy in coreCallbacks.js.
+      const providerLimitOutcome = applyProviderLimitOutcome(ticket, run);
+      if (providerLimitOutcome) {
+        appendTicketNote(ticket, providerLimitOutcome.note);
+        logSchedulerEvent('ticket.provider_limit_rescheduled', 'warn', `Ticket ${ticket.id} hit a provider limit; ${providerLimitOutcome.action} (not counted as a failure)`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName, details: { action: providerLimitOutcome.action, from: previousStatus, to: ticket.status, retryAfter: providerLimitOutcome.limitUntil, reason: providerLimitOutcome.reason } });
+        const existingAgent = ticket.agent && typeof ticket.agent === 'object' ? ticket.agent : {};
+        ticket.agent = {
+          ...existingAgent,
+          name: run.agentName,
+          run_id: run.runId,
+          state: run.state,
+          finished_at: run.finishedAt || null,
+          duration_ms: run.durationMs,
+          exit_code: run.exitCode,
+          stdout_log_file: logPaths?.stdoutRelative || existingAgent.stdout_log_file || null,
+          stderr_log_file: logPaths?.stderrRelative || existingAgent.stderr_log_file || null,
+          error: run.error || null
+        };
+        return;
+      }
+
       // Merging-specific outcome handling — skip normal eval/status flow
       if (previousStatus === 'merging') {
         const existingAgent = ticket.agent && typeof ticket.agent === 'object' ? ticket.agent : {};
@@ -1091,6 +1118,11 @@ ${run.stderr || ''}`);
         }
       }
 
+      if (resetRetryBudgetAfterManualSuccess(ticket, run, { isManualRun: manualRunIds.has(run.runId) })) {
+        logSchedulerEvent('ticket.retry_budget_reset', 'info', `Ticket ${ticket.id} retry budget reset after a successful manual run`, { ticketId: ticket.id, runId: run.runId, agentName: run.agentName });
+        appendTicketNote(ticket, 'Manual run succeeded; failure counts reset.');
+      }
+
       // Reset fail_count only on eval pass (ticket moving to review), not on
       // any completed run — a completed run with verdict FAIL should not reset.
       if (previousStatus === 'eval' && evalOutcome.nextStatus === 'review' && evalOutcome.verdict === 'pass') {
@@ -1268,6 +1300,8 @@ ${run.stderr || ''}`);
 
       console.log(`[FeatureEval] Evaluation complete: ${featureEvalInfo.fileName} → ${verdict}`);
     }
+
+    manualRunIds.delete(run.runId);
 
     // Notify scheduler of run completion (cost recording, re-dispatch)
     scheduler.onRunFinished(run);
@@ -2429,7 +2463,9 @@ ipcMain.handle('agent:startKimiForTicket', async (_, payload) => {
     };
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: kimi on ${ticketId}`, { ticketId, agentName: 'kimi', details: { modelId: enrichedPayload.modelId } });
-    return agentRuntime.startKimi(enrichedPayload, { workingDirectory });
+    const manualRun = agentRuntime.startKimi(enrichedPayload, { workingDirectory });
+    if (manualRun?.runId) manualRunIds.add(manualRun.runId);
+    return manualRun;
   } catch (error) {
     if (error instanceof AgentInvocationError) {
       throw new Error(`${error.code}: ${error.message}`);
@@ -2485,7 +2521,9 @@ ipcMain.handle('agent:startCodexForTicket', async (_, payload) => {
     };
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: codex on ${ticketId}`, { ticketId, agentName: 'codex', details: { modelId: enrichedPayload.modelId } });
-    return agentRuntime.startCodex(enrichedPayload, { workingDirectory });
+    const manualRun = agentRuntime.startCodex(enrichedPayload, { workingDirectory });
+    if (manualRun?.runId) manualRunIds.add(manualRun.runId);
+    return manualRun;
   } catch (error) {
     if (error instanceof AgentInvocationError) {
       throw new Error(`${error.code}: ${error.message}`);
@@ -2541,7 +2579,9 @@ ipcMain.handle('agent:startClaudeForTicket', async (_, payload) => {
     };
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: claude on ${ticketId}`, { ticketId, agentName: 'claude', details: { modelId: enrichedPayload.modelId } });
-    return agentRuntime.startClaude(enrichedPayload, { workingDirectory });
+    const manualRun = agentRuntime.startClaude(enrichedPayload, { workingDirectory });
+    if (manualRun?.runId) manualRunIds.add(manualRun.runId);
+    return manualRun;
   } catch (error) {
     if (error instanceof AgentInvocationError) {
       throw new Error(`${error.code}: ${error.message}`);

@@ -91,7 +91,7 @@ tools:
     name: Grok
     command: grok
     max_concurrent: 2
-    enabled: false
+    enabled: true
     budget_limit: 0
     models:
       - id: grok-default

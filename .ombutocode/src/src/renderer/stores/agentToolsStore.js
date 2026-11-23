@@ -125,7 +125,7 @@ const DEFAULT_TOOLS = [
     name: 'Grok',
     command: 'grok',
     maxConcurrentRuns: 1,
-    enabled: false,
+    enabled: true,
     budgetLimit: 50.0,
     models: [
       {
@@ -174,7 +174,8 @@ function fromYamlModel(model) {
     modelId: String(model.model_id || '').trim(),
     ratePerHour: normalizeNumber(model.rate_per_hour, 0),
     costPerRun: normalizeNumber(model.cost_per_run, 0),
-    enabled: model.enabled !== false
+    enabled: model.enabled !== false,
+    preferred: model.preferred === true
   };
 }
 
@@ -192,7 +193,7 @@ function toYaml(tool) {
 }
 
 function toYamlModel(model) {
-  return {
+  const yamlModel = {
     id: model.id,
     name: model.name,
     model_id: model.modelId,
@@ -200,6 +201,8 @@ function toYamlModel(model) {
     cost_per_run: model.costPerRun,
     enabled: model.enabled
   };
+  if (model.preferred) yamlModel.preferred = true;
+  return yamlModel;
 }
 
 function createToolId(name) {
@@ -387,6 +390,23 @@ export const useAgentToolsStore = defineStore('agent-tools', () => {
     return updateModel(toolId, modelId, { enabled: !model.enabled });
   }
 
+  // One preferred model per agent. An empty id clears the mark so scheduling
+  // falls back to the first enabled model. The CLI-default Grok entry has an
+  // empty model identifier, so this must not go through updateModel.
+  function setPreferredModel(toolId, modelRecordId) {
+    const tool = _tools.value.find((entry) => entry.id === toolId);
+    if (!tool) return null;
+    const wanted = String(modelRecordId || '').trim();
+    if (wanted && !(tool.models || []).some((model) => model.id === wanted)) {
+      throw new Error('Unknown model');
+    }
+    const nextModels = (tool.models || []).map((model) => ({
+      ...model,
+      preferred: wanted !== '' && model.id === wanted
+    }));
+    return updateTool(toolId, { models: nextModels });
+  }
+
   return {
     tools,
     loading,
@@ -400,6 +420,7 @@ export const useAgentToolsStore = defineStore('agent-tools', () => {
     addModel,
     updateModel,
     deleteModel,
-    toggleModelEnabled
+    toggleModelEnabled,
+    setPreferredModel
   };
 });

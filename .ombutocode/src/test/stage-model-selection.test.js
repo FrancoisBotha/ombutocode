@@ -34,6 +34,32 @@ for (const agent of ['claude', 'codex']) {
   }
 }
 
+test('scheduler uses the preferred model when the ticket names only the agent', () => {
+  const started = [];
+  const scheduler = createScheduler({
+    projectRoot,
+    readBacklogData: () => ({ tickets: [{ id: 'GROK-1', title: 'Use grok', status: 'todo', assignee: 'grok' }] }),
+    readAgentsConfig: () => ({ tools: [{
+      id: 'grok', name: 'Grok', enabled: true, max_concurrent: 2,
+      models: [
+        { id: 'grok-default', model_id: '', enabled: true, rate_per_hour: 1 },
+        { id: 'grok-4.6', model_id: 'grok-4.6', enabled: true, preferred: true, rate_per_hour: 1 }
+      ]
+    }] }),
+    readStageAssignee: () => null,
+    createTicketWorktree: () => ({ worktreePath: projectRoot }),
+    agentRuntime: {
+      activeRunByTicket: new Map(), runsById: new Map(),
+      listRuns: () => [], getRunStatus: () => null,
+      startAgent: (agent, payload, options) => { started.push({ agent, payload, options }); return { runId: 'test-run' }; },
+    },
+  });
+  try { scheduler.start(); } finally { scheduler.stop(); }
+  assert.equal(started.length, 1);
+  assert.equal(started[0].agent, 'grok');
+  assert.equal(started[0].payload.modelId, 'grok-4.6');
+});
+
 for (const [status, agent, model, variant] of [
   ['todo', 'codex', 'code', undefined], ['test', 'claude', 'test', 'test'],
   ['eval', 'codex', 'eval', 'eval'], ['merging', 'claude', 'merge', 'merge_resolve'],

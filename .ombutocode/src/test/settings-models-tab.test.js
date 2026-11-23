@@ -33,6 +33,19 @@ test('models tab maintains models through the agent tools store', () => {
   );
 });
 
+test('stage settings can set a preferred model for Claude, Codex and Grok', () => {
+  assert.ok(settingsView.includes('Preferred model'), 'stage settings should name the preferred model');
+  assert.ok(settingsView.includes('preferredModelAgents'), 'preferred model rows should be listed');
+  assert.ok(
+    settingsView.includes('agentToolsStore.setPreferredModel'),
+    'choosing a preferred model should persist it on the agent'
+  );
+  assert.ok(
+    settingsView.includes('Claude, Codex and Grok pass the selected model'),
+    'stage hint should include Grok model selection'
+  );
+});
+
 test('models tab identifies Claude, Codex and Grok model selection', () => {
   assert.ok(
     /Kimi currently uses its CLI default/.test(settingsView),

@@ -15,6 +15,7 @@ const { AgentRuntime, resolveAgentTemplateConfig, renderCommand, parseTemplate }
 const { buildUnattendedInvocation } = require('../src/main/unattendedAgentRun');
 
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..');
+const yaml = require('js-yaml');
 
 // --- promptFile helpers ---
 
@@ -32,6 +33,14 @@ test('substitutePromptFile replaces the token and quotes spaced paths only under
   assert.deepEqual(substitutePromptFile(args, '/tmp/p.md'), ['--prompt-file', '/tmp/p.md', '--always-approve']);
   assert.deepEqual(substitutePromptFile(args, 'C:\\My Temp\\p.md', { shell: true })[1], '"C:\\My Temp\\p.md"');
   assert.deepEqual(substitutePromptFile(args, 'C:\\My Temp\\p.md', { shell: false })[1], 'C:\\My Temp\\p.md');
+});
+
+test('shipped Grok agent is enabled so cards can assign it', () => {
+  const doc = yaml.load(fs.readFileSync(path.join(PROJECT_ROOT, '.ombutocode', 'codingagents', 'codingagents.yml'), 'utf-8'));
+  const grok = (doc.tools || []).find((tool) => tool.id === 'grok');
+  assert.ok(grok, 'codingagents.yml should define grok');
+  assert.equal(grok.enabled, true);
+  assert.ok((grok.models || []).some((model) => model.id === 'grok-4.6' && model.enabled !== false));
 });
 
 // --- shipped Grok templates ---

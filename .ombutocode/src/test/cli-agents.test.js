@@ -71,6 +71,20 @@ test('resolveModelId maps the yml id to the CLI model_id like main.js', () => {
   assert.equal(resolveModelId(fakeYml, 'kimi', 'k2'), '');
 });
 
+test('resolveModelId uses the model marked preferred when the assignee names only the agent', () => {
+  const config = {
+    tools: [{
+      id: 'grok', enabled: true,
+      models: [
+        { id: 'grok-default', model_id: '', enabled: true },
+        { id: 'grok-4.6', model_id: 'grok-4.6', enabled: true, preferred: true }
+      ]
+    }]
+  };
+  assert.equal(resolveModelId(config, 'grok', null), 'grok-4.6');
+  assert.equal(resolveModelId(config, 'grok', 'grok-default'), '');
+});
+
 test('resolvePlanningAgent prefers flags, then eval defaults from settings, then codex', () => {
   const store = (data) => ({ get: (k, d) => (k in data ? data[k] : d) });
 

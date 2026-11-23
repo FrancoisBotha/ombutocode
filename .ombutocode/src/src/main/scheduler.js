@@ -1454,26 +1454,40 @@ function createScheduler(deps) {
     return str.length > 0 && str !== 'none' && str !== 'null';
   }
 
+  // A model marked preferred runs before the other enabled models of the same
+  // agent. A pinned assignee model is left in its filtered order.
+  function orderPreferredFirst(combos) {
+    const preferred = [];
+    const rest = [];
+    for (const combo of combos) {
+      if (combo.model?.preferred === true) preferred.push(combo);
+      else rest.push(combo);
+    }
+    return preferred.length ? preferred.concat(rest) : combos;
+  }
+
   function getAssigneeCandidates(assignee, enabledCombos) {
     if (!assignee) return [];
 
     if (assignee && typeof assignee === 'object' && assignee.tool) {
       // Object-format assignee: match tool+model
-      return enabledCombos.filter(
+      const matched = enabledCombos.filter(
         ({ tool, model }) =>
           tool.id === assignee.tool &&
           (!assignee.model || model.id === assignee.model)
       );
+      return assignee.model ? matched : orderPreferredFirst(matched);
     }
 
     if (assignee && typeof assignee === 'string') {
       // String-format assignee: match tool id or name (case-insensitive)
       const normalized = assignee.trim().toLowerCase();
-      return enabledCombos.filter(
+      const matched = enabledCombos.filter(
         ({ tool }) =>
           tool.id.toLowerCase() === normalized ||
           tool.name.toLowerCase() === normalized
       );
+      return orderPreferredFirst(matched);
     }
 
     return [];

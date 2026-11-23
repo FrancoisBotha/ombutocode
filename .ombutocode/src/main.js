@@ -295,7 +295,8 @@ function readAgentsConfig() {
 function resolveDefaultModelId(toolId) {
   const config = readAgentsConfig();
   const tool = (config?.tools || []).find(t => t.id === toolId && t.enabled);
-  const model = (tool?.models || []).find(m => m.enabled);
+  const models = (tool?.models || []).filter(m => m.enabled);
+  const model = models.find(m => m.preferred === true) || models[0];
   return model?.model_id || '';
 }
 

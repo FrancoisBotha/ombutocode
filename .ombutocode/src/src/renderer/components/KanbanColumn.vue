@@ -493,7 +493,7 @@
                 v-for="tool in agentToolsStore.tools.filter(t => t.enabled)"
                 :key="tool.id"
                 :value="tool.id"
-              >{{ tool.name }}</option>
+              >{{ agentOptionLabel(tool) }}</option>
             </select>
           </div>
           <!-- Agent state and todo badges share one wrapping line. -->
@@ -1016,16 +1016,34 @@ export default {
       return String(assignee || '').trim().length > 0;
     };
 
+    const preferredModelFor = (toolName) => {
+      const key = String(toolName || '').trim().toLowerCase();
+      if (!key) return null;
+      const tool = agentToolsStore.tools.find((entry) =>
+        entry.id.toLowerCase() === key || entry.name.toLowerCase() === key
+      );
+      return (tool?.models || []).find((model) => model.preferred && model.enabled) || null;
+    };
+
+    const agentOptionLabel = (tool) => {
+      const preferred = (tool?.models || []).find((model) => model.preferred && model.enabled);
+      return preferred ? `${tool.name} · ${preferred.name}` : tool.name;
+    };
+
     const formatAssignee = (assignee) => {
       if (assignee && typeof assignee === 'object') {
         const tool = String(assignee.tool || '').trim();
         const model = String(assignee.model || '').trim();
         const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
-        return model ? `${cap(tool)}/${cap(model)}` : cap(tool);
+        if (model) return `${cap(tool)}/${cap(model)}`;
+        const preferred = preferredModelFor(tool);
+        return preferred ? `${cap(tool)} · ${preferred.name}` : cap(tool);
       }
       const value = String(assignee || '').trim();
       if (!value || value.toLowerCase() === 'none' || value === 'null') return 'Unassigned';
-      return value.charAt(0).toUpperCase() + value.slice(1);
+      const label = value.charAt(0).toUpperCase() + value.slice(1);
+      const preferred = preferredModelFor(value);
+      return preferred ? `${label} · ${preferred.name}` : label;
     };
 
     const isAgentBusy = (task) => {
@@ -1615,6 +1633,7 @@ export default {
       getAssignedAgentValue,
       hasAssignee,
       formatAssignee,
+      agentOptionLabel,
       isStartDisabled,
       getStartButtonLabel,
       getUnmetDependencies,

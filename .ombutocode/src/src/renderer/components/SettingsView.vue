@@ -313,7 +313,30 @@
               </tbody>
             </table>
           </div>
-          <p class="setting-hint stage-hint">A stage selection overrides the ticket assignment for scheduled runs. Human tickets stay manual. Unavailable selections hold the stage until you choose an enabled model. Claude and Codex use the selected model; Kimi uses its CLI default. MERGING applies to agent-assisted conflict resolution.</p>
+          <p class="setting-hint stage-hint">A stage selection overrides the ticket assignment for scheduled runs. Human tickets stay manual. Unavailable selections hold the stage until you choose an enabled model. Claude, Codex and Grok pass the selected model to the CLI; Kimi uses its CLI default. MERGING applies to agent-assisted conflict resolution.</p>
+
+          <div class="preferred-models">
+            <h3>Preferred model</h3>
+            <p class="setting-hint">Used when a card names the agent and does not name a model. If that model is busy, another enabled model of the same agent can run. A stage model above still wins for that stage.</p>
+            <div class="stage-table-scroll">
+              <table class="models-table stage-table">
+                <thead><tr><th scope="col">Agent</th><th scope="col">Preferred model</th></tr></thead>
+                <tbody>
+                  <tr v-for="agent in preferredModelAgents" :key="agent.id">
+                    <th scope="row">{{ agent.name }}</th>
+                    <td>
+                      <select class="agent-select" :aria-label="agent.name + ' preferred model'"
+                        :value="preferredModelId(agent.id)" :disabled="loading || agentsLoading || !getAgentModels(agent.id).length"
+                        @change="savePreferredModel(agent.id, $event.target.value)">
+                        <option value="">First enabled model</option>
+                        <option v-for="model in getAgentModels(agent.id)" :key="model.id" :value="model.id">{{ model.name }}</option>
+                      </select>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
           <!-- Ad Hoc Ticket Agent Selector -->
           <div class="setting-item">
@@ -871,6 +894,27 @@ export default {
     const MODEL_SELECTION_AGENTS = ['claude', 'codex', 'grok'];
     function agentSupportsModelSelection(toolId) {
       return MODEL_SELECTION_AGENTS.includes(toolId);
+    }
+
+    const preferredModelAgents = computed(() =>
+      MODEL_SELECTION_AGENTS
+        .map(id => agentToolsStore.tools.find(tool => tool.id === id))
+        .filter(Boolean)
+    );
+
+    function preferredModelId(toolId) {
+      const tool = agentToolsStore.tools.find(tool => tool.id === toolId);
+      const preferred = (tool?.models || []).find(model => model.preferred && model.enabled);
+      return preferred ? preferred.id : '';
+    }
+
+    function savePreferredModel(toolId, modelId) {
+      try {
+        agentToolsStore.setPreferredModel(toolId, modelId || null);
+      } catch (err) {
+        modelError.value = err.message;
+        console.error('[Settings] Preferred model save failed:', err);
+      }
     }
 
     function getModelDraft(toolId) {
@@ -1585,6 +1629,7 @@ export default {
 
     return {
       stages, stageAgent, stageModel, saveStageAgent, saveStageModel,
+      preferredModelAgents, preferredModelId, savePreferredModel,
       currentTheme,
       updateTheme,
       currentTitlebarColor,
@@ -2619,6 +2664,13 @@ export default {
 .stage-table .agent-select { width: 100%; }
 .stage-table td { padding: 10px; }
 .stage-hint { margin: 12px 0 24px; }
+.preferred-models { margin: 0 0 1.5rem; }
+.preferred-models h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
 
 .models-table {
   width: 100%;
@@ -2829,6 +2881,7 @@ export default {
 
 [data-theme="dark"] .settings-header h1,
 [data-theme="dark"] .section-title-group h2,
+[data-theme="dark"] .preferred-models h3,
 [data-theme="dark"] .setting-name {
   color: var(--text-color);
 }

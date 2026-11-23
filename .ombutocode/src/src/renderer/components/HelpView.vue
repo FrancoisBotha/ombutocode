@@ -888,10 +888,10 @@
           that YAML file and are edited under <strong>Build > Coding Agents</strong>.
         </p>
         <p>
-          Model selection is currently only wired through for <strong>Claude</strong> — its command
-          template in <code>codingagent-templates.json</code> carries <code>--model</code>. Codex and
-          Kimi run their own CLI default; models listed for them still drive scheduling, but the
-          identifier is not yet passed to the CLI.
+          Model selection is wired through for <strong>Claude, Codex and Grok</strong> — their command
+          templates pass <code>--model</code>. Kimi runs its CLI default. Settings → General has a
+          preferred model for each of those agents; a card that names the agent and no model uses it.
+          A stage model overrides that preference for the stage.
         </p>
       </section>
 

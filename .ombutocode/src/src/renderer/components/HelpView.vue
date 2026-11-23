@@ -874,7 +874,7 @@
       <section class="help-section">
         <h2><span class="mdi mdi-robot-outline"></span> Coding Agents</h2>
         <p>
-          Ombuto Code can launch AI coding agents (Claude, Codex, Kimi) to automatically
+          Ombuto Code can launch AI coding agents (Claude, Codex, Kimi, Grok) to automatically
           implement backlog tickets. Go to <strong>Settings > Coding Agents</strong> to test
           connectivity and see the full setup guide.
         </p>

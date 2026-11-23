@@ -119,6 +119,32 @@ const DEFAULT_TOOLS = [
         enabled: true
       }
     ]
+  },
+  {
+    id: 'grok',
+    name: 'Grok',
+    command: 'grok',
+    maxConcurrentRuns: 1,
+    enabled: false,
+    budgetLimit: 50.0,
+    models: [
+      {
+        id: 'grok-default',
+        name: 'Grok (CLI default)',
+        modelId: '',
+        ratePerHour: 1,
+        costPerRun: 0,
+        enabled: true
+      },
+      {
+        id: 'grok-4.6',
+        name: 'Grok 4.6',
+        modelId: 'grok-4.6',
+        ratePerHour: 1,
+        costPerRun: 0,
+        enabled: true
+      }
+    ]
   }
 ];
 

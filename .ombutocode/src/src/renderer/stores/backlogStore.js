@@ -342,6 +342,31 @@ export const useBacklogStore = defineStore('backlog', () => {
     }
   }
 
+  async function startGrokForTicket(ticketId, { modelId } = {}) {
+    _error.value = null;
+    try {
+      const ticket = _tickets.value.find((entry) => entry.id === ticketId);
+      if (!ticket) {
+        throw new Error(`Ticket ${ticketId} not found`);
+      }
+
+      const ipcPayload = {
+        ticketId: ticket.id,
+        title: ticket.title || '',
+        epicRef: ticket.epic_ref || '',
+        repoRoot: ''
+      };
+      if (modelId) ipcPayload.modelId = modelId;
+      const result = await window.electron.ipcRenderer.invoke('agent:startGrokForTicket', ipcPayload);
+      await loadBacklog();
+      return result;
+    } catch (e) {
+      const parsed = parseAgentError(e);
+      _error.value = parsed.message;
+      throw parsed;
+    }
+  }
+
   async function startTicketByAssignedAgent(ticketId) {
     const ticket = _tickets.value.find((entry) => entry.id === ticketId);
     if (!ticket) {
@@ -373,6 +398,9 @@ export const useBacklogStore = defineStore('backlog', () => {
     }
     if (assignedAgent === 'claude') {
       return startClaudeForTicket(ticketId, opts);
+    }
+    if (assignedAgent === 'grok') {
+      return startGrokForTicket(ticketId, opts);
     }
 
     throw new Error(`Unsupported ticket assignee: ${assignedAgent}`);
@@ -437,6 +465,7 @@ export const useBacklogStore = defineStore('backlog', () => {
     deleteTicket,
     createAdHocFromPrompt,
     startKimiForTicket,
+    startGrokForTicket,
     startCodexForTicket,
     startClaudeForTicket,
     startTicketByAssignedAgent,

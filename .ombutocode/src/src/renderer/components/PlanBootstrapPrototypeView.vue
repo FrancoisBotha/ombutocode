@@ -260,7 +260,7 @@ export default {
         if (preferred && results?.[preferred]?.status === 'pass') {
           defaultAgent.value = preferred;
         } else {
-          for (const id of ['claude', 'codex', 'kimi']) {
+          for (const id of ['claude', 'codex', 'kimi', 'grok']) {
             if (results?.[id]?.status === 'pass') { defaultAgent.value = id; break; }
           }
         }

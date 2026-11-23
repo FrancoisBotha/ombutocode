@@ -33,14 +33,14 @@ test('models tab maintains models through the agent tools store', () => {
   );
 });
 
-test('models tab identifies Claude and Codex model selection', () => {
+test('models tab identifies Claude, Codex and Grok model selection', () => {
   assert.ok(
     /Kimi currently uses its CLI default/.test(settingsView),
     'Models tab should name the agents without model selection'
   );
   assert.ok(
-    settingsView.includes("MODEL_SELECTION_AGENTS = ['claude', 'codex']"),
-    'Claude and Codex should support model selection'
+    settingsView.includes("MODEL_SELECTION_AGENTS = ['claude', 'codex', 'grok']"),
+    'Claude, Codex and Grok should support model selection'
   );
   assert.ok(
     settingsView.includes('agentSupportsModelSelection'),
@@ -48,13 +48,13 @@ test('models tab identifies Claude and Codex model selection', () => {
   );
 });
 
-test('only the claude command templates pass a model identifier', () => {
+test('only the claude and grok command templates pass a model identifier', () => {
   const templates = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../../codingagent-templates.json'), 'utf-8')
   );
   for (const [name, tpl] of Object.entries(templates)) {
     const passesModel = JSON.stringify(tpl.args || []).includes('{{modelId}}');
-    if (name.startsWith('claude')) {
+    if (name.startsWith('claude') || name.startsWith('grok')) {
       assert.ok(passesModel, `${name} should pass --model {{modelId}}`);
     } else {
       // Documents today's behaviour — the Models tab warning depends on it.

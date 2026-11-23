@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { extractTextFromStreamJson } = require('./runLifecycle');
+const { templateUsesPromptFile, writePromptFile, substitutePromptFile, removePromptFile } = require('./promptFile');
 const {
   runCodexDraftCommand,
   buildDraftArgsFromTemplate,
@@ -323,24 +324,34 @@ function createRunSummarizer({
       transcript: truncateForPrompt(transcript)
     });
 
+    // Prompt-file templates (Grok) read the prompt from a temp file.
+    const promptFilePath = templateUsesPromptFile(template) ? writePromptFile(prompt) : null;
     // Claude with --print takes its prompt on stdin, not as an argv entry.
-    const useStdin = template.stdin !== undefined
-      || (Array.isArray(template.args) && template.args.includes('--print'));
+    const useStdin = !promptFilePath && (template.stdin !== undefined
+      || (Array.isArray(template.args) && template.args.includes('--print')));
+    const templateArgs = promptFilePath
+      ? substitutePromptFile(template.args, promptFilePath, { shell: process.platform === 'win32' })
+      : template.args;
 
     const args = buildDraftArgsFromTemplate(
-      template.args,
-      useStdin ? null : prompt,
+      templateArgs,
+      (useStdin || promptFilePath) ? null : prompt,
       projectRoot,
       modelId ? { modelId } : {}
     ).filter(a => a != null && a !== '');
 
-    const { stdout } = await runDraftCommand({
-      command: template.command,
-      args,
-      cwd: projectRoot,
-      stdinData: useStdin ? prompt : null,
-      timeoutMs: SUMMARY_TIMEOUT_MS
-    });
+    let stdout;
+    try {
+      ({ stdout } = await runDraftCommand({
+        command: template.command,
+        args,
+        cwd: projectRoot,
+        stdinData: useStdin ? prompt : null,
+        timeoutMs: SUMMARY_TIMEOUT_MS
+      }));
+    } finally {
+      removePromptFile(promptFilePath);
+    }
 
     return {
       phase,

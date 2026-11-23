@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { randomUUID } = require('crypto');
+const { writePromptFile, substitutePromptFile, removePromptFile } = require('./promptFile');
 
 const REQUIRED_START_FIELDS = ['ticketId', 'epicRef', 'title', 'repoRoot'];
 const TEMPLATE_TOKENS = ['ticketId', 'epicRef', 'title', 'repoRoot', 'runId', 'acceptanceCriteria', 'modelId', 'retryContext', 'venvPython', 'workingDirectory', 'ticketFilePath'];
@@ -85,7 +86,10 @@ function parseTemplate(rawTemplate) {
   return {
     command: command.trim(),
     args: args.map((arg) => arg),
-    stdin: typeof rawTemplate.stdin === 'string' ? rawTemplate.stdin : null
+    stdin: typeof rawTemplate.stdin === 'string' ? rawTemplate.stdin : null,
+    // Prompt text written to a temp file whose path replaces {{promptFile}}
+    // in args (see promptFile.js) — for CLIs without stdin prompts (Grok).
+    promptFile: typeof rawTemplate.promptFile === 'string' ? rawTemplate.promptFile : null
   };
 }
 
@@ -139,7 +143,7 @@ function normalizeTemplateVariant(value) {
 
 // Apply at load time as upgrades preserve locally configured templates.
 function withModelSelection(template, agentName) {
-  if (!['claude', 'codex'].includes(agentName)) return template;
+  if (!['claude', 'codex', 'grok'].includes(agentName)) return template;
   const args = [...template.args];
   const end = args.indexOf('--');
   const flags = end < 0 ? args : args.slice(0, end);
@@ -225,7 +229,8 @@ function renderCommand(template, payload, runId, workingDir) {
   return {
     command: replaceTemplateTokens(template.command, payload, runId, workingDir),
     args: cleaned,
-    stdin: template.stdin ? replaceTemplateTokens(template.stdin, payload, runId, workingDir) : null
+    stdin: template.stdin ? replaceTemplateTokens(template.stdin, payload, runId, workingDir) : null,
+    promptFileText: template.promptFile ? replaceTemplateTokens(template.promptFile, payload, runId, workingDir) : null
   };
 }
 
@@ -350,7 +355,15 @@ class AgentRuntime {
 
     const runId = randomUUID();
     const template = this.resolveTemplate(normalizedAgent, normalized, options);
-    const commandDef = renderCommand(template, normalized, runId, runCwd);
+    let commandDef = renderCommand(template, normalized, runId, runCwd);
+    // Prompt-file templates (Grok): write the rendered prompt to a temp file and
+    // point {{promptFile}} at it.
+    const usesShell = process.platform === 'win32' && !path.isAbsolute(commandDef.command);
+    let promptFilePath = null;
+    if (commandDef.promptFileText) {
+      promptFilePath = writePromptFile(commandDef.promptFileText);
+      commandDef = { ...commandDef, args: substitutePromptFile(commandDef.args, promptFilePath, { shell: usesShell }) };
+    }
     const now = new Date().toISOString();
     // The scheduler passes the bare tool id plus `templateVariant`, so the
     // phase must be read from the variant as well as from a suffixed name.
@@ -392,9 +405,10 @@ class AgentRuntime {
       child = spawn(commandDef.command, commandDef.args, {
         cwd: runCwd,
         stdio: [useStdin ? 'pipe' : 'ignore', 'pipe', 'pipe'],
-        shell: process.platform === 'win32' && !path.isAbsolute(commandDef.command)
+        shell: usesShell
       });
     } catch (error) {
+      removePromptFile(promptFilePath);
       run.state = 'failed';
       run.finishedAt = new Date().toISOString();
       run.error = error.message || String(error);
@@ -444,6 +458,7 @@ class AgentRuntime {
       run.durationMs = Math.max(0, Date.parse(run.finishedAt) - Date.parse(run.startedAt));
       this.activeRunByTicket.delete(run.ticketId);
       run.child = null;
+      removePromptFile(promptFilePath);
       if (typeof this.onRunFinished === 'function') {
         this.onRunFinished({ ...run });
       }
@@ -536,6 +551,10 @@ class AgentRuntime {
 
   startClaude(payload, options = {}) {
     return this.startAgent('claude', payload, options);
+  }
+
+  startGrok(payload, options = {}) {
+    return this.startAgent('grok', payload, options);
   }
 
   getRunStatus({ runId = null, ticketId = null } = {}) {

@@ -587,6 +587,11 @@
                 <td>Per Kimi docs</td>
                 <td>Per Kimi docs</td>
               </tr>
+              <tr>
+                <td><strong>Grok</strong></td>
+                <td>xAI Grok Build CLI (<code>grok</code>) — per xAI docs</td>
+                <td><code>XAI_API_KEY</code> or <code>grok login</code></td>
+              </tr>
             </tbody>
           </table>
 
@@ -596,7 +601,7 @@
             <li>Authenticate — set the API key env var or run the CLI's login command</li>
             <li>Click <strong>Test</strong> above to verify connectivity</li>
             <li>Go to <strong>Build > Coding Agents</strong> to enable agents and configure models</li>
-            <li>Create a backlog ticket with <code>assignee: claude</code> (or codex/kimi)</li>
+            <li>Create a backlog ticket with <code>assignee: claude</code> (or codex/kimi/grok)</li>
             <li>Turn on <strong>Auto</strong> in the sidebar — the scheduler picks up tickets automatically</li>
           </ol>
 
@@ -640,7 +645,7 @@
           <p class="models-note">
             <span class="mdi mdi-information-outline"></span>
             <span>
-              Model selection is supported for <strong>Claude and Codex</strong>. Kimi currently uses its CLI default model.
+              Model selection is supported for <strong>Claude, Codex and Grok</strong>. Kimi currently uses its CLI default model; Grok's "CLI default" entry does too.
             </span>
           </p>
 
@@ -761,6 +766,7 @@ export default {
       { id: 'claude', name: 'Claude', command: 'claude', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
       { id: 'codex', name: 'Codex', command: 'codex', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
       { id: 'kimi', name: 'Kimi', command: 'kimi', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
+      { id: 'grok', name: 'Grok', command: 'grok', versionArg: '--version', status: 'idle', enabled: true, detail: '' },
     ]);
     const agentTestRunning = ref(false);
     const defaultAgentId = ref('');
@@ -797,6 +803,7 @@ export default {
         'gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.3-codex',
       ],
       kimi: ['k3', 'k3-256k', 'kimi-for-coding', 'kimi-for-coding-highspeed'],
+      grok: ['', 'grok-4.6'],
     };
 
     function orderedModels(tool) {
@@ -860,8 +867,8 @@ export default {
     const modelError = ref('');
     const newModelDrafts = reactive({});
 
-    // Claude and Codex receive the selected model in their CLI arguments.
-    const MODEL_SELECTION_AGENTS = ['claude', 'codex'];
+    // Claude, Codex and Grok receive the selected model in their CLI arguments.
+    const MODEL_SELECTION_AGENTS = ['claude', 'codex', 'grok'];
     function agentSupportsModelSelection(toolId) {
       return MODEL_SELECTION_AGENTS.includes(toolId);
     }

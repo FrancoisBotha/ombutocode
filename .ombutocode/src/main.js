@@ -1697,6 +1697,7 @@ app.whenReady().then(async () => {
     { id: 'claude', name: 'Claude', command: 'claude' },
     { id: 'codex', name: 'Codex', command: 'codex' },
     { id: 'kimi', name: 'Kimi', command: 'kimi' },
+    { id: 'grok', name: 'Grok', command: 'grok' },
   ];
 
   const agentConnectivityCheck = (async () => {
@@ -2580,6 +2581,64 @@ ipcMain.handle('agent:startClaudeForTicket', async (_, payload) => {
 
     logSchedulerEvent('agent.manual_start', 'info', `Manual start: claude on ${ticketId}`, { ticketId, agentName: 'claude', details: { modelId: enrichedPayload.modelId } });
     const manualRun = agentRuntime.startClaude(enrichedPayload, { workingDirectory });
+    if (manualRun?.runId) manualRunIds.add(manualRun.runId);
+    return manualRun;
+  } catch (error) {
+    if (error instanceof AgentInvocationError) {
+      throw new Error(`${error.code}: ${error.message}`);
+    }
+    throw error;
+  }
+});
+
+ipcMain.handle('agent:startGrokForTicket', async (_, payload) => {
+  try {
+    const ticketId = typeof payload?.ticketId === 'string' ? payload.ticketId : '';
+    const data = readBacklogData();
+    const ticket = Array.isArray(data.tickets)
+      ? data.tickets.find((entry) => entry.id === ticketId)
+      : null;
+
+    // AD_HOC-032: Check dependencies before starting
+    if (ticket) {
+      const ticketStatusById = new Map(
+        (data.tickets || []).map((t) => [t.id, t.status])
+      );
+      if (!hasResolvedDependencies(ticket, ticketStatusById)) {
+        const unresolvedDeps = (ticket.dependencies || [])
+          .map((dep) => normalizeDependencyId(dep))
+          .filter((depId) => {
+            if (!depId) return false;
+            const status = ticketStatusById.get(depId);
+            return status !== 'review' && status !== 'done';
+          });
+        throw new Error(
+          `Cannot start ticket ${ticketId} because it has unmet dependencies: ${unresolvedDeps.join(', ')}. Dependencies must be in 'review' or 'done' status before starting work.`
+        );
+      }
+    }
+
+    // Create worktree for this ticket (per feature_GIT_WORKTREES.md)
+    const preparedWorktree = createWorktreeSync(ticketId, { projectRoot: PROJECT_ROOT });
+    const workingDirectory = String(preparedWorktree?.worktreePath || '').trim();
+
+    if (!workingDirectory) {
+      throw new Error(`Failed to create worktree for ${ticketId}`);
+    }
+
+    const enrichedPayload = {
+      ticketId,
+      title: payload?.title || ticket?.title || ticketId,
+      epicRef: payload?.epicRef || ticket?.epic_ref || 'docs/Epics',
+      repoRoot: PROJECT_ROOT,
+      modelId: resolveModelId('grok', payload?.modelId || (settingsStore.get('implementation_default_agent', null) === 'grok' ? settingsStore.get('implementation_default_model', null) : null)),
+      acceptanceCriteria: formatAcceptanceCriteria(ticket),
+      retryContext: buildRetryContext(ticket || {}),
+      ticketFilePath: path.join(PROJECT_ROOT, '.ombutocode', 'data', 'tickets', `${ticketId}.json`)
+    };
+
+    logSchedulerEvent('agent.manual_start', 'info', `Manual start: grok on ${ticketId}`, { ticketId, agentName: 'grok', details: { modelId: enrichedPayload.modelId } });
+    const manualRun = agentRuntime.startGrok(enrichedPayload, { workingDirectory });
     if (manualRun?.runId) manualRunIds.add(manualRun.runId);
     return manualRun;
   } catch (error) {

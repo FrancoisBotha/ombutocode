@@ -1,6 +1,7 @@
 <template>
   <div class="tg-view">
-    <div class="tg-list-view" v-if="!sessionActive">
+    <div class="tg-list-layout" v-if="!sessionActive" ref="listLayoutRef" :class="{ 'is-resizing': detailResizing }">
+    <div class="tg-list-view">
       <div class="tg-header">
         <div>
           <h1>Ticket Generation</h1>
@@ -29,12 +30,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="epic in newEpics" :key="epic.path" class="tg-row">
+              <tr v-for="epic in newEpics" :key="epic.path" class="tg-row" :class="{ 'is-selected': selectedEpicPath === epic.path }" @click="toggleEpicDetail(epic)">
                 <td class="col-name">{{ epic.displayName }}</td>
                 <td class="col-status"><span class="tg-status-badge status-new">{{ epic.status }}</span></td>
                 <td class="col-path">{{ epic.path }}</td>
                 <td class="col-action">
-                  <button class="tg-btn tg-btn-primary tg-btn-sm" @click="startSession(epic)">
+                  <button class="tg-btn tg-btn-primary tg-btn-sm" @click.stop="startSession(epic)">
                     <span class="mdi mdi-robot-outline"></span> Generate Tickets
                   </button>
                 </td>
@@ -55,12 +56,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="epic in ticketedEpics" :key="epic.path" class="tg-row">
+              <tr v-for="epic in ticketedEpics" :key="epic.path" class="tg-row" :class="{ 'is-selected': selectedEpicPath === epic.path }" @click="toggleEpicDetail(epic)">
                 <td class="col-name">{{ epic.displayName }}</td>
                 <td class="col-status"><span class="tg-status-badge status-tickets">{{ epic.status }}</span></td>
                 <td class="col-path">{{ epic.path }}</td>
                 <td class="col-action">
-                  <button class="tg-btn tg-btn-secondary tg-btn-sm" @click="goToBacklog">
+                  <button class="tg-btn tg-btn-secondary tg-btn-sm" @click.stop="goToBacklog">
                     <span class="mdi mdi-format-list-bulleted"></span> Backlog
                   </button>
                 </td>
@@ -69,6 +70,50 @@
           </table>
         </div>
       </div>
+    </div>
+
+    <!-- Epic detail panel: opened by clicking an epic row -->
+    <div
+      v-if="selectedEpic"
+      class="tg-detail-resize"
+      role="separator"
+      aria-orientation="vertical"
+      title="Drag to resize"
+      @pointerdown="startDetailResize"
+    ></div>
+    <aside v-if="selectedEpic" class="tg-detail" :style="{ width: detailWidth + 'px' }" aria-label="Epic details">
+      <div class="tg-detail-header">
+        <h2 class="tg-detail-title">{{ selectedEpic.displayName }}</h2>
+        <button class="tg-detail-close" title="Close (Esc)" aria-label="Close epic details" @click="closeEpicDetail">
+          <span class="mdi mdi-close"></span>
+        </button>
+      </div>
+      <div class="tg-detail-meta">
+        <span
+          class="tg-status-badge"
+          :class="selectedEpic.status.toUpperCase() === 'TICKETS' ? 'status-tickets' : 'status-new'"
+        >{{ selectedEpic.status }}</span>
+        <span class="tg-detail-path">{{ selectedEpic.path }}</span>
+      </div>
+      <div class="tg-detail-actions">
+        <button
+          v-if="selectedEpic.status.toUpperCase() === 'NEW'"
+          class="tg-btn tg-btn-primary tg-btn-sm"
+          @click="startSession(selectedEpic)"
+        >
+          <span class="mdi mdi-robot-outline"></span> Generate Tickets
+        </button>
+        <button
+          v-else-if="selectedEpic.status.toUpperCase() === 'TICKETS'"
+          class="tg-btn tg-btn-secondary tg-btn-sm"
+          @click="goToBacklog"
+        >
+          <span class="mdi mdi-format-list-bulleted"></span> Backlog
+        </button>
+      </div>
+      <div v-if="selectedEpicHtml" class="tg-detail-body tg-markdown" v-html="selectedEpicHtml"></div>
+      <p v-else class="tg-detail-empty">This epic file is empty or could not be read.</p>
+    </aside>
     </div>
 
     <!-- AI Session -->
@@ -127,6 +172,7 @@
 
 <script>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { marked } from 'marked';
 import { collectSkillFiles, filterSkillsByCategory, groupSkillFiles } from '@/utils/skills';
 import { enableTerminalPaste } from '@/utils/terminalPaste';
 
@@ -174,6 +220,73 @@ export default {
       e.status.toUpperCase() === 'TICKETS'
     ));
 
+    // ── Epic detail panel ──
+    // Selection is kept by path so it survives an epics reload.
+    const listLayoutRef = ref(null);
+    const selectedEpicPath = ref('');
+    const selectedEpic = computed(() =>
+      allEpics.value.find(e => e.path === selectedEpicPath.value) || null
+    );
+    const selectedEpicHtml = computed(() => {
+      const content = selectedEpic.value?.content;
+      if (!content || !content.trim()) return '';
+      return marked(content, { breaks: true, gfm: true });
+    });
+    const DETAIL_MIN_WIDTH = 320;
+    const DETAIL_MIN_LIST_WIDTH = 360;
+    const detailWidth = ref(520);
+    const detailResizing = ref(false);
+    let detailDragStartX = 0;
+    let detailDragStartWidth = 0;
+
+    function clampDetailWidth(width) {
+      const containerWidth = listLayoutRef.value?.clientWidth || window.innerWidth;
+      const max = Math.max(DETAIL_MIN_WIDTH, containerWidth - DETAIL_MIN_LIST_WIDTH);
+      return Math.min(Math.max(width, DETAIL_MIN_WIDTH), max);
+    }
+
+    function toggleEpicDetail(epic) {
+      selectedEpicPath.value = selectedEpicPath.value === epic.path ? '' : epic.path;
+      if (selectedEpicPath.value) detailWidth.value = clampDetailWidth(detailWidth.value);
+    }
+
+    function closeEpicDetail() {
+      selectedEpicPath.value = '';
+    }
+
+    function onDetailPointerMove(event) {
+      if (!detailResizing.value) return;
+      detailWidth.value = clampDetailWidth(detailDragStartWidth - (event.clientX - detailDragStartX));
+    }
+
+    function stopDetailResize() {
+      if (!detailResizing.value) return;
+      detailResizing.value = false;
+      window.removeEventListener('pointermove', onDetailPointerMove);
+      window.removeEventListener('pointerup', stopDetailResize);
+      window.removeEventListener('pointercancel', stopDetailResize);
+    }
+
+    function startDetailResize(event) {
+      detailResizing.value = true;
+      detailDragStartX = event.clientX;
+      detailDragStartWidth = detailWidth.value;
+      event.preventDefault();
+      window.addEventListener('pointermove', onDetailPointerMove);
+      window.addEventListener('pointerup', stopDetailResize);
+      window.addEventListener('pointercancel', stopDetailResize);
+    }
+
+    function onDetailKeydown(event) {
+      if (event.key === 'Escape' && selectedEpicPath.value && !sessionActive.value && props.visible) {
+        closeEpicDetail();
+      }
+    }
+
+    function onWindowResizeForDetail() {
+      if (selectedEpicPath.value) detailWidth.value = clampDetailWidth(detailWidth.value);
+    }
+
     function goToBacklog() {
       // Switch to Build mode and navigate to backlog
       if (window.__planNavigate) {
@@ -193,8 +306,9 @@ export default {
             const loaded = [];
             for (const f of files) {
               let status = 'NEW';
+              let content = '';
               try {
-                const content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
+                content = await window.electron.ipcRenderer.invoke('filetree:readFile', f.path);
                 const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
                 if (fmMatch) {
                   const sm = fmMatch[1].match(/^status:\s*(.+)/m);
@@ -212,6 +326,7 @@ export default {
                 path: f.path,
                 displayName: f.name.replace('.md', '').replace(/_/g, ' '),
                 status,
+                content: typeof content === 'string' ? content : '',
               });
             }
             allEpics.value = loaded;
@@ -246,7 +361,7 @@ export default {
         const results = await window.electron.ipcRenderer.invoke('agent:getStartupResults');
         const settings = await window.electron.ipcRenderer.invoke('settings:read');
         const connected = [];
-        for (const id of ['claude', 'codex', 'kimi']) {
+        for (const id of ['claude', 'codex', 'kimi', 'grok']) {
           if (results?.[id]?.status === 'pass') connected.push(id);
         }
         availableAgents.value = connected;
@@ -399,7 +514,15 @@ export default {
       loadEpics();
     });
 
+    onMounted(() => {
+      window.addEventListener('keydown', onDetailKeydown);
+      window.addEventListener('resize', onWindowResizeForDetail);
+    });
+
     onBeforeUnmount(() => {
+      window.removeEventListener('keydown', onDetailKeydown);
+      window.removeEventListener('resize', onWindowResizeForDetail);
+      stopDetailResize();
       if (currentShellId.value) window.electron.ipcRenderer.invoke('workspace:killShell', currentShellId.value);
       cleanup();
     });
@@ -408,6 +531,8 @@ export default {
       sessionActive, agentRunning, terminalContainer, defaultAgent, selectedSessionAgent, availableAgents,
       sessionPrompt, panelWidth, loading,
       allEpics, newEpics, ticketedEpics, currentEpic, goToBacklog,
+      listLayoutRef, selectedEpicPath, selectedEpic, selectedEpicHtml, detailWidth, detailResizing,
+      toggleEpicDetail, closeEpicDetail, startDetailResize,
       skillFiles, skillGroups, selectedSkill, loadSelectedSkillContent,
       startSession, stopSession, launchAgent, startResize,
     };
@@ -417,7 +542,9 @@ export default {
 
 <style scoped>
 .tg-view { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: var(--bg-color, #161a1f); color: var(--text-color, #d4d8dd); }
-.tg-list-view { padding: 2rem; overflow-y: auto; flex: 1; }
+.tg-list-layout { flex: 1; display: flex; min-height: 0; overflow: hidden; }
+.tg-list-layout.is-resizing { cursor: col-resize; user-select: none; }
+.tg-list-view { padding: 2rem; overflow-y: auto; flex: 1; min-width: 0; }
 .tg-header { margin-bottom: 1.5rem; }
 .tg-header h1 { margin: 0 0 0.25rem; font-size: 1.5rem; font-weight: 600; }
 .tg-subtitle { margin: 0; color: var(--text-muted, #8b929a); font-size: 0.9rem; }
@@ -436,6 +563,42 @@ export default {
 .tg-table td { padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border-color); }
 .tg-row { cursor: pointer; transition: background 0.1s; }
 .tg-row:hover { background: var(--secondary-color); }
+.tg-row.is-selected { background: rgba(109,212,160,0.08); box-shadow: inset 3px 0 0 #6dd4a0; }
+
+/* Epic detail panel */
+.tg-detail-resize { width: 6px; flex-shrink: 0; cursor: col-resize; position: relative; }
+.tg-detail-resize::after { content: ''; position: absolute; top: 0; bottom: 0; left: 2px; width: 2px; background: var(--border-color, rgba(255,255,255,0.08)); transition: background 0.15s; }
+.tg-detail-resize:hover::after, .is-resizing .tg-detail-resize::after { background: #6dd4a0; }
+.tg-detail { flex-shrink: 0; display: flex; flex-direction: column; min-width: 0; overflow: hidden; background: var(--panel-bg, #0d1720); }
+.tg-detail-header { display: flex; align-items: flex-start; gap: 0.5rem; padding: 1.25rem 1.25rem 0.5rem; }
+.tg-detail-title { flex: 1; margin: 0; font-size: 1.1rem; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.tg-detail-close { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent; color: var(--text-muted, #8b929a); font-size: 1.1rem; cursor: pointer; }
+.tg-detail-close:hover { background: rgba(255,255,255,0.08); color: var(--text-color, #d4d8dd); }
+.tg-detail-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; padding: 0 1.25rem; }
+.tg-detail-path { font-size: 0.72rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-muted, #8b929a); overflow-wrap: anywhere; }
+.tg-detail-actions { display: flex; gap: 0.5rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.06)); }
+.tg-detail-body { flex: 1; overflow-y: auto; padding: 0.75rem 1.25rem 1.5rem; }
+.tg-detail-empty { padding: 1rem 1.25rem; font-size: 0.85rem; color: var(--text-muted, #8b929a); }
+
+/* Rendered epic markdown */
+.tg-markdown { font-size: 0.86rem; line-height: 1.6; color: var(--text-color, #d4d8dd); overflow-wrap: anywhere; }
+.tg-markdown :deep(h1), .tg-markdown :deep(h2), .tg-markdown :deep(h3), .tg-markdown :deep(h4) { margin: 1.1rem 0 0.5rem; font-weight: 600; line-height: 1.3; }
+.tg-markdown :deep(h1) { font-size: 1.2rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08)); }
+.tg-markdown :deep(h2) { font-size: 1.05rem; padding-bottom: 0.2rem; border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08)); }
+.tg-markdown :deep(h3) { font-size: 0.95rem; }
+.tg-markdown :deep(h4) { font-size: 0.88rem; }
+.tg-markdown :deep(> :first-child) { margin-top: 0; }
+.tg-markdown :deep(p) { margin: 0.5rem 0; }
+.tg-markdown :deep(ul), .tg-markdown :deep(ol) { margin: 0.5rem 0; padding-left: 1.4rem; }
+.tg-markdown :deep(li) { margin: 0.2rem 0; }
+.tg-markdown :deep(a) { color: #6dd4a0; }
+.tg-markdown :deep(code) { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85em; background: rgba(255,255,255,0.08); color: #6dd4a0; padding: 0.1rem 0.3rem; border-radius: 3px; }
+.tg-markdown :deep(pre) { background: #0A1220; border: 1px solid var(--border-color, rgba(255,255,255,0.08)); border-radius: 6px; padding: 0.75rem; overflow-x: auto; }
+.tg-markdown :deep(pre code) { background: none; padding: 0; color: inherit; }
+.tg-markdown :deep(blockquote) { margin: 0.5rem 0; padding: 0.25rem 0.75rem; border-left: 3px solid var(--border-color, rgba(255,255,255,0.15)); color: var(--text-muted, #8b929a); }
+.tg-markdown :deep(table) { border-collapse: collapse; width: 100%; margin: 0.5rem 0; font-size: 0.82rem; display: block; overflow-x: auto; }
+.tg-markdown :deep(th), .tg-markdown :deep(td) { border: 1px solid var(--border-color, rgba(255,255,255,0.1)); padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+.tg-markdown :deep(hr) { border: none; border-top: 1px solid var(--border-color, rgba(255,255,255,0.08)); margin: 1rem 0; }
 .col-action { width: 160px; text-align: right; }
 .col-name { font-size: 0.88rem; color: var(--text-color); font-weight: 400; }
 .col-status { width: 100px; }

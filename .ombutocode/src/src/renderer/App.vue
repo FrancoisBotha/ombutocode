@@ -126,7 +126,7 @@
         </div>
         <h3>No Coding Agents Detected</h3>
         <p>
-          Ombuto Code could not find any connected coding agents (Claude, Codex, or Kimi).
+          Ombuto Code could not find any connected coding agents (Claude, Codex, Kimi, or Grok).
           You need at least one agent CLI installed and authenticated to use automated development features.
         </p>
         <div class="no-agents-actions">

@@ -31,6 +31,7 @@ const validChannels = [
   'agent:startKimiForTicket',
   'agent:startCodexForTicket',
   'agent:startClaudeForTicket',
+  'agent:startGrokForTicket',
   'agent:getRunStatus',
   'agent:readRunLogs',
   'agent:checkProcessAlive',

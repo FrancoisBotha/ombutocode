@@ -1,4 +1,5 @@
 const { spawn } = require('child_process');
+const { templateUsesPromptFile, writePromptFile, substitutePromptFile, removePromptFile } = require('./promptFile');
 
 const DEFAULT_EPIC_REF = 'docs/Epics/epic_AD_HOC.md';
 const MAX_PROMPT_CHARS = 12000;
@@ -422,24 +423,34 @@ function createAdHocTicketCreator({
           : '';
         const draftPrompt = buildCodexDraftPrompt(prompt.promptText);
 
+        // Prompt-file templates (Grok) read the prompt from a temp file.
+        const promptFilePath = templateUsesPromptFile(selectedTemplate) ? writePromptFile(draftPrompt) : null;
         // Claude with --print expects prompt via stdin, not as a CLI arg.
         // Detect by checking if the template has a 'stdin' field or uses --print.
-        const useStdin = selectedTemplate.stdin !== undefined
-          || (Array.isArray(selectedTemplate.args) && selectedTemplate.args.includes('--print'));
+        const useStdin = !promptFilePath && (selectedTemplate.stdin !== undefined
+          || (Array.isArray(selectedTemplate.args) && selectedTemplate.args.includes('--print')));
+        const templateArgs = promptFilePath
+          ? substitutePromptFile(selectedTemplate.args, promptFilePath, { shell: process.platform === 'win32' })
+          : selectedTemplate.args;
 
         const draftArgs = buildDraftArgsFromTemplate(
-          selectedTemplate.args, useStdin ? null : draftPrompt, projectRoot,
+          templateArgs, (useStdin || promptFilePath) ? null : draftPrompt, projectRoot,
           configuredModel ? { modelId: configuredModel } : {}
         );
         // Remove trailing null/empty args from buildDraftArgsFromTemplate when prompt was null
         const cleanedArgs = draftArgs.filter(a => a != null && a !== '');
 
-        const { stdout } = await runDraftCommand({
-          command: selectedTemplate.command,
-          args: cleanedArgs,
-          cwd: projectRoot,
-          stdinData: useStdin ? draftPrompt : null
-        });
+        let stdout;
+        try {
+          ({ stdout } = await runDraftCommand({
+            command: selectedTemplate.command,
+            args: cleanedArgs,
+            cwd: projectRoot,
+            stdinData: useStdin ? draftPrompt : null
+          }));
+        } finally {
+          removePromptFile(promptFilePath);
+        }
 
         const parsedDraft = parseCodexDraftOutput(stdout);
         const validatedDraft = validateTicketDraft(parsedDraft);

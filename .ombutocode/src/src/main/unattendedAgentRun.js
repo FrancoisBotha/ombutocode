@@ -17,6 +17,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { templateUsesPromptFile, writePromptFile, substitutePromptFile, removePromptFile } = require('./promptFile');
 const { spawn } = require('child_process');
 
 const { resolveAgentTemplateConfig } = require('./codingAgentRuntime');
@@ -40,6 +41,8 @@ function safeSegment(value) {
 /**
  * Decide how the prompt reaches the agent and finalise the argv.
  *
+ * - Templates with a `promptFile` field (Grok) get the prompt written to a
+ *   temp file whose path replaces `{{promptFile}}`; the caller deletes it.
  * - Templates with a `stdin` field, `--print` (Claude) or a leading `exec`
  *   (Codex) take the prompt on stdin.
  * - `--prompt <text>` templates (Kimi) get the value replaced in place.
@@ -51,13 +54,19 @@ function safeSegment(value) {
  * the final result object carries token usage.
  */
 function buildUnattendedInvocation(template, prompt, projectRoot, { modelId = '' } = {}) {
-  const templateArgs = Array.isArray(template?.args) ? template.args : [];
+  let templateArgs = Array.isArray(template?.args) ? template.args : [];
+  const promptFilePath = templateUsesPromptFile(template) ? writePromptFile(prompt) : null;
+  if (promptFilePath) {
+    templateArgs = substitutePromptFile(templateArgs, promptFilePath, { shell: process.platform === 'win32' });
+  }
   const promptIdx = templateArgs.indexOf('--prompt');
-  const useStdin = typeof template?.stdin === 'string'
-    || (promptIdx < 0 && (templateArgs.includes('--print') || templateArgs[0] === 'exec'));
+  const useStdin = !promptFilePath && (typeof template?.stdin === 'string'
+    || (promptIdx < 0 && (templateArgs.includes('--print') || templateArgs[0] === 'exec')));
 
   let args;
-  if (useStdin) {
+  if (promptFilePath) {
+    args = buildDraftArgsFromTemplate(templateArgs, null, projectRoot, modelId ? { modelId } : {});
+  } else if (useStdin) {
     args = buildDraftArgsFromTemplate(templateArgs, null, projectRoot, modelId ? { modelId } : {});
   } else if (promptIdx >= 0) {
     const withoutPrompt = templateArgs.filter((_, i) => i !== promptIdx && i !== promptIdx + 1);
@@ -76,6 +85,7 @@ function buildUnattendedInvocation(template, prompt, projectRoot, { modelId = ''
     command: template.command,
     args,
     stdinData: useStdin ? prompt : null,
+    promptFilePath,
     jsonOutput
   };
 }
@@ -276,6 +286,7 @@ async function runUnattendedAgent(params) {
       settled = true;
       if (timer) clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
+      removePromptFile(invocation.promptFilePath);
 
       const finishedAtDate = now();
       const finishedAt = finishedAtDate.toISOString();

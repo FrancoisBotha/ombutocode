@@ -981,11 +981,11 @@ export default {
       const assignee = task?.assignee;
       if (assignee && typeof assignee === 'object') {
         const tool = String(assignee.tool || '').trim().toLowerCase();
-        if (tool === 'codex' || tool === 'claude' || tool === 'kimi') return tool;
+        if (tool === 'codex' || tool === 'claude' || tool === 'kimi' || tool === 'grok') return tool;
         return 'kimi';
       }
       const agent = String(assignee || '').trim().toLowerCase();
-      if (agent === 'codex' || agent === 'claude' || agent === 'kimi') return agent;
+      if (agent === 'codex' || agent === 'claude' || agent === 'kimi' || agent === 'grok') return agent;
       return 'kimi';
     };
 
@@ -1002,7 +1002,7 @@ export default {
       }
       // For legacy string assignees
       const agent = String(assignee || '').trim().toLowerCase();
-      if (agent === 'codex' || agent === 'claude' || agent === 'kimi') {
+      if (agent === 'codex' || agent === 'claude' || agent === 'kimi' || agent === 'grok') {
         return agent;
       }
       return '__none__';

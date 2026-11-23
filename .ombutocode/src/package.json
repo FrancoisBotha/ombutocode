@@ -1,6 +1,6 @@
 {
   "name": "ombuto-code",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A GEN AI Assisted coding workflow manager built with Electron and Vue.js",
   "main": "./main.js",
   "scripts": {
